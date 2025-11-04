@@ -30,14 +30,8 @@ RUN npm ci --production --ignore-scripts
 COPY --from=builder /app/.output ./.output
 COPY --from=builder /app/public ./public
 
-# Create data directory with proper permissions
-# The node user already exists in the base image with UID 1000
-RUN mkdir -p /app/data && \
-    chown -R node:node /app/data && \
-    chown -R node:node /app/.output
-
-# Switch to non-root user
-USER node
+# Create data directory
+RUN mkdir -p /app/data
 
 # Expose port
 EXPOSE 3000
