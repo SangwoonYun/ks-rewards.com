@@ -192,6 +192,7 @@ export const redemptions = {
       SELECT r.*, u.nickname 
       FROM redemptions r 
       LEFT JOIN users u ON r.fid = u.fid 
+      WHERE r.status = 'SUCCESS'
       ORDER BY r.redeemed_at DESC 
       LIMIT ?
     `);
