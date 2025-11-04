@@ -58,17 +58,19 @@
     <section class="live">
       <div class="panel">
         <h3>Gift Codes</h3>
-        <div id="codes" :class="['codes-grid', { empty: activeCodes.length === 0 }]">
-          <template v-if="activeCodes.length > 0">
-            <div v-for="code in activeCodes" :key="code.code" class="code-tile">
+        <div id="codes" :class="['codes-grid', { empty: displayedCodes.length === 0 }]">
+          <template v-if="displayedCodes.length > 0">
+            <div v-for="code in displayedCodes" :key="code.code" :class="['code-tile', { expired: code.validation_status === 'expired' }]">
               <div class="code-tile-badge">
                 <span class="code-tile-code">{{ code.code }}</span>
               </div>
-              <div class="code-tile-status">Active</div>
+              <div :class="['code-tile-status', code.validation_status === 'expired' ? 'expired' : 'active']">
+                {{ code.validation_status === 'expired' ? 'Expired' : 'Active' }}
+              </div>
             </div>
           </template>
           <template v-else>
-            <div class="empty-message">No active codes yet.</div>
+            <div class="empty-message">No codes yet.</div>
           </template>
         </div>
       </div>
@@ -238,10 +240,13 @@ useHead({
   ]
 })
 
-// Filter codes to only show validated (active) codes
-const activeCodes = computed(() => {
-  return codes.value.filter(code => code.validation_status === 'validated');
+// Filter codes to show validated (active) and expired codes
+const displayedCodes = computed(() => {
+  return codes.value.filter(code =>
+    code.validation_status === 'validated' || code.validation_status === 'expired'
+  );
 });
+
 
 // Helper functions
 const formatTime = (time: string) => {
@@ -642,10 +647,21 @@ input[type=text]:focus {
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
+.code-tile.expired {
+  background: linear-gradient(135deg, rgba(160,160,160,0.1) 0%, rgba(160,160,160,0.05) 100%);
+  border: 2px solid rgba(160,160,160,0.3);
+  opacity: 0.7;
+}
+
 .code-tile:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(212,165,116,0.2);
   border-color: var(--accent);
+}
+
+.code-tile.expired:hover {
+  box-shadow: 0 4px 12px rgba(160,160,160,0.2);
+  border-color: rgba(160,160,160,0.5);
 }
 
 .code-tile-badge {
@@ -672,6 +688,10 @@ input[type=text]:focus {
   color: #4CAF50;
   letter-spacing: 1px;
   margin-bottom: 4px;
+}
+
+.code-tile-status.expired {
+  color: #9E9E9E;
 }
 
 

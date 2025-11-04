@@ -280,6 +280,12 @@ export const queue = {
   delete: (id: number) => {
     const stmt = db.prepare('DELETE FROM redemption_queue WHERE id = ?');
     return stmt.run(id);
+  },
+
+  // Remove all queued entries for a specific gift code (used when a code is marked invalid)
+  deleteByCode: (code: string) => {
+    const stmt = db.prepare('DELETE FROM redemption_queue WHERE code = ?');
+    return stmt.run(code);
   }
 };
 

@@ -64,7 +64,8 @@ export async function validateGiftCode(code: string) {
     const validationStatuses = {
       success: ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'],
       valid: ['TOO_SMALL_SPEND_MORE', 'TOO_POOR_SPEND_MORE'],
-      invalid: ['TIME_ERROR', 'CDK_NOT_FOUND', 'USAGE_LIMIT']
+      expired: ['TIME_ERROR', 'USAGE_LIMIT'],
+      invalid: ['CDK_NOT_FOUND']
     };
 
     // Normalize the status by trimming, removing trailing punctuation, and converting to uppercase
@@ -90,10 +91,38 @@ export async function validateGiftCode(code: string) {
         message: result.message,
         details: 'Valid but has restrictions'
       };
+    } else if (validationStatuses.expired.includes(normalizedStatus)) {
+      // Code has expired (TIME_ERROR or USAGE_LIMIT)
+      giftCodes.updateValidation(code, 'expired');
+      logger.warn(`⏱️ Gift code ${code} has expired - status: ${normalizedStatus}`);
+
+      // Remove any queued redemption attempts for this expired code
+      try {
+        const res = queue.deleteByCode(code);
+        logger.info(`Removed ${res.changes || 0} queued redemption(s) for expired code ${code}`);
+      } catch (err) {
+        logger.error(`Error removing queued redemptions for expired code ${code}:`, err);
+      }
+
+      return {
+        valid: false,
+        status: normalizedStatus,
+        message: result.message,
+        details: 'Code expired'
+      };
     } else if (validationStatuses.invalid.includes(normalizedStatus)) {
-      // Code is invalid or expired
+      // Code is invalid (CDK_NOT_FOUND)
       giftCodes.markInvalid(code);
-      logger.warn(`❌ Gift code ${code} is invalid - status: ${normalizedStatus}`);
+      logger.warn(`❌ Gift code ${code} marked invalid - status: ${normalizedStatus}`);
+
+      // Remove any queued redemption attempts for this invalid code
+      try {
+        const res = queue.deleteByCode(code);
+        logger.info(`Removed ${res.changes || 0} queued redemption(s) for invalid code ${code}`);
+      } catch (err) {
+        logger.error(`Error removing queued redemptions for invalid code ${code}:`, err);
+      }
+
       return {
         valid: false,
         status: normalizedStatus,
@@ -101,13 +130,23 @@ export async function validateGiftCode(code: string) {
         details: 'Invalid code'
       };
     } else {
-      // Uncertain result, keep as pending
-      logger.warn(`⚠️ Gift code ${code} validation inconclusive - status: ${normalizedStatus}`);
+      // Any other unknown status is treated as invalid to prevent endless pending states
+      giftCodes.markInvalid(code);
+      logger.warn(`❌ Gift code ${code} marked invalid (unknown status) - status: ${normalizedStatus}`);
+
+      // Remove any queued redemption attempts for this invalid code
+      try {
+        const res = queue.deleteByCode(code);
+        logger.info(`Removed ${res.changes || 0} queued redemption(s) for invalid code ${code}`);
+      } catch (err) {
+        logger.error(`Error removing queued redemptions for invalid code ${code}:`, err);
+      }
+
       return {
-        valid: null,
+        valid: false,
         status: normalizedStatus,
         message: result.message,
-        details: 'Result uncertain'
+        details: 'Invalid or unrecognized code'
       };
     }
   } catch (error: any) {
@@ -175,13 +214,38 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
       if (giftCode && giftCode.validation_status === 'pending') {
         giftCodes.updateValidation(code, 'validated');
       }
-    } else if (['TIME_ERROR', 'CDK_NOT_FOUND', 'USAGE_LIMIT'].includes(normalizedStatus)) {
+    } else if (['TIME_ERROR', 'USAGE_LIMIT'].includes(normalizedStatus)) {
+      // Mark as expired (not invalid) for TIME_ERROR and USAGE_LIMIT
+      const giftCode: GiftCode | undefined = giftCodes.findByCode(code);
+      if (giftCode && giftCode.validation_status === 'validated') {
+        giftCodes.updateValidation(code, 'expired');
+        logger.warn(`⏱️ Previously validated code ${code} has now expired`);
+      } else {
+        giftCodes.updateValidation(code, 'expired');
+      }
+
+      // Remove any queued redemption attempts for this expired code
+      try {
+        const res = queue.deleteByCode(code);
+        logger.info(`Removed ${res.changes || 0} queued redemption(s) for expired code ${code}`);
+      } catch (err) {
+        logger.error(`Error removing queued redemptions for expired code ${code}:`, err);
+      }
+    } else if (['CDK_NOT_FOUND'].includes(normalizedStatus)) {
       giftCodes.markInvalid(code);
+
+      // Remove any queued redemption attempts for this invalid code
+      try {
+        const res = queue.deleteByCode(code);
+        logger.info(`Removed ${res.changes || 0} queued redemption(s) for invalid code ${code}`);
+      } catch (err) {
+        logger.error(`Error removing queued redemptions for invalid code ${code}:`, err);
+      }
     }
 
     // Update queue status
     const successStatuses = ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'];
-    const permanentFailureStatuses = ['TIME_ERROR', 'CDK_NOT_FOUND', 'USAGE_LIMIT'];
+    const permanentFailureStatuses = ['TIME_ERROR', 'CDK_NOT_FOUND', 'CDK NOT FOUND', 'USAGE_LIMIT'];
 
     if (successStatuses.includes(normalizedStatus) || permanentFailureStatuses.includes(normalizedStatus)) {
       // Complete (success) or permanently failed (invalid code)
@@ -376,7 +440,8 @@ export async function validatePendingCodes() {
         const validationStatuses = {
           success: ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'],
           valid: ['TOO_SMALL_SPEND_MORE', 'TOO_POOR_SPEND_MORE'],
-          invalid: ['TIME_ERROR', 'CDK_NOT_FOUND', 'USAGE_LIMIT']
+          expired: ['TIME_ERROR', 'USAGE_LIMIT'],
+          invalid: ['CDK_NOT_FOUND', 'CDK NOT FOUND']
         };
 
         if (validationStatuses.success.includes(validationResult.status) || validationStatuses.valid.includes(validationResult.status)) {
