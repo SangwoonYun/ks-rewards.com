@@ -171,9 +171,41 @@ const statusMessage = ref('');
 const statusType = ref('');
 const playerInput = ref('');
 const isRegistering = ref(false);
-const codes = ref<GiftCode[]>([]);
-const redemptions = ref<Redemption[]>([]);
-const codesStats = ref<CodesStats>({
+
+// Server-side ONLY data fetching for immediate availability
+// Data is fetched on server and serialized to client - no client-side refetch
+const { data: codesData } = await useAsyncData(
+  'codes',
+  async () => {
+    if (import.meta.server) {
+      return await $fetch<CodesResponse>('/api/codes');
+    }
+    // Never runs on client - data comes from payload
+    return { success: false, codes: [], stats: { total: 0, validated: 0, pending: 0, invalid: 0, expired: 0 } };
+  },
+  {
+    default: () => ({ success: false, codes: [], stats: { total: 0, validated: 0, pending: 0, invalid: 0, expired: 0 } })
+  }
+);
+
+const { data: redemptionsData } = await useAsyncData(
+  'redemptions',
+  async () => {
+    if (import.meta.server) {
+      return await $fetch<RedemptionsResponse>('/api/codes/recent-redemptions');
+    }
+    // Never runs on client - data comes from payload
+    return { success: false, redemptions: [] };
+  },
+  {
+    default: () => ({ success: false, redemptions: [] })
+  }
+);
+
+// Extract reactive refs from the fetched data
+const codes = computed(() => codesData.value?.codes || []);
+const redemptions = computed(() => redemptionsData.value?.redemptions || []);
+const codesStats = computed(() => codesData.value?.stats || {
   total: 0,
   validated: 0,
   pending: 0,
@@ -268,8 +300,8 @@ async function fetchCodes() {
       signal: abortController.signal
     });
     if (response.success) {
-      codes.value = response.codes || [];
-      codesStats.value = response.stats || codesStats.value;
+      // Update the reactive data
+      codesData.value = response;
     }
   } catch (error: any) {
     // Ignore abort errors (they're expected when we cancel requests)
@@ -283,7 +315,8 @@ async function fetchRedemptions() {
   try {
     const response = await $fetch<RedemptionsResponse>('/api/codes/recent-redemptions');
     if (response.success) {
-      redemptions.value = response.redemptions || [];
+      // Update the reactive data
+      redemptionsData.value = response;
     }
   } catch (error: any) {
     // Ignore abort errors
@@ -385,11 +418,7 @@ let redemptionsInterval: NodeJS.Timeout;
 let codesInterval: NodeJS.Timeout;
 
 onMounted(() => {
-  // Initial fetch
-  fetchCodes();
-  fetchRedemptions();
-
-  // Start polling
+  // Data is already available from SSR, just start polling for updates
   redemptionsInterval = setInterval(() => {
     fetchRedemptions();
   }, 5000);
