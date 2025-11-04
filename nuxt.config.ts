@@ -16,6 +16,7 @@ export default defineNuxtConfig({
         { name: 'description', content: 'Automatic gift code redemption service for Kingshot players' }
       ],
       link: [
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: 'anonymous' },
         { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap' }
       ]

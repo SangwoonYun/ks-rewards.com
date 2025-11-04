@@ -67,6 +67,12 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions, includi
 - **Database**: SQLite (better-sqlite3)
 - **Deployment**: Docker + Docker Compose
 
+## Notes
+
+- Favicon is located in `public/favicon.ico` and properly served in both dev and production
+- Database is persisted in `./data/ks-rewards.db`
+- Logs are rotated automatically in Docker
+
 ## License
 
 Made by player **adaja** (Kingdom 847). Automatic redemption logic adapted from [justncodes](https://github.com/justncodes).

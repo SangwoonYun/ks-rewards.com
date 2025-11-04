@@ -28,7 +28,6 @@ RUN npm ci --production --ignore-scripts
 
 # Copy built application from builder
 COPY --from=builder /app/.output ./.output
-COPY --from=builder /app/public ./public
 
 # Create data directory
 RUN mkdir -p /app/data
