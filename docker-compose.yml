@@ -6,7 +6,7 @@ services:
     container_name: ks-rewards
     user: "0:0"
     ports:
-      - "3000:3000"
+      - "3001:3000"
     volumes:
       - ./data:/app/data
       - ./backups:/app/backups
@@ -22,8 +22,8 @@ services:
       DISCOVERY_INTERVAL_MINUTES: 5
       BACKUP_INTERVAL_HOURS: 6
       MAX_RETRIES: 5
-      RETRY_DELAY_MS: 2000
-      MIN_REQUEST_INTERVAL_MS: 3000
-      REDEEM_DELAY_MS: 2000
+      RETRY_DELAY_MS: 3000
+      MIN_REQUEST_INTERVAL_MS: 2000
+      REDEEM_DELAY_MS: 3000
     restart: unless-stopped
 
