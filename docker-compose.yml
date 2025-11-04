@@ -1,0 +1,62 @@
+﻿version: '3.8'
+
+services:
+  ks-rewards:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ks-rewards
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persist SQLite database
+      - ./data:/app/data
+      # Optional: mount .env file if you have one
+      # - ./.env:/app/.env:ro
+    environment:
+      - NODE_ENV=production
+      - DB_PATH=/app/data/ks-rewards.db
+      # Kingshot API Configuration
+      - KS_LOGIN_URL=https://kingshot-giftcode.centurygame.com/api/player
+      - KS_REDEEM_URL=https://kingshot-giftcode.centurygame.com/api/gift_code
+      - KS_ENCRYPT_KEY=mN4!pQs6JrYwV9
+      # Gift Code API Configuration
+      - GIFTCODE_API_URL=http://ks-gift-code-api.whiteout-bot.com/giftcode_api.php
+      - GIFTCODE_API_KEY=super_secret_bot_token_nobody_will_ever_find
+      # Scheduling Configuration (in minutes)
+      - REDEMPTION_INTERVAL_MINUTES=2
+      - DISCOVERY_INTERVAL_MINUTES=15
+      - AUTO_REDEEM_INTERVAL_MINUTES=5
+      - NICKNAME_REFRESH_INTERVAL_HOURS=24
+      # Retry Configuration
+      - MAX_RETRIES=3
+      - RETRY_DELAY_MS=2000
+      - REDEEM_DELAY_MS=1000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: Nginx reverse proxy for production with SSL
+  # Uncomment if you want to add SSL/HTTPS support
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: ks-rewards-nginx
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./ssl:/etc/nginx/ssl:ro
+  #   depends_on:
+  #     - ks-rewards
+  #   restart: unless-stopped
+
