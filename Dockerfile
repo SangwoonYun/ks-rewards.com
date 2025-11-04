@@ -30,9 +30,11 @@ RUN npm ci --production --ignore-scripts
 COPY --from=builder /app/.output ./.output
 COPY --from=builder /app/public ./public
 
-# Create data directory for SQLite database
+# Create data directory with proper permissions
+# The node user already exists in the base image with UID 1000
 RUN mkdir -p /app/data && \
-    chown -R node:node /app
+    chown -R node:node /app/data && \
+    chown -R node:node /app/.output
 
 # Switch to non-root user
 USER node
@@ -40,9 +42,6 @@ USER node
 # Expose port
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start the application
 CMD ["node", ".output/server/index.mjs"]
