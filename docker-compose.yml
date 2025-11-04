@@ -18,7 +18,7 @@ services:
       KS_ENCRYPT_KEY: mN4!pQs6JrYwV9
       GIFTCODE_API_URL: http://ks-gift-code-api.whiteout-bot.com/giftcode_api.php
       GIFTCODE_API_KEY: super_secret_bot_token_nobody_will_ever_find
-      REDEMPTION_INTERVAL_MINUTES: 2
+      REDEMPTION_INTERVAL_MINUTES: 15
       DISCOVERY_INTERVAL_MINUTES: 5
       BACKUP_INTERVAL_HOURS: 6
       MAX_RETRIES: 5

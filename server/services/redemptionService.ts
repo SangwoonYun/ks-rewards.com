@@ -276,38 +276,42 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
 
 /**
  * Process pending redemptions from the queue
+ * Note: Code validation is now handled by the discovery scheduler and new user registration.
+ * This function focuses solely on processing queued redemptions.
  */
-export async function processRedemptionQueue(batchSize: number = 100) {
+export async function processRedemptionQueue(batchSize: number = 100, validatePending: boolean = false) {
   try {
-    let codesValidated = false;
+    // Optional: validate pending codes if explicitly requested (e.g., on startup or for safety)
+    if (validatePending) {
+      let codesValidated = false;
 
-    // First, validate any pending gift codes
-    const pendingCodes = giftCodes.findByStatus('pending');
-    if (pendingCodes.length > 0) {
-      logger.info(`Found ${pendingCodes.length} pending codes to validate`);
-      for (const code of pendingCodes) {
-        try {
-          const validationResult = await validateGiftCode(code.code);
-          if (validationResult.valid === true) {
-            codesValidated = true; // Track if any codes were validated
+      const pendingCodes = giftCodes.findByStatus('pending');
+      if (pendingCodes.length > 0) {
+        logger.info(`Found ${pendingCodes.length} pending codes to validate`);
+        for (const code of pendingCodes) {
+          try {
+            const validationResult = await validateGiftCode(code.code);
+            if (validationResult.valid === true) {
+              codesValidated = true; // Track if any codes were validated
+            }
+            logger.info(`Validation result for ${code.code}: ${validationResult.status}`);
+            // Add a small delay between validations
+            await new Promise(resolve => setTimeout(resolve, 500));
+          } catch (error) {
+            logger.error(`Error validating code ${code.code}:`, error);
           }
-          logger.info(`Validation result for ${code.code}: ${validationResult.status}`);
-          // Add a small delay between validations
-          await new Promise(resolve => setTimeout(resolve, 500));
-        } catch (error) {
-          logger.error(`Error validating code ${code.code}:`, error);
         }
-      }
 
-      // If any codes were validated, queue them for all active users
-      if (codesValidated) {
-        logger.info('New codes were validated, queueing for all active users...');
-        const queuedCount = await autoRedeemValidatedCodes();
-        logger.info(`Queued ${queuedCount} redemptions for validated codes`);
+        // If any codes were validated, queue them for all active users
+        if (codesValidated) {
+          logger.info('New codes were validated, queueing for all active users...');
+          const queuedCount = await autoRedeemValidatedCodes();
+          logger.info(`Queued ${queuedCount} redemptions for validated codes`);
+        }
       }
     }
 
-    // Then process redemptions as usual
+    // Process redemptions from the queue
     const pendingItems: QueueItem[] = queue.getPending(batchSize);
 
     if (pendingItems.length === 0) {

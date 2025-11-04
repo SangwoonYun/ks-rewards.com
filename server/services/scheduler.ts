@@ -21,10 +21,11 @@ export function initializeScheduledTasks() {
   const backupIntervalMs = BACKUP_INTERVAL_HOURS * 60 * 60 * 1000;
 
   // Process redemption queue every N minutes
+  // Note: This only processes queued redemptions. Code validation is handled by the discovery scheduler.
   const redemptionInterval = setInterval(async () => {
     logger.info('⏰ Running scheduled redemption processing...');
     try {
-      const result = await processRedemptionQueue(100);
+      const result = await processRedemptionQueue(100, false); // Don't validate pending codes here
       logger.info(`Processed: ${result.processed}, Success: ${result.success}, Failed: ${result.failed}`);
     } catch (error) {
       logger.error('Error in scheduled redemption processing:', error);
@@ -93,7 +94,8 @@ export function initializeScheduledTasks() {
 
   setImmediate(async () => {
     try {
-      const redemptionResult = await processRedemptionQueue(100);
+      // On startup, validate any pending codes as a safety measure
+      const redemptionResult = await processRedemptionQueue(100, true);
       logger.info(`Initial redemption run - Processed: ${redemptionResult.processed}, Success: ${redemptionResult.success}, Failed: ${redemptionResult.failed}`);
     } catch (error) {
       logger.error('Error in initial redemption processing:', error);
