@@ -79,43 +79,71 @@ export function initializeScheduledTasks() {
 
   scheduledIntervals.push(autoRedeemInterval);
 
+  // Periodically refresh nicknames for all active users
+  const nicknameRefreshInterval = setInterval(async () => {
+    logger.info('⏰ Running nickname refresh...');
+    try {
+      const activeUsers = await users.findActive();
+      let updatedCount = 0;
+
+      for (const user of activeUsers) {
+        try {
+          const validation = await validatePlayerId(user.fid);
+          if (validation.success && validation.nickname && validation.nickname !== user.nickname) {
+            await users.updateNickname(user.fid, validation.nickname);
+            logger.info(`Updated nickname for ${user.fid}: ${user.nickname} -> ${validation.nickname}`);
+            updatedCount++;
+          }
+          // Small delay between API calls to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+          logger.error(`Error refreshing nickname for ${user.fid}:`, error);
+        }
+      }
+
+      logger.info(`Nickname refresh complete: ${updatedCount} updated, ${activeUsers.length - updatedCount} unchanged`);
+    } catch (error) {
+      logger.error('Error in nickname refresh:', error);
+    }
+  }, nicknameRefreshIntervalMs);
+
+  scheduledIntervals.push(nicknameRefreshInterval);
+
   logger.info('✅ Scheduled tasks initialized');
   logger.info(`- Redemption processing: every ${REDEMPTION_INTERVAL_MINUTES} minutes (${redemptionIntervalMs}ms)`);
   logger.info(`- Gift code discovery: every ${DISCOVERY_INTERVAL_MINUTES} minutes (${discoveryIntervalMs}ms)`);
   logger.info(`- Auto-redemption check: every ${AUTO_REDEEM_INTERVAL_MINUTES} minutes (${autoRedeemIntervalMs}ms)`);
+  logger.info(`- Nickname refresh: every ${NICKNAME_REFRESH_INTERVAL_HOURS} hours (${nicknameRefreshIntervalMs}ms)`);
 
-  // Run initial checks
+  // Run initial checks in background (don't block server startup)
   logger.info('Running initial checks...');
 
-  Promise.all([
-    processRedemptionQueue(100)
-      .then(result => {
-        logger.info(`Initial redemption run - Processed: ${result.processed}, Success: ${result.success}, Failed: ${result.failed}`);
-      })
-      .catch(error => {
-        logger.error('Error in initial redemption processing:', error);
-      }),
+  setImmediate(async () => {
+    try {
+      const redemptionResult = await processRedemptionQueue(100);
+      logger.info(`Initial redemption run - Processed: ${redemptionResult.processed}, Success: ${redemptionResult.success}, Failed: ${redemptionResult.failed}`);
+    } catch (error) {
+      logger.error('Error in initial redemption processing:', error);
+    }
 
-    syncGiftCodes()
-      .then(result => {
-        if (result.success) {
-          logger.info(`Initial gift code sync - New: ${result.newCodes}, Existing: ${result.existingCodes}, Total: ${result.totalApiCodes}`);
-        } else {
-          logger.error('Initial gift code sync failed:', result.error);
-        }
-      })
-      .catch(error => {
-        logger.error('Error in initial gift code sync:', error);
-      }),
+    try {
+      const syncResult = await syncGiftCodes();
+      if (syncResult.success) {
+        logger.info(`Initial gift code sync - New: ${syncResult.newCodes}, Existing: ${syncResult.existingCodes}, Total: ${syncResult.totalApiCodes}`);
+      } else {
+        logger.error('Initial gift code sync failed:', syncResult.error);
+      }
+    } catch (error) {
+      logger.error('Error in initial gift code sync:', error);
+    }
 
-    autoRedeemValidatedCodes()
-      .then(queuedCount => {
-        logger.info(`Initial auto-redeem queued ${queuedCount} redemptions`);
-      })
-      .catch(error => {
-        logger.error('Error in initial auto-redemption:', error);
-      })
-  ]);
+    try {
+      const queuedCount = await autoRedeemValidatedCodes();
+      logger.info(`Initial auto-redeem queued ${queuedCount} redemptions`);
+    } catch (error) {
+      logger.error('Error in initial auto-redemption:', error);
+    }
+  });
 }
 
 /**
