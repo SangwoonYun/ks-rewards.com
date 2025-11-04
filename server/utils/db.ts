@@ -7,6 +7,8 @@ import { logger } from './logger';
 export interface User {
   fid: string;
   nickname: string | null;
+  kingdom: string | null;
+  avatar_url: string | null;
   active: number;
   created_at: string;
   updated_at: string;
@@ -26,6 +28,7 @@ export interface Redemption {
   status: string;
   redeemed_at: string;
   nickname?: string | null;
+  kingdom?: string | null;
 }
 
 export interface QueueItem {
@@ -97,6 +100,16 @@ export const users = {
   updateNickname: (fid: string, nickname: string) => {
     const stmt = db.prepare('UPDATE users SET nickname = ?, updated_at = CURRENT_TIMESTAMP WHERE fid = ?');
     return stmt.run(nickname, fid);
+  },
+
+  updateKingdom: (fid: string, kingdom: string) => {
+    const stmt = db.prepare('UPDATE users SET kingdom = ?, updated_at = CURRENT_TIMESTAMP WHERE fid = ?');
+    return stmt.run(kingdom, fid);
+  },
+
+  updateAvatar: (fid: string, avatar_url: string) => {
+    const stmt = db.prepare('UPDATE users SET avatar_url = ?, updated_at = CURRENT_TIMESTAMP WHERE fid = ?');
+    return stmt.run(avatar_url, fid);
   }
 };
 
@@ -188,7 +201,7 @@ export const redemptions = {
 
   findRecent: (limit: number = 50): Redemption[] => {
     const stmt = db.prepare(`
-      SELECT r.*, u.nickname 
+      SELECT r.*, u.nickname, u.kingdom 
       FROM redemptions r 
       LEFT JOIN users u ON r.fid = u.fid 
       WHERE r.status = 'SUCCESS'
@@ -263,6 +276,7 @@ export function runMigrations() {
       CREATE TABLE IF NOT EXISTS users (
         fid TEXT PRIMARY KEY,
         nickname TEXT,
+        kingdom TEXT,
         active INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -318,6 +332,16 @@ export function runMigrations() {
         ALTER TABLE redemptions_new RENAME TO redemptions;
       `);
       logger.info('✅ Redemptions table migration complete');
+    }
+
+    // Migration: Add kingdom column to users table if it doesn't exist
+    const usersColumns = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+    const hasKingdom = usersColumns.some(col => col.name === 'kingdom');
+
+    if (!hasKingdom) {
+      logger.info('Adding kingdom column to users table...');
+      db.exec(`ALTER TABLE users ADD COLUMN kingdom TEXT`);
+      logger.info('✅ Kingdom column added to users table');
     }
 
     // Create redemption_queue table

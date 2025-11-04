@@ -37,16 +37,24 @@ export default defineEventHandler(async (event) => {
     // Check if user already exists
     const existingUser = await users.findByFid(fid);
     if (existingUser) {
-      // Update nickname if it has changed
+      // Update nickname and kingdom if they have changed
       if (validation.nickname && validation.nickname !== existingUser.nickname) {
         await users.updateNickname(fid, validation.nickname);
         logger.info(`✅ Updated nickname for ${fid}: ${existingUser.nickname} -> ${validation.nickname}`);
+      }
+      if (validation.kingdom && validation.kingdom !== existingUser.kingdom) {
+        await users.updateKingdom(fid, validation.kingdom);
+        logger.info(`✅ Updated kingdom for ${fid}: ${existingUser.kingdom} -> ${validation.kingdom}`);
       }
 
       return {
         success: true,
         message: 'User already registered',
-        user: { ...existingUser, nickname: validation.nickname || existingUser.nickname },
+        user: {
+          ...existingUser,
+          nickname: validation.nickname || existingUser.nickname,
+          kingdom: validation.kingdom || existingUser.kingdom
+        },
         queuedCodes: 0
       };
     }
@@ -54,6 +62,11 @@ export default defineEventHandler(async (event) => {
     // Create new user
     await users.create(fid, validation.nickname || null, 1);
     const user = await users.findByFid(fid);
+
+    // Update kingdom if available
+    if (validation.kingdom && user) {
+      await users.updateKingdom(fid, validation.kingdom);
+    }
 
     // Queue unredeemed codes for this user
     const queuedCount = await queueUnredeemedCodesForUser(fid, 10); // High priority for new users

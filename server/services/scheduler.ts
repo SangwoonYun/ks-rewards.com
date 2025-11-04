@@ -79,9 +79,9 @@ export function initializeScheduledTasks() {
 
   scheduledIntervals.push(autoRedeemInterval);
 
-  // Periodically refresh nicknames for all active users
+  // Periodically refresh nicknames and kingdoms for all active users
   const nicknameRefreshInterval = setInterval(async () => {
-    logger.info('⏰ Running nickname refresh...');
+    logger.info('⏰ Running nickname and kingdom refresh...');
     try {
       const activeUsers = await users.findActive();
       let updatedCount = 0;
@@ -89,21 +89,30 @@ export function initializeScheduledTasks() {
       for (const user of activeUsers) {
         try {
           const validation = await validatePlayerId(user.fid);
-          if (validation.success && validation.nickname && validation.nickname !== user.nickname) {
-            await users.updateNickname(user.fid, validation.nickname);
-            logger.info(`Updated nickname for ${user.fid}: ${user.nickname} -> ${validation.nickname}`);
-            updatedCount++;
+          if (validation.success) {
+            let updated = false;
+            if (validation.nickname && validation.nickname !== user.nickname) {
+              await users.updateNickname(user.fid, validation.nickname);
+              logger.info(`Updated nickname for ${user.fid}: ${user.nickname} -> ${validation.nickname}`);
+              updated = true;
+            }
+            if (validation.kingdom && validation.kingdom !== user.kingdom) {
+              await users.updateKingdom(user.fid, validation.kingdom);
+              logger.info(`Updated kingdom for ${user.fid}: ${user.kingdom} -> ${validation.kingdom}`);
+              updated = true;
+            }
+            if (updated) updatedCount++;
           }
           // Small delay between API calls to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 100));
         } catch (error) {
-          logger.error(`Error refreshing nickname for ${user.fid}:`, error);
+          logger.error(`Error refreshing data for ${user.fid}:`, error);
         }
       }
 
-      logger.info(`Nickname refresh complete: ${updatedCount} updated, ${activeUsers.length - updatedCount} unchanged`);
+      logger.info(`User data refresh complete: ${updatedCount} updated, ${activeUsers.length - updatedCount} unchanged`);
     } catch (error) {
-      logger.error('Error in nickname refresh:', error);
+      logger.error('Error in user data refresh:', error);
     }
   }, nicknameRefreshIntervalMs);
 

@@ -71,6 +71,7 @@
               <div class="redemption-tile-left">
                 <span class="player-icon">👤</span>
                 <span class="redemption-tile-nickname">{{ redemption.nickname || 'Player' }}</span>
+                <span v-if="redemption.kingdom" class="redemption-tile-kingdom">(#{{ redemption.kingdom }})</span>
                 <span class="redemption-tile-separator">•</span>
                 <span class="redemption-tile-time">{{ formatTime(redemption.redeemed_at) }}</span>
               </div>
@@ -106,6 +107,7 @@ interface Redemption {
   code: string;
   status: string;
   nickname?: string;
+  kingdom?: string;
   redeemed_at: string;
 }
 
@@ -213,16 +215,28 @@ const formatTime = (time: string) => {
 };
 
 // API functions
-// API functions
+let abortController: AbortController | null = null;
+
 async function fetchCodes() {
   try {
-    const response = await $fetch<CodesResponse>('/api/codes');
+    // Cancel any pending request
+    if (abortController) {
+      abortController.abort();
+    }
+    abortController = new AbortController();
+
+    const response = await $fetch<CodesResponse>('/api/codes', {
+      signal: abortController.signal
+    });
     if (response.success) {
       codes.value = response.codes || [];
       codesStats.value = response.stats || codesStats.value;
     }
-  } catch (error) {
-    console.error('Error fetching codes:', error);
+  } catch (error: any) {
+    // Ignore abort errors (they're expected when we cancel requests)
+    if (error.name !== 'AbortError') {
+      console.error('Error fetching codes:', error);
+    }
   }
 }
 
@@ -232,8 +246,11 @@ async function fetchRedemptions() {
     if (response.success) {
       redemptions.value = response.redemptions || [];
     }
-  } catch (error) {
-    console.error('Error fetching redemptions:', error);
+  } catch (error: any) {
+    // Ignore abort errors
+    if (error.name !== 'AbortError') {
+      console.error('Error fetching redemptions:', error);
+    }
   }
 }
 
@@ -321,25 +338,29 @@ async function registerPlayer() {
 }
 
 // Polling for updates
+let redemptionsInterval: NodeJS.Timeout;
+let codesInterval: NodeJS.Timeout;
+
 onMounted(() => {
   // Initial fetch
   fetchCodes();
   fetchRedemptions();
 
   // Start polling
-  const redemptionsInterval = setInterval(() => {
+  redemptionsInterval = setInterval(() => {
     fetchRedemptions();
   }, 5000);
 
   // Fetch codes less frequently
-  const codesInterval = setInterval(() => {
+  codesInterval = setInterval(() => {
     fetchCodes();
   }, 10000);
+});
 
-  onUnmounted(() => {
-    clearInterval(redemptionsInterval);
-    clearInterval(codesInterval);
-  });
+onUnmounted(() => {
+  if (redemptionsInterval) clearInterval(redemptionsInterval);
+  if (codesInterval) clearInterval(codesInterval);
+  if (abortController) abortController.abort();
 });
 </script>
 
@@ -697,6 +718,13 @@ input[type=text]:focus {
   color: var(--muted-text);
   font-size: 10px;
   white-space: nowrap;
+}
+
+.redemption-tile-kingdom {
+  color: var(--muted-text);
+  font-size: 10px;
+  font-weight: 500;
+  margin-left: 2px;
 }
 
 footer {
