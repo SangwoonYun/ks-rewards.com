@@ -107,7 +107,6 @@ interface Redemption {
   status: string;
   nickname?: string;
   redeemed_at: string;
-  error_message?: string;
 }
 
 interface CodesStats {

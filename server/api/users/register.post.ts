@@ -81,7 +81,7 @@ export default defineEventHandler(async (event) => {
 
             // Save redemption result
             const { redemptions } = await import('../../utils/db');
-            await redemptions.create(fid, item.code, normalizedStatus, result.message);
+            await redemptions.create(fid, item.code, normalizedStatus);
 
             const successStatuses = ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'];
             if (successStatuses.includes(normalizedStatus)) {

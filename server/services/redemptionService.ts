@@ -161,7 +161,7 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
     const normalizedStatus = result.status?.toString().trim().replace(/[.!?]+$/, '').toUpperCase() || 'UNKNOWN';
 
     // Save redemption result
-    await redemptions.create(fid, code, normalizedStatus, result.message);
+    await redemptions.create(fid, code, normalizedStatus);
 
     // Update the gift code validation status if this reveals new information
     if (['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'].includes(normalizedStatus)) {

@@ -24,7 +24,6 @@ export interface Redemption {
   fid: string;
   code: string;
   status: string;
-  error_message: string | null;
   redeemed_at: string;
   nickname?: string | null;
 }
@@ -204,12 +203,12 @@ export const redemptions = {
     return stmt.get(fid, code) as Redemption | undefined;
   },
 
-  create: (fid: string, code: string, status: string, errorMessage?: string) => {
+  create: (fid: string, code: string, status: string) => {
     const stmt = db.prepare(`
-      INSERT INTO redemptions (fid, code, status, error_message)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO redemptions (fid, code, status)
+      VALUES (?, ?, ?)
     `);
-    return stmt.run(fid, code, status, errorMessage || null);
+    return stmt.run(fid, code, status);
   }
 };
 
@@ -287,12 +286,39 @@ export function runMigrations() {
         fid TEXT NOT NULL,
         code TEXT NOT NULL,
         status TEXT NOT NULL,
-        error_message TEXT,
         redeemed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (fid) REFERENCES users(fid),
         FOREIGN KEY (code) REFERENCES gift_codes(code)
       )
     `);
+
+    // Migration: Remove error_message column from redemptions table if it exists
+    // SQLite doesn't support DROP COLUMN, so we need to recreate the table
+    const redemptionsColumns = db.prepare("PRAGMA table_info(redemptions)").all() as Array<{ name: string }>;
+    const hasErrorMessage = redemptionsColumns.some(col => col.name === 'error_message');
+
+    if (hasErrorMessage) {
+      logger.info('Migrating redemptions table to remove error_message column...');
+      db.exec(`
+        CREATE TABLE redemptions_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          fid TEXT NOT NULL,
+          code TEXT NOT NULL,
+          status TEXT NOT NULL,
+          redeemed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (fid) REFERENCES users(fid),
+          FOREIGN KEY (code) REFERENCES gift_codes(code)
+        );
+        
+        INSERT INTO redemptions_new (id, fid, code, status, redeemed_at)
+        SELECT id, fid, code, status, redeemed_at FROM redemptions;
+        
+        DROP TABLE redemptions;
+        
+        ALTER TABLE redemptions_new RENAME TO redemptions;
+      `);
+      logger.info('✅ Redemptions table migration complete');
+    }
 
     // Create redemption_queue table
     db.exec(`
