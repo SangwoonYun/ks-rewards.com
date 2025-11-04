@@ -92,6 +92,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useHead } from '#imports'
 
 // Type definitions
 interface GiftCode {
@@ -150,6 +151,57 @@ const codesStats = ref<CodesStats>({
   expired: 0
 });
 
+// Add SEO meta tags and structured data for the homepage
+useHead({
+   title: 'Kingshot Rewards — Automatic Gift Code Redemption',
+   meta: [
+    { name: 'description', content: 'Kingshot Rewards monitors Kingshot gift codes and automatically redeems them for registered Player IDs. Register your Player ID to let the site redeem codes for you.' },
+    { name: 'keywords', content: 'kingshot gift codes, kingshot codes, kingshot rewards, auto redeem, giftcodes' },
+    { name: 'robots', content: 'index,follow' },
+    { property: 'og:title', content: 'Kingshot Rewards — Automatic Gift Code Redemption' },
+    { property: 'og:description', content: 'Monitor Kingshot gift codes and have them redeemed automatically for your registered Player IDs.' },
+    { property: 'og:type', content: 'website' },
+    { property: 'og:url', content: 'https://ks-rewards.com/' },
+    { property: 'og:image', content: 'https://ks-rewards.com/favicon.ico' },
+    { name: 'twitter:card', content: 'summary' },
+    { name: 'twitter:title', content: 'Kingshot Rewards — Automatic Gift Code Redemption' },
+    { name: 'twitter:description', content: 'Monitor Kingshot gift codes and have them redeemed automatically for your registered Player IDs.' }
+  ],
+  link: [
+    { rel: 'canonical', href: 'https://ks-rewards.com/' }
+  ],
+  script: [
+    ({
+      type: 'application/ld+json',
+      children: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Kingshot Rewards",
+        "url": "https://ks-rewards.com/",
+        "description": "Automatically discovers and redeems Kingshot gift codes for registered Player IDs.",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://ks-rewards.com/?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      })
+    } as any),
+    ({
+      type: 'application/ld+json',
+      children: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Kingshot Rewards",
+        "url": "https://ks-rewards.com/",
+        "contactPoint": [{
+          "@type": "ContactPoint",
+          "email": "contact@ks-rewards.com",
+          "contactType": "customer support"
+        }]
+      })
+    } as any)
+  ]
+})
 
 // Filter codes to only show validated (active) codes
 const activeCodes = computed(() => {
@@ -255,7 +307,9 @@ async function registerPlayer() {
       await fetchCodes();
       await fetchRedemptions();
 
-      statusMessage.value = `✅ ${successCount} player(s) registered successfully!`;
+      // Show a concise summary plus the per-fid results so users see what happened
+      const summary = `✅ ${successCount} player(s) registered successfully`;
+      statusMessage.value = results.length > 0 ? `${summary}: ${results.join(' · ')}` : summary;
     } else {
       statusType.value = 'error';
     }
