@@ -1,6 +1,7 @@
 ﻿import { processRedemptionQueue, autoRedeemValidatedCodes } from './redemptionService';
 import { syncGiftCodes } from './giftCodeDiscovery';
 import { validatePlayerId } from './kingshotApi';
+import { createBackup } from './backupService';
 import { users } from '../utils/db';
 import { logger } from '../utils/logger';
 
@@ -8,6 +9,7 @@ const REDEMPTION_INTERVAL_MINUTES = parseInt(process.env.REDEMPTION_INTERVAL_MIN
 const DISCOVERY_INTERVAL_MINUTES = parseInt(process.env.DISCOVERY_INTERVAL_MINUTES || '15');
 const AUTO_REDEEM_INTERVAL_MINUTES = parseInt(process.env.AUTO_REDEEM_INTERVAL_MINUTES || '5');
 const NICKNAME_REFRESH_INTERVAL_HOURS = parseInt(process.env.NICKNAME_REFRESH_INTERVAL_HOURS || '24');
+const BACKUP_INTERVAL_HOURS = parseInt(process.env.BACKUP_INTERVAL_HOURS || '6');
 
 let scheduledIntervals: NodeJS.Timeout[] = [];
 
@@ -22,6 +24,7 @@ export function initializeScheduledTasks() {
   const discoveryIntervalMs = DISCOVERY_INTERVAL_MINUTES * 60 * 1000;
   const autoRedeemIntervalMs = AUTO_REDEEM_INTERVAL_MINUTES * 60 * 1000;
   const nicknameRefreshIntervalMs = NICKNAME_REFRESH_INTERVAL_HOURS * 60 * 60 * 1000;
+  const backupIntervalMs = BACKUP_INTERVAL_HOURS * 60 * 60 * 1000;
 
   // Process redemption queue every N minutes
   const redemptionInterval = setInterval(async () => {
@@ -123,11 +126,24 @@ export function initializeScheduledTasks() {
 
   scheduledIntervals.push(nicknameRefreshInterval);
 
+  // Periodically create database backups
+  const backupInterval = setInterval(async () => {
+    logger.info('⏰ Running scheduled database backup...');
+    try {
+      await createBackup();
+    } catch (error) {
+      logger.error('Error in scheduled backup:', error);
+    }
+  }, backupIntervalMs);
+
+  scheduledIntervals.push(backupInterval);
+
   logger.info('✅ Scheduled tasks initialized');
   logger.info(`- Redemption processing: every ${REDEMPTION_INTERVAL_MINUTES} minutes (${redemptionIntervalMs}ms)`);
   logger.info(`- Gift code discovery: every ${DISCOVERY_INTERVAL_MINUTES} minutes (${discoveryIntervalMs}ms)`);
   logger.info(`- Auto-redemption check: every ${AUTO_REDEEM_INTERVAL_MINUTES} minutes (${autoRedeemIntervalMs}ms)`);
   logger.info(`- Nickname refresh: every ${NICKNAME_REFRESH_INTERVAL_HOURS} hours (${nicknameRefreshIntervalMs}ms)`);
+  logger.info(`- Database backup: every ${BACKUP_INTERVAL_HOURS} hours (${backupIntervalMs}ms)`);
 
   // Run initial checks in background (don't block server startup)
   logger.info('Running initial checks...');
@@ -155,7 +171,15 @@ export function initializeScheduledTasks() {
       const queuedCount = await autoRedeemValidatedCodes();
       logger.info(`Initial auto-redeem queued ${queuedCount} redemptions`);
     } catch (error) {
-      logger.error('Error in initial auto-redemption:', error);
+      logger.error('Error in initial auto-redeem:', error);
+    }
+
+    // Create initial backup on startup
+    try {
+      logger.info('Creating initial database backup...');
+      await createBackup();
+    } catch (error) {
+      logger.error('Error creating initial backup:', error);
     }
   });
 }
