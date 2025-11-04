@@ -60,7 +60,7 @@ export default defineEventHandler(async (event) => {
           kingdom: validation.kingdom || existingUser.kingdom,
           avatar_url: validation.avatar_url || existingUser.avatar_url
         },
-        queuedCodes: 0
+        redeemedCount: 0
       };
     }
 
@@ -104,8 +104,7 @@ export default defineEventHandler(async (event) => {
             const { redemptions } = await import('../../utils/db');
             await redemptions.create(fid, item.code, normalizedStatus);
 
-            const successStatuses = ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'];
-            if (successStatuses.includes(normalizedStatus)) {
+            if (normalizedStatus == 'SUCCESS') {
               redeemedCount++;
               logger.info(`✅ Immediately redeemed ${item.code} for ${fid}: ${normalizedStatus}`);
             } else {
@@ -133,8 +132,7 @@ export default defineEventHandler(async (event) => {
       success: true,
       message: 'User registered successfully',
       user,
-      queuedCodes: queuedCount,
-      redeemedCodes: redeemedCount
+      redeemedCount
     };
   } catch (error: any) {
     logger.error('Error registering user:', error);
