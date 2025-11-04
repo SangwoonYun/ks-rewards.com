@@ -79,9 +79,9 @@ export function initializeScheduledTasks() {
 
   scheduledIntervals.push(autoRedeemInterval);
 
-  // Periodically refresh nicknames and kingdoms for all active users
+  // Periodically refresh nicknames, kingdoms, and avatars for all active users
   const nicknameRefreshInterval = setInterval(async () => {
-    logger.info('⏰ Running nickname and kingdom refresh...');
+    logger.info('⏰ Running user data refresh...');
     try {
       const activeUsers = await users.findActive();
       let updatedCount = 0;
@@ -99,6 +99,11 @@ export function initializeScheduledTasks() {
             if (validation.kingdom && validation.kingdom !== user.kingdom) {
               await users.updateKingdom(user.fid, validation.kingdom);
               logger.info(`Updated kingdom for ${user.fid}: ${user.kingdom} -> ${validation.kingdom}`);
+              updated = true;
+            }
+            if (validation.avatar_url && validation.avatar_url !== user.avatar_url) {
+              await users.updateAvatar(user.fid, validation.avatar_url);
+              logger.info(`Updated avatar for ${user.fid}`);
               updated = true;
             }
             if (updated) updatedCount++;

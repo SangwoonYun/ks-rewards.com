@@ -148,8 +148,8 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
     // Perform the redemption (this also validates the player and gets current nickname)
     const result = await redeemGiftCode(fid, code);
 
-    // Update user nickname and kingdom if we got them from the redemption
-    if (result.nickname || result.kingdom) {
+    // Update user nickname, kingdom, and avatar if we got them from the redemption
+    if (result.nickname || result.kingdom || result.avatar_url) {
       const user = await users.findByFid(fid);
       if (user) {
         if (result.nickname && user.nickname !== result.nickname) {
@@ -159,6 +159,10 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
         if (result.kingdom && user.kingdom !== result.kingdom) {
           await users.updateKingdom(fid, result.kingdom);
           logger.info(`Updated kingdom for ${fid}: ${user.kingdom} -> ${result.kingdom}`);
+        }
+        if (result.avatar_url && user.avatar_url !== result.avatar_url) {
+          await users.updateAvatar(fid, result.avatar_url);
+          logger.info(`Updated avatar for ${fid}`);
         }
       }
     }

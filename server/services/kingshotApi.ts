@@ -16,6 +16,7 @@ interface ValidationResult {
   success: boolean;
   nickname?: string;
   kingdom?: string;
+  avatar_url?: string;
   data?: any;
   error?: string;
 }
@@ -26,6 +27,7 @@ interface RedemptionResult {
   message: string;
   nickname?: string;
   kingdom?: string;
+  avatar_url?: string;
 }
 
 /**
@@ -117,6 +119,7 @@ export async function validatePlayerId(fid: string): Promise<ValidationResult> {
         success: true,
         nickname: response.data?.nickname || null,
         kingdom: response.data?.kid ? String(Math.floor(response.data.kid)) : undefined,
+        avatar_url: response.data?.avatar_image || null,
         data: response.data
       };
     }
@@ -164,7 +167,8 @@ export async function redeemGiftCode(fid: string, code: string): Promise<Redempt
         status: 'INVALID_RESPONSE',
         message: 'Invalid response from server',
         nickname: loginResult.nickname,
-        kingdom: loginResult.kingdom
+        kingdom: loginResult.kingdom,
+        avatar_url: loginResult.avatar_url
       };
     }
 
@@ -174,7 +178,8 @@ export async function redeemGiftCode(fid: string, code: string): Promise<Redempt
         status: 'NOT_LOGIN',
         message: response.msg || 'Session expired or invalid',
         nickname: loginResult.nickname,
-        kingdom: loginResult.kingdom
+        kingdom: loginResult.kingdom,
+        avatar_url: loginResult.avatar_url
       };
     }
 
@@ -205,7 +210,8 @@ export async function redeemGiftCode(fid: string, code: string): Promise<Redempt
             status: retryResponse.msg || 'SUCCESS',
             message: retryResponse.msg || 'Code redeemed after re-login',
             nickname: reloginResult.nickname,
-            kingdom: reloginResult.kingdom
+            kingdom: reloginResult.kingdom,
+            avatar_url: reloginResult.avatar_url
           };
         }
       }
@@ -216,7 +222,8 @@ export async function redeemGiftCode(fid: string, code: string): Promise<Redempt
       status,
       message: response.msg || 'No message from server',
       nickname: loginResult.nickname,
-      kingdom: loginResult.kingdom
+      kingdom: loginResult.kingdom,
+      avatar_url: loginResult.avatar_url
     };
   } catch (error: any) {
     logger.error(`Error redeeming gift code ${code} for FID ${fid}:`, error);

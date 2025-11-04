@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
     // Check if user already exists
     const existingUser = await users.findByFid(fid);
     if (existingUser) {
-      // Update nickname and kingdom if they have changed
+      // Update nickname, kingdom, and avatar if they have changed
       if (validation.nickname && validation.nickname !== existingUser.nickname) {
         await users.updateNickname(fid, validation.nickname);
         logger.info(`✅ Updated nickname for ${fid}: ${existingUser.nickname} -> ${validation.nickname}`);
@@ -46,6 +46,10 @@ export default defineEventHandler(async (event) => {
         await users.updateKingdom(fid, validation.kingdom);
         logger.info(`✅ Updated kingdom for ${fid}: ${existingUser.kingdom} -> ${validation.kingdom}`);
       }
+      if (validation.avatar_url && validation.avatar_url !== existingUser.avatar_url) {
+        await users.updateAvatar(fid, validation.avatar_url);
+        logger.info(`✅ Updated avatar for ${fid}`);
+      }
 
       return {
         success: true,
@@ -53,7 +57,8 @@ export default defineEventHandler(async (event) => {
         user: {
           ...existingUser,
           nickname: validation.nickname || existingUser.nickname,
-          kingdom: validation.kingdom || existingUser.kingdom
+          kingdom: validation.kingdom || existingUser.kingdom,
+          avatar_url: validation.avatar_url || existingUser.avatar_url
         },
         queuedCodes: 0
       };
@@ -63,9 +68,12 @@ export default defineEventHandler(async (event) => {
     await users.create(fid, validation.nickname || null, 1);
     const user = await users.findByFid(fid);
 
-    // Update kingdom if available
+    // Update kingdom and avatar if available
     if (validation.kingdom && user) {
       await users.updateKingdom(fid, validation.kingdom);
+    }
+    if (validation.avatar_url && user) {
+      await users.updateAvatar(fid, validation.avatar_url);
     }
 
     // Queue unredeemed codes for this user

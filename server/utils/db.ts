@@ -277,6 +277,7 @@ export function runMigrations() {
         fid TEXT PRIMARY KEY,
         nickname TEXT,
         kingdom TEXT,
+        avatar_url TEXT,
         active INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -342,6 +343,15 @@ export function runMigrations() {
       logger.info('Adding kingdom column to users table...');
       db.exec(`ALTER TABLE users ADD COLUMN kingdom TEXT`);
       logger.info('✅ Kingdom column added to users table');
+    }
+
+    // Migration: Add avatar_url column to users table if it doesn't exist
+    const hasAvatarUrl = usersColumns.some(col => col.name === 'avatar_url');
+
+    if (!hasAvatarUrl) {
+      logger.info('Adding avatar_url column to users table...');
+      db.exec(`ALTER TABLE users ADD COLUMN avatar_url TEXT`);
+      logger.info('✅ Avatar URL column added to users table');
     }
 
     // Create redemption_queue table
