@@ -5,8 +5,37 @@ import { logger } from '../utils/logger';
 const LOGIN_URL = process.env.KS_LOGIN_URL || 'https://kingshot-giftcode.centurygame.com/api/player';
 const REDEEM_URL = process.env.KS_REDEEM_URL || 'https://kingshot-giftcode.centurygame.com/api/gift_code';
 const ENCRYPT_KEY = process.env.KS_ENCRYPT_KEY || 'mN4!pQs6JrYwV9';
-const MAX_RETRIES = parseInt(process.env.MAX_RETRIES || '3');
-const RETRY_DELAY_MS = parseInt(process.env.RETRY_DELAY_MS || '2000');
+const MAX_RETRIES = parseInt(process.env.MAX_RETRIES || '5');
+const BASE_RETRY_DELAY_MS = parseInt(process.env.RETRY_DELAY_MS || '2000');
+const MIN_REQUEST_INTERVAL_MS = parseInt(process.env.MIN_REQUEST_INTERVAL_MS || '3000'); // 3 seconds between requests
+
+/**
+ * Rate limiter to ensure minimum interval between API requests
+ */
+class RateLimiter {
+  private lastRequestTime = 0;
+  private minInterval: number;
+
+  constructor(minIntervalMs: number) {
+    this.minInterval = minIntervalMs;
+  }
+
+  async throttle(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+
+    if (timeSinceLastRequest < this.minInterval) {
+      const delay = this.minInterval - timeSinceLastRequest;
+      logger.info(`⏱️  Rate limiting: waiting ${delay}ms before next request`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+
+    this.lastRequestTime = Date.now();
+  }
+}
+
+// Global rate limiter instance
+const rateLimiter = new RateLimiter(MIN_REQUEST_INTERVAL_MS);
 
 interface KingshotApiData {
   [key: string]: any;
@@ -51,11 +80,14 @@ function encodeData(data: KingshotApiData): KingshotApiData {
 }
 
 /**
- * Make a POST request with retry logic
+ * Make a POST request with retry logic, rate limiting, and exponential backoff
  */
 async function makeRequest(url: string, payload: any, retries: number = MAX_RETRIES): Promise<any> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
+      // Apply rate limiting before each request
+      await rateLimiter.throttle();
+
       // Convert payload to URLSearchParams format
       const formData = new URLSearchParams();
       Object.entries(payload).forEach(([key, value]) => {
@@ -68,8 +100,26 @@ async function makeRequest(url: string, payload: any, retries: number = MAX_RETR
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
         },
         timeout: 10000,
-        maxRedirects: 5
+        maxRedirects: 5,
+        validateStatus: (status) => status < 500 // Don't throw on 4xx errors
       });
+
+      // Handle rate limiting (429)
+      if (response.status === 429) {
+        if (attempt < retries) {
+          // Check for Retry-After header
+          const retryAfter = response.headers['retry-after'];
+          const delay = retryAfter
+            ? parseInt(retryAfter) * 1000
+            : BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1); // Exponential backoff: 2s, 4s, 8s, 16s, 32s
+
+          logger.warn(`⚠️  Rate limit hit (429) on attempt ${attempt}/${retries}. Waiting ${delay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        } else {
+          throw new Error('Rate limit exceeded after all retries');
+        }
+      }
 
       if (response.status === 200) {
         const data = response.data;
@@ -77,8 +127,9 @@ async function makeRequest(url: string, payload: any, retries: number = MAX_RETR
         // Check for a timeout retry message
         if (data.msg && data.msg.trim().replace('.', '') === 'TIMEOUT RETRY') {
           if (attempt < retries) {
-            logger.info(`Attempt ${attempt}: Server requested retry for request`);
-            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+            const delay = BASE_RETRY_DELAY_MS * Math.pow(1.5, attempt - 1); // Exponential backoff for timeouts
+            logger.info(`Attempt ${attempt}: Server requested retry. Waiting ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
             continue;
           } else {
             logger.warn(`Attempt ${attempt}: Max retries reached after server requested retry`);
@@ -90,11 +141,25 @@ async function makeRequest(url: string, payload: any, retries: number = MAX_RETR
       }
 
       logger.warn(`Attempt ${attempt} failed: HTTP ${response.status}`);
+
+      // Don't retry on client errors (except 429 which is handled above)
+      if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+        throw new Error(`Client error: HTTP ${response.status}`);
+      }
     } catch (error: any) {
+      const isRateLimit = error.response?.status === 429;
       logger.warn(`Attempt ${attempt} failed: ${error.message}`);
 
-      if (attempt < retries) {
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+      if (attempt < retries && !error.message.includes('Client error')) {
+        // Exponential backoff: 2s, 4s, 8s, 16s, 32s
+        const delay = isRateLimit
+          ? BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1)
+          : BASE_RETRY_DELAY_MS * Math.pow(1.5, attempt - 1);
+
+        logger.info(`⏳ Waiting ${delay}ms before retry ${attempt + 1}/${retries}...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else if (error.message.includes('Client error')) {
+        throw error;
       }
     }
   }

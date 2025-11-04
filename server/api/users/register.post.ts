@@ -115,8 +115,8 @@ export default defineEventHandler(async (event) => {
             // Remove from queue
             await queue.delete(item.id);
 
-            // Small delay to avoid rate limiting
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Delay to avoid rate limiting (note: additional rate limiting happens in kingshotApi.ts)
+            await new Promise(resolve => setTimeout(resolve, 1500));
           } catch (error) {
             logger.error(`Error redeeming ${item.code} for ${fid}:`, error);
             await queue.updateStatus(item.id, 'failed', 'Redemption error');

@@ -19,12 +19,13 @@ services:
       GIFTCODE_API_URL: http://ks-gift-code-api.whiteout-bot.com/giftcode_api.php
       GIFTCODE_API_KEY: super_secret_bot_token_nobody_will_ever_find
       REDEMPTION_INTERVAL_MINUTES: 2
-      DISCOVERY_INTERVAL_MINUTES: 15
+      DISCOVERY_INTERVAL_MINUTES: 5
       AUTO_REDEEM_INTERVAL_MINUTES: 5
       NICKNAME_REFRESH_INTERVAL_HOURS: 24
       BACKUP_INTERVAL_HOURS: 6
-      MAX_RETRIES: 3
+      MAX_RETRIES: 5
       RETRY_DELAY_MS: 2000
-      REDEEM_DELAY_MS: 1000
+      MIN_REQUEST_INTERVAL_MS: 3000
+      REDEEM_DELAY_MS: 2000
     restart: unless-stopped
 
