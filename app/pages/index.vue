@@ -68,14 +68,26 @@
               :key="index"
               class="redemption-tile"
             >
-              <div class="redemption-tile-left">
-                <span class="player-icon">👤</span>
-                <span class="redemption-tile-nickname">{{ redemption.nickname || 'Player' }}</span>
-                <span v-if="redemption.kingdom" class="redemption-tile-kingdom">(#{{ redemption.kingdom }})</span>
-                <span class="redemption-tile-separator">•</span>
-                <span class="redemption-tile-time">{{ formatTime(redemption.redeemed_at) }}</span>
+              <img
+                v-if="redemption.avatar_url"
+                :src="redemption.avatar_url"
+                :alt="`${redemption.nickname || 'Player'} avatar`"
+                class="redemption-avatar"
+                @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
+              />
+              <div v-else class="redemption-avatar-placeholder">👤</div>
+
+              <div class="redemption-info">
+                <div class="redemption-player">
+                  <span class="redemption-nickname">{{ redemption.nickname || 'Player' }}</span>
+                  <span v-if="redemption.kingdom" class="redemption-kingdom">(#{{ redemption.kingdom }})</span>
+                </div>
+                <div class="redemption-details">
+                  <span class="redemption-code">{{ redemption.code }}</span>
+                  <span class="redemption-separator">•</span>
+                  <span class="redemption-time">{{ formatTime(redemption.redeemed_at) }}</span>
+                </div>
               </div>
-              <span class="redemption-tile-code">{{ redemption.code }}</span>
             </div>
           </template>
           <template v-else>
@@ -108,6 +120,7 @@ interface Redemption {
   status: string;
   nickname?: string;
   kingdom?: string;
+  avatar_url?: string;
   redeemed_at: string;
 }
 
@@ -325,7 +338,7 @@ async function registerPlayer() {
 
       // Show a concise summary plus the per-fid results so users see what happened
       const summary = `✅ ${successCount} player(s) registered successfully`;
-      statusMessage.value = results.length > 0 ? `${summary}: ${results.join(' · ')}` : summary;
+      statusMessage.value = results.length > 0 ? `${summary}: [${results.join(' · ')}]` : summary;
     } else {
       statusType.value = 'error';
     }
@@ -640,7 +653,7 @@ input[type=text]:focus {
 /* Redemptions Grid */
 .redemptions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 12px;
   padding: 8px;
   max-height: 360px;
@@ -657,14 +670,12 @@ input[type=text]:focus {
   background: linear-gradient(135deg, rgba(107,142,35,0.12) 0%, rgba(107,142,35,0.06) 100%);
   border: 2px solid rgba(107,142,35,0.25);
   border-radius: 12px;
-  padding: 8px 10px;
+  padding: 10px;
   transition: all 0.3s ease;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 11px;
+  gap: 10px;
 }
 
 .redemption-tile:hover {
@@ -673,59 +684,88 @@ input[type=text]:focus {
   border-color: rgba(107,142,35,0.4);
 }
 
-.redemption-tile-left {
+.redemption-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid rgba(107,142,35,0.3);
+}
+
+.redemption-avatar-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(107,142,35,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  border: 2px solid rgba(107,142,35,0.3);
+}
+
+.redemption-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.redemption-player {
   display: flex;
   align-items: center;
   gap: 4px;
-  flex: 1;
-  min-width: 0;
+  flex-wrap: wrap;
 }
 
-.redemption-tile-code {
-  font-family: monospace;
+.redemption-nickname {
+  font-weight: 600;
+  color: var(--primary-dark);
   font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.redemption-kingdom {
+  color: var(--muted-text);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.redemption-details {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.redemption-code {
+  font-family: monospace;
+  font-size: 12px;
   font-weight: 700;
   color: #4CAF50;
   letter-spacing: 0.5px;
   background: rgba(255,255,255,0.7);
   padding: 2px 6px;
   border-radius: 4px;
-  flex-shrink: 0;
 }
 
-.redemption-tile-separator {
+.redemption-separator {
   color: var(--muted-text);
   opacity: 0.5;
   font-size: 10px;
 }
 
-.player-icon {
-  font-size: 11px;
-  opacity: 0.7;
-}
-
-.redemption-tile-nickname {
-  font-weight: 600;
-  color: var(--primary-dark);
-  font-size: 11px;
-  max-width: 80px;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.redemption-tile-time {
+.redemption-time {
   color: var(--muted-text);
   font-size: 10px;
   white-space: nowrap;
 }
 
-.redemption-tile-kingdom {
-  color: var(--muted-text);
-  font-size: 10px;
-  font-weight: 500;
-  margin-left: 2px;
-}
 
 footer {
   margin-top: 12px;
@@ -817,24 +857,31 @@ footer a:hover {
   }
 
   .redemptions-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 10px;
     max-height: 300px;
   }
 
   .redemption-tile {
     padding: 8px;
-    gap: 4px;
+    gap: 8px;
   }
 
-  .redemption-tile-code {
+  .redemption-avatar,
+  .redemption-avatar-placeholder {
+    width: 36px;
+    height: 36px;
+  }
+
+  .redemption-nickname {
     font-size: 12px;
+  }
+
+  .redemption-code {
+    font-size: 11px;
     padding: 2px 5px;
   }
 
-  .redemption-tile-nickname {
-    max-width: 60px;
-  }
 
   footer {
     font-size: 12px;
@@ -888,31 +935,32 @@ footer a:hover {
   }
 
   .redemption-tile {
-    padding: 6px 8px;
-    gap: 4px;
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .redemption-avatar,
+  .redemption-avatar-placeholder {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+
+  .redemption-nickname {
+    font-size: 11px;
+  }
+
+  .redemption-kingdom {
     font-size: 10px;
   }
 
-  .redemption-tile-code {
-    font-size: 11px;
+  .redemption-code {
+    font-size: 10px;
     padding: 2px 4px;
   }
 
-  .redemption-tile-nickname {
-    font-size: 10px;
-    max-width: 70px;
-  }
-
-  .redemption-tile-time {
+  .redemption-time {
     font-size: 9px;
-  }
-
-  .player-icon {
-    font-size: 10px;
-  }
-
-  .redemption-tile-separator {
-    font-size: 8px;
   }
 }
 </style>

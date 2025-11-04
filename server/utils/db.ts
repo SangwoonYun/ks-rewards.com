@@ -29,6 +29,7 @@ export interface Redemption {
   redeemed_at: string;
   nickname?: string | null;
   kingdom?: string | null;
+  avatar_url?: string | null;
 }
 
 export interface QueueItem {
@@ -201,7 +202,7 @@ export const redemptions = {
 
   findRecent: (limit: number = 50): Redemption[] => {
     const stmt = db.prepare(`
-      SELECT r.*, u.nickname, u.kingdom 
+      SELECT r.*, u.nickname, u.kingdom, u.avatar_url 
       FROM redemptions r 
       LEFT JOIN users u ON r.fid = u.fid 
       WHERE r.status = 'SUCCESS'
