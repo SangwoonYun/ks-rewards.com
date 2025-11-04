@@ -177,7 +177,7 @@ export const giftCodes = {
   findValid: (): GiftCode[] => {
     const stmt = db.prepare(`
       SELECT * FROM gift_codes 
-      WHERE validation_status IN ('validated', 'pending') 
+      WHERE validation_status = 'validated'
       ORDER BY date_discovered DESC
     `);
     return stmt.all() as GiftCode[];
@@ -239,6 +239,22 @@ export const queue = {
         END
     `);
     return stmt.run(fid, code, priority);
+  },
+
+  // Bulk queue: add all combinations of active users and validated codes that haven't been redeemed yet
+  // Uses INSERT OR IGNORE with a SELECT to add rows in a single statement for performance.
+  bulkQueueValidatedForUsers: (priority: number = 0) => {
+    const stmt = db.prepare(`
+      INSERT OR IGNORE INTO redemption_queue (fid, code, priority)
+      SELECT u.fid, g.code, ?
+      FROM users u
+      CROSS JOIN gift_codes g
+      LEFT JOIN redemptions r ON r.fid = u.fid AND r.code = g.code
+      WHERE u.active = 1
+        AND g.validation_status = 'validated'
+        AND r.id IS NULL
+    `);
+    return stmt.run(priority);
   },
 
   getPending: (limit: number): QueueItem[] => {

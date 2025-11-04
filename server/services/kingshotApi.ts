@@ -253,8 +253,6 @@ export async function redeemGiftCode(fid: string, code: string): Promise<Redempt
     // Remove trailing punctuation (., !, ?) and convert to uppercase
     const status = rawStatus.toString().trim().replace(/[.!?]+$/, '').toUpperCase();
 
-    logger.info(`[DEBUG API] Raw status: "${rawStatus}", Normalized: "${status}"`);
-
     let success = false;
 
     if (['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'].includes(status)) {
@@ -267,7 +265,7 @@ export async function redeemGiftCode(fid: string, code: string): Promise<Redempt
       logger.warn(`Session expired for FID ${fid}, attempting to re-login...`);
       const reloginResult = await validatePlayerId(fid);
       if (reloginResult.success) {
-        // Retry once with new session
+        // Retry once with a new session
         const retryResponse = await makeRequest(REDEEM_URL, payload);
         if (retryResponse.code === 0) {
           return {

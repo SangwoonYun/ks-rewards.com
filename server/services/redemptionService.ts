@@ -2,7 +2,7 @@
 import {redeemGiftCode, validatePlayerId} from './kingshotApi';
 import { logger } from '../utils/logger';
 
-const DELAY_BETWEEN_REDEMPTIONS = parseInt(process.env.REDEEM_DELAY_MS || '2000'); // Increased to 2 seconds
+const DELAY_BETWEEN_REDEMPTIONS = parseInt(process.env.REDEEM_DELAY_MS || '3000');
 
 interface RedemptionQueueItem {
   id: number;
@@ -18,7 +18,7 @@ interface RedemptionQueueItem {
 export async function validateGiftCode(code: string) {
   try {
     // Try to use a random active user for validation
-    const activeUsers: User[] = await users.findActive();
+    const activeUsers: User[] = users.findActive();
     let testFid = '27370737'; // Default test FID
 
     if (activeUsers.length > 0) {
@@ -60,9 +60,6 @@ export async function validateGiftCode(code: string) {
     // Now try to redeem the code
     const result = await redeemGiftCode(testFid, code);
 
-    // Debug: Log the actual result
-    logger.info(`[DEBUG] Code: ${code}, Status: "${result.status}", Type: ${typeof result.status}`);
-
     // Map validation statuses - keep consistent across all functions
     const validationStatuses = {
       success: ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'],
@@ -72,11 +69,10 @@ export async function validateGiftCode(code: string) {
 
     // Normalize the status by trimming, removing trailing punctuation, and converting to uppercase
     const normalizedStatus = result.status?.toString().trim().replace(/[.!?]+$/, '').toUpperCase() || 'UNKNOWN';
-    logger.info(`[DEBUG] Normalized status: "${normalizedStatus}"`);
 
     if (validationStatuses.success.includes(normalizedStatus)) {
       // Code is valid and was successfully redeemed
-      await giftCodes.updateValidation(code, 'validated');
+      giftCodes.updateValidation(code, 'validated');
       logger.info(`✅ Gift code ${code} validated successfully - status: ${normalizedStatus}`);
       return {
         valid: true,
@@ -86,7 +82,7 @@ export async function validateGiftCode(code: string) {
       };
     } else if (validationStatuses.valid.includes(normalizedStatus)) {
       // Code is valid but has redemption restrictions
-      await giftCodes.updateValidation(code, 'validated');
+      giftCodes.updateValidation(code, 'validated');
       logger.info(`✅ Gift code ${code} is valid but has restrictions - status: ${normalizedStatus}`);
       return {
         valid: true,
@@ -96,7 +92,7 @@ export async function validateGiftCode(code: string) {
       };
     } else if (validationStatuses.invalid.includes(normalizedStatus)) {
       // Code is invalid or expired
-      await giftCodes.markInvalid(code);
+      giftCodes.markInvalid(code);
       logger.warn(`❌ Gift code ${code} is invalid - status: ${normalizedStatus}`);
       return {
         valid: false,
@@ -125,7 +121,7 @@ export async function validateGiftCode(code: string) {
 }
 
 /**
- * Process a single redemption from the queue
+ * Process single redemption from the queue
  */
 async function processRedemption(queueItem: RedemptionQueueItem) {
   const { id, fid, code } = queueItem;
@@ -134,10 +130,10 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
     logger.info(`Processing redemption: FID ${fid}, Code ${code}`);
 
     // Check if already redeemed successfully
-    const existingRedemption: Redemption | undefined = await redemptions.findByFidAndCode(fid, code);
+    const existingRedemption: Redemption | undefined = redemptions.findByFidAndCode(fid, code);
     if (existingRedemption && ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'].includes(existingRedemption.status)) {
       logger.info(`FID ${fid} already redeemed code ${code} successfully`);
-      await queue.delete(id);
+      queue.delete(id);
       return {
         success: true,
         cached: true,
@@ -145,23 +141,23 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
       };
     }
 
-    // Perform the redemption (this also validates the player and gets current nickname)
+    // Perform the redemption (this also validates the player and gets the current nickname)
     const result = await redeemGiftCode(fid, code);
 
     // Update user nickname, kingdom, and avatar if we got them from the redemption
     if (result.nickname || result.kingdom || result.avatar_url) {
-      const user = await users.findByFid(fid);
+      const user = users.findByFid(fid);
       if (user) {
         if (result.nickname && user.nickname !== result.nickname) {
-          await users.updateNickname(fid, result.nickname);
+          users.updateNickname(fid, result.nickname);
           logger.info(`Updated nickname for ${fid}: ${user.nickname} -> ${result.nickname}`);
         }
         if (result.kingdom && user.kingdom !== result.kingdom) {
-          await users.updateKingdom(fid, result.kingdom);
+          users.updateKingdom(fid, result.kingdom);
           logger.info(`Updated kingdom for ${fid}: ${user.kingdom} -> ${result.kingdom}`);
         }
         if (result.avatar_url && user.avatar_url !== result.avatar_url) {
-          await users.updateAvatar(fid, result.avatar_url);
+          users.updateAvatar(fid, result.avatar_url);
           logger.info(`Updated avatar for ${fid}`);
         }
       }
@@ -171,16 +167,16 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
     const normalizedStatus = result.status?.toString().trim().replace(/[.!?]+$/, '').toUpperCase() || 'UNKNOWN';
 
     // Save redemption result
-    await redemptions.create(fid, code, normalizedStatus);
+    redemptions.create(fid, code, normalizedStatus);
 
     // Update the gift code validation status if this reveals new information
     if (['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'].includes(normalizedStatus)) {
-      const giftCode: GiftCode | undefined = await giftCodes.findByCode(code);
+      const giftCode: GiftCode | undefined = giftCodes.findByCode(code);
       if (giftCode && giftCode.validation_status === 'pending') {
-        await giftCodes.updateValidation(code, 'validated');
+        giftCodes.updateValidation(code, 'validated');
       }
     } else if (['TIME_ERROR', 'CDK_NOT_FOUND', 'USAGE_LIMIT'].includes(normalizedStatus)) {
-      await giftCodes.markInvalid(code);
+      giftCodes.markInvalid(code);
     }
 
     // Update queue status
@@ -189,13 +185,13 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
 
     if (successStatuses.includes(normalizedStatus) || permanentFailureStatuses.includes(normalizedStatus)) {
       // Complete (success) or permanently failed (invalid code)
-      await queue.delete(id);
+      queue.delete(id);
     } else if (normalizedStatus === 'TIMEOUT_RETRY' && queueItem.attempts < 3) {
       // Retry later
-      await queue.updateStatus(id, 'pending', result.message);
+      queue.updateStatus(id, 'pending', result.message);
     } else {
       // Failed permanently
-      await queue.updateStatus(id, 'failed', result.message);
+      queue.updateStatus(id, 'failed', result.message);
     }
 
     return {
@@ -205,7 +201,7 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
     };
   } catch (error: any) {
     logger.error(`Error processing redemption for ${fid}:`, error);
-    await queue.updateStatus(queueItem.id, 'failed', error.message);
+    queue.updateStatus(queueItem.id, 'failed', error.message);
     return {
       success: false,
       status: 'ERROR',
@@ -222,7 +218,7 @@ export async function processRedemptionQueue(batchSize: number = 100) {
     let codesValidated = false;
 
     // First, validate any pending gift codes
-    const pendingCodes = await giftCodes.findByStatus('pending');
+    const pendingCodes = giftCodes.findByStatus('pending');
     if (pendingCodes.length > 0) {
       logger.info(`Found ${pendingCodes.length} pending codes to validate`);
       for (const code of pendingCodes) {
@@ -232,7 +228,7 @@ export async function processRedemptionQueue(batchSize: number = 100) {
             codesValidated = true; // Track if any codes were validated
           }
           logger.info(`Validation result for ${code.code}: ${validationResult.status}`);
-          // Add small delay between validations
+          // Add a small delay between validations
           await new Promise(resolve => setTimeout(resolve, 500));
         } catch (error) {
           logger.error(`Error validating code ${code.code}:`, error);
@@ -248,7 +244,7 @@ export async function processRedemptionQueue(batchSize: number = 100) {
     }
 
     // Then process redemptions as usual
-    const pendingItems: QueueItem[] = await queue.getPending(batchSize);
+    const pendingItems: QueueItem[] = queue.getPending(batchSize);
 
     if (pendingItems.length === 0) {
       return {
@@ -265,7 +261,7 @@ export async function processRedemptionQueue(batchSize: number = 100) {
 
     for (const item of pendingItems) {
       // Mark as processing
-      await queue.updateStatus(item.id, 'processing', undefined);
+      queue.updateStatus(item.id, 'processing', undefined);
 
       const result = await processRedemption(item);
 
@@ -295,22 +291,23 @@ export async function processRedemptionQueue(batchSize: number = 100) {
 /**
  * Queue redemptions for all active users for a specific gift code
  */
-export async function queueRedemptionsForCode(code: string, priority: number = 0) {
+export async function queueRedemptionsForCode(code: string, priority: number = 0, activeUsers?: User[]) {
   try {
-    const activeUsers: User[] = await users.findActive();
+    // Accept optional activeUsers to avoid repeated DB queries when called in loops
+    const usersList: User[] = activeUsers ?? users.findActive();
     let queuedCount = 0;
 
     // Define success statuses consistently
     const successStatuses = ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'];
 
-    for (const user of activeUsers) {
+    for (const user of usersList) {
       // Check if already redeemed
-      const existing: Redemption | undefined = await redemptions.findByFidAndCode(user.fid, code);
+      const existing: Redemption | undefined = redemptions.findByFidAndCode(user.fid, code);
       if (existing && successStatuses.includes(existing.status)) {
         continue;
       }
 
-      await queue.add(user.fid, code, priority);
+      queue.add(user.fid, code, priority);
       queuedCount++;
     }
 
@@ -327,7 +324,7 @@ export async function queueRedemptionsForCode(code: string, priority: number = 0
  */
 export async function queueUnredeemedCodesForUser(fid: string, priority: number = 1) {
   try {
-    const validCodes: GiftCode[] = await giftCodes.findValid();
+    const validCodes: GiftCode[] = giftCodes.findValid();
     let queuedCount = 0;
 
     // Define success statuses consistently
@@ -335,12 +332,12 @@ export async function queueUnredeemedCodesForUser(fid: string, priority: number 
 
     for (const giftCode of validCodes) {
       // Check if already redeemed
-      const existing: Redemption | undefined = await redemptions.findByFidAndCode(fid, giftCode.code);
+      const existing: Redemption | undefined = redemptions.findByFidAndCode(fid, giftCode.code);
       if (existing && successStatuses.includes(existing.status)) {
         continue;
       }
 
-      await queue.add(fid, giftCode.code, priority);
+      queue.add(fid, giftCode.code, priority);
       queuedCount++;
     }
 
@@ -357,7 +354,7 @@ export async function queueUnredeemedCodesForUser(fid: string, priority: number 
  */
 export async function validatePendingCodes() {
   try {
-    const pendingCodes = await giftCodes.findByStatus('pending');
+    const pendingCodes = giftCodes.findByStatus('pending');
     if (pendingCodes.length === 0) {
       logger.info('No pending codes to validate');
       return {
@@ -392,7 +389,7 @@ export async function validatePendingCodes() {
           logger.warn(`⚠️ Gift code ${code.code} status is uncertain: ${validationResult.status}`);
         }
 
-        // Add small delay between validations
+        // Add a small delay between validations
         await new Promise(resolve => setTimeout(resolve, 500));
       } catch (error) {
         logger.error(`Error validating code ${code.code}:`, error);
@@ -420,13 +417,13 @@ export async function validatePendingCodes() {
  */
 export async function autoRedeemValidatedCodes() {
   try {
-    const activeUsers: User[] = await users.findActive();
+    const activeUsers: User[] = users.findActive();
     if (activeUsers.length === 0) {
       logger.info('No active users for auto-redemption');
       return 0;
     }
 
-    const validatedCodes: GiftCode[] = await giftCodes.findValid();
+    const validatedCodes: GiftCode[] = giftCodes.findValid();
     if (validatedCodes.length === 0) {
       logger.info('No validated codes for auto-redemption');
       return 0;
@@ -434,30 +431,29 @@ export async function autoRedeemValidatedCodes() {
 
     logger.info(`Auto-redeeming ${validatedCodes.length} validated codes for ${activeUsers.length} users`);
 
-    let queuedCount = 0;
-    const successStatuses = ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'];
+    // Prefer a single bulk INSERT to queue validated codes for active users
+    try {
+      const res = queue.bulkQueueValidatedForUsers(0);
+      const queuedCount = (res) ? res.changes : 0;
+      logger.info(`Auto-redeem bulk queued ${queuedCount} redemptions`);
+      return queuedCount;
+    } catch (bulkErr) {
+      logger.warn('Bulk queue operation failed, falling back to per-code queuing:', bulkErr);
 
-    for (const user of activeUsers) {
+      let queuedCount = 0;
+      // Fallback: queue per code using the existing helper (with pre-fetched activeUsers)
       for (const code of validatedCodes) {
-        // Check if already redeemed
-        const existing: Redemption | undefined = await redemptions.findByFidAndCode(user.fid, code.code);
-        if (existing && successStatuses.includes(existing.status)) {
-          continue;
-        }
-
-        // Add to queue
         try {
-          await queue.add(user.fid, code.code, 0);
-          queuedCount++;
-        } catch (error) {
-          // Might already be in queue, that's okay
-          logger.debug(`Could not queue ${code.code} for ${user.fid}`);
+          const added = await queueRedemptionsForCode(code.code, 0, activeUsers);
+          queuedCount += added;
+        } catch (err) {
+          logger.error(`Error queueing redemptions for validated code ${code.code}:`, err);
         }
       }
-    }
 
-    logger.info(`Auto-redeem queued ${queuedCount} redemptions`);
-    return queuedCount;
+      logger.info(`Auto-redeem queued ${queuedCount} redemptions (fallback)`);
+      return queuedCount;
+    }
   } catch (error) {
     logger.error('Error in auto-redeem:', error);
     throw error;

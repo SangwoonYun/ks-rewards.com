@@ -114,7 +114,7 @@ export async function fetchGiftCodesFromAPI(): Promise<GiftCodeInfo[]> {
 }
 
 /**
- * Synchronize gift codes from external API to local database
+ * Synchronize gift codes from external API to the local database
  */
 export async function syncGiftCodes() {
   try {
@@ -139,6 +139,7 @@ export async function syncGiftCodes() {
 
     let newCodes = 0;
     let existingCodes = 0;
+    const newCodeList: string[] = [];
 
     for (const apiCode of apiCodes) {
       try {
@@ -147,6 +148,7 @@ export async function syncGiftCodes() {
           const result = giftCodes.insertOrIgnore(apiCode.code, 'pending', 'api', apiCode.date);
           if (result.changes > 0) {
             newCodes++;
+            newCodeList.push(apiCode.code);
             logger.info(`✨ New gift code discovered: ${apiCode.code}`);
           }
         } else {
@@ -162,6 +164,7 @@ export async function syncGiftCodes() {
     return {
       success: true,
       newCodes,
+      newCodeList,
       existingCodes,
       totalApiCodes: apiCodes.length
     };
