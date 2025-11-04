@@ -146,6 +146,7 @@ interface RedemptionsResponse {
 interface RegisterResponse {
   success: boolean;
   redeemedCount?: number;
+  alreadyRegistered?: boolean;
   error?: string;
 }
 
@@ -309,10 +310,12 @@ async function registerPlayer() {
         });
 
         if (response.success) {
-          if (response.redeemedCount) {
-            results.push(`${fid}: Registered (Successfully redeemed ${response.redeemedCount} code${response.redeemedCount !== 1 ? 's' : ''})`);
-          } else {
+          if (response.alreadyRegistered) {
             results.push(`${fid}: Already registered`);
+          } else if (response.redeemedCount) {
+            results.push(`${fid}: Registered, successfully redeemed ${response.redeemedCount} code${response.redeemedCount !== 1 ? 's' : ''}`);
+          } else {
+            results.push(`${fid}: Registered`);
           }
           successCount++;
         } else {

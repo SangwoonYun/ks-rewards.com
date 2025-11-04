@@ -60,7 +60,8 @@ export default defineEventHandler(async (event) => {
           kingdom: validation.kingdom || existingUser.kingdom,
           avatar_url: validation.avatar_url || existingUser.avatar_url
         },
-        redeemedCount: 0
+        redeemedCount: 0,
+        alreadyRegistered: true
       };
     }
 
