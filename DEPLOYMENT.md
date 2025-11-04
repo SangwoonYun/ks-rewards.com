@@ -64,10 +64,13 @@ docker-compose restart
 
 Edit `docker-compose.yml` to customize:
 
-- `REDEMPTION_INTERVAL_MINUTES`: How often to process redemption queue (default: 2)
-- `DISCOVERY_INTERVAL_MINUTES`: How often to check for new codes (default: 15)
-- `AUTO_REDEEM_INTERVAL_MINUTES`: How often to queue codes for all users (default: 5)
-- `NICKNAME_REFRESH_INTERVAL_HOURS`: How often to refresh nicknames (default: 24)
+- `REDEMPTION_INTERVAL_MINUTES`: How often to process redemption queue and validate codes (default: 2)
+- `DISCOVERY_INTERVAL_MINUTES`: How often to check for new codes from external API (default: 5)
+- `BACKUP_INTERVAL_HOURS`: How often to backup the database (default: 6)
+- `MAX_RETRIES`: Number of retry attempts for API calls (default: 5)
+- `RETRY_DELAY_MS`: Base delay between retries in milliseconds (default: 2000)
+- `MIN_REQUEST_INTERVAL_MS`: Minimum interval between API requests in milliseconds (default: 3000)
+- `REDEEM_DELAY_MS`: Delay between processing redemptions in milliseconds (default: 2000)
 
 ## Production Setup with Nginx (Optional)
 
