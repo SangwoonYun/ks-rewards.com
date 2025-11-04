@@ -32,8 +32,22 @@
 
     <section class="info">
       <h2>About</h2>
-      <p><strong>What it does:</strong> This service monitors for new Kingshot gift codes and automatically redeems them for you. Simply register your Player ID, and whenever a new code appears the website will redeem it on your behalf. No more need to manually redeem giftcodes.</p>
+      <p><strong>What it does:</strong> This service monitors for new Kingshot gift codes and automatically redeems them for you. Whenever a new code appears the website will redeem it on your behalf. No need to manually redeem gift codes anymore!</p>
+      <p><strong>How to register:</strong> Simply enter your Player ID(s) and click on the Register button. Once done you will stay registered even after closing the website. You will see new gift code rewards appear in your game mail whenever a new code gets released.</p>
       <p><strong>To find your Player ID:</strong> Open the game → Profile → Info. Your Player ID appears under your name.</p>
+      <div class="disclaimer" role="note" aria-label="Disclaimer">
+        <!-- Use Material Symbols glyph via CSS pseudo-element (no inline text to select) -->
+        <span class="disclaimer-icon material-symbols-outlined" aria-hidden="true"></span>
+        <div class="disclaimer-content">
+          <div class="disclaimer-title"><strong>Disclaimer</strong></div>
+          <p>To respect Kingshot's rate limits we process registrations and redemptions through a queue. During busy times this can cause noticeable delays — please read the points below so you know what to expect.</p>
+          <ul>
+            <li>Initial registration and any immediate redemptions can take a few minutes.</li>
+            <li>When many players are registered, redeeming newly discovered codes may be delayed.</li>
+            <li>If the issue grows too big then a known fix will be implemented to deal with this problem.</li>
+          </ul>
+        </div>
+      </div>
     </section>
 
     <section class="info">
@@ -182,6 +196,13 @@ useHead({
     { name: 'twitter:description', content: 'Monitor Kingshot gift codes and have them redeemed automatically for your registered Player IDs.' }
   ],
   link: [
+    // Preconnect and stylesheet for Google Material Symbols
+    { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+    { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+    // Variable icon font (recommended): provides axes ranges so icons can be tuned via CSS
+    { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=info' },
+    // Static icon font fallback (loads a single instance of the icon glyphs with fixed axes)
+    { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=info' },
     { rel: 'canonical', href: 'https://ks-rewards.com/' }
   ],
   script: [
@@ -294,7 +315,7 @@ async function registerPlayer() {
   }
 
   isRegistering.value = true;
-  statusMessage.value = `Registering ${fids.length} player ID(s)...`;
+  statusMessage.value = `Registering ${fids.length} player ID(s)... - This may take a few minutes`;
   statusType.value = '';
 
   let successCount = 0;
@@ -342,7 +363,7 @@ async function registerPlayer() {
 
       // Show a concise summary plus the per-fid results so users see what happened
       const summary = `✅ ${successCount} player(s) registered successfully`;
-      statusMessage.value = results.length > 0 ? `${summary}: [${results.join(' · ')}]` : summary;
+      statusMessage.value = results.length > 0 ? `${summary}: [${results.join(', ')}]` : summary;
     } else {
       statusType.value = 'error';
     }
@@ -966,5 +987,87 @@ footer a:hover {
   .redemption-time {
     font-size: 9px;
   }
+}
+
+.disclaimer {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: linear-gradient(180deg, rgba(212,165,116,0.06), rgba(255,255,255,0.02));
+  border-left: 4px solid var(--primary-gold);
+  padding: 12px 14px;
+  border-radius: 8px;
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* Use the axes the variable-font request exposes: adjust these values to tune appearance */
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.disclaimer-icon {
+  /* visual sizing & layout only; font family and axes come from .material-symbols-outlined */
+  font-size: 28px; /* visible glyph size */
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
+  color: var(--primary-dark);
+  opacity: 0.95;
+  margin-top: 2px;
+  /* Prevent the icon text from being selected/copyable (avoids partial selections like "in") */
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  /* Disable iOS tap-and-hold menu for the icon */
+  -webkit-touch-callout: none;
+  /* Prevent pointer events so selection/dragging won't start from the icon */
+  pointer-events: none;
+}
+
+/* Render the icon glyph via CSS pseudo-element so there's no real text node to select */
+.disclaimer-icon::before {
+  /* Use the 'info' icon codepoint so there's no selectable word fragments; codepoint: e88e */
+  content: "\e88e";
+  display: inline-block;
+  /* inherit the font and variation settings from the parent class */
+  font-family: inherit;
+  font-variation-settings: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  /* ensure the pseudo-element cannot be selected or copied */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.disclaimer-content {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.disclaimer-title {
+  margin-bottom: 6px;
+  color: var(--primary-dark);
+}
+
+.disclaimer-content p {
+  margin: 0 0 8px 0;
+  color: var(--muted-text);
+}
+
+.disclaimer-content ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted-text);
+}
+
+.disclaimer-content li {
+  margin-bottom: 6px;
 }
 </style>

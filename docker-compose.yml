@@ -23,7 +23,6 @@ services:
       BACKUP_INTERVAL_HOURS: 6
       MAX_RETRIES: 5
       RETRY_DELAY_MS: 2000
-      MIN_REQUEST_INTERVAL_MS: 3000
+      MIN_REQUEST_INTERVAL_MS: 1000
       REDEEM_DELAY_MS: 2000
     restart: unless-stopped
-
