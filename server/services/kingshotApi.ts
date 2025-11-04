@@ -236,9 +236,9 @@ export async function redeemGiftCode(fid: string, code: string): Promise<Redempt
 }
 
 /**
- * Clean gift code (remove whitespace and convert to uppercase)
+ * Clean gift code (remove whitespace and preserve original casing)
  */
 export function cleanGiftCode(code: string): string {
-  return code.trim().toUpperCase();
+  return code.trim();
 }
 
