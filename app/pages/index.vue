@@ -1013,7 +1013,8 @@ footer a:hover {
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  background: linear-gradient(180deg, rgba(212,165,116,0.06), rgba(255,255,255,0.02));
+  background: linear-gradient(180deg, rgba(212,165,116,0.15), rgba(245,230,211,0.25));
+  border: 1px solid rgba(212,165,116,0.25);
   border-left: 4px solid var(--primary-gold);
   padding: 12px 14px;
   border-radius: 8px;
