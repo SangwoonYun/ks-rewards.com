@@ -255,7 +255,7 @@ async function registerPlayer() {
       await fetchCodes();
       await fetchRedemptions();
 
-      statusMessage.value = `✅ ${successCount} player(s) registered successfully! Check "Recent Redemptions" below.`;
+      statusMessage.value = `✅ ${successCount} player(s) registered successfully!`;
     } else {
       statusType.value = 'error';
     }
