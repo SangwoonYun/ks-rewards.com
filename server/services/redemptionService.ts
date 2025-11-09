@@ -62,10 +62,10 @@ export async function validateGiftCode(code: string) {
 
     // Map validation statuses - keep consistent across all functions
     const validationStatuses = {
-      success: ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'],
-      valid: ['TOO_SMALL_SPEND_MORE', 'TOO_POOR_SPEND_MORE'],
-      expired: ['TIME_ERROR', 'USAGE_LIMIT'],
-      invalid: ['CDK_NOT_FOUND']
+      success: ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE', 'SAME TYPE EXCHANGE'],
+      valid: ['TOO_SMALL_SPEND_MORE', 'TOO_POOR_SPEND_MORE', 'TOO SMALL SPEND MORE', 'TOO POOR SPEND MORE'],
+      expired: ['TIME_ERROR', 'TIME ERROR', 'USAGE_LIMIT', 'USAGE LIMIT'],
+      invalid: ['CDK_NOT_FOUND', 'CDK NOT FOUND']
     };
 
     // Normalize the status by trimming, removing trailing punctuation, and converting to uppercase
@@ -209,12 +209,12 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
     redemptions.create(fid, code, normalizedStatus);
 
     // Update the gift code validation status if this reveals new information
-    if (['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'].includes(normalizedStatus)) {
+    if (['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE', 'SAME TYPE EXCHANGE'].includes(normalizedStatus)) {
       const giftCode: GiftCode | undefined = giftCodes.findByCode(code);
       if (giftCode && giftCode.validation_status === 'pending') {
         giftCodes.updateValidation(code, 'validated');
       }
-    } else if (['TIME_ERROR', 'USAGE_LIMIT'].includes(normalizedStatus)) {
+    } else if (['TIME_ERROR', 'TIME ERROR', 'USAGE_LIMIT', 'USAGE LIMIT'].includes(normalizedStatus)) {
       // Mark as expired (not invalid) for TIME_ERROR and USAGE_LIMIT
       const giftCode: GiftCode | undefined = giftCodes.findByCode(code);
       if (giftCode && giftCode.validation_status === 'validated') {
@@ -231,7 +231,7 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
       } catch (err) {
         logger.error(`Error removing queued redemptions for expired code ${code}:`, err);
       }
-    } else if (['CDK_NOT_FOUND'].includes(normalizedStatus)) {
+    } else if (['CDK_NOT_FOUND', 'CDK NOT FOUND'].includes(normalizedStatus)) {
       giftCodes.markInvalid(code);
 
       // Remove any queued redemption attempts for this invalid code
@@ -244,8 +244,8 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
     }
 
     // Update queue status
-    const successStatuses = ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'];
-    const permanentFailureStatuses = ['TIME_ERROR', 'CDK_NOT_FOUND', 'CDK NOT FOUND', 'USAGE_LIMIT'];
+    const successStatuses = ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE', 'SAME TYPE EXCHANGE'];
+    const permanentFailureStatuses = ['TIME_ERROR', 'TIME ERROR', 'CDK_NOT_FOUND', 'CDK NOT FOUND', 'USAGE_LIMIT', 'USAGE LIMIT'];
 
     if (successStatuses.includes(normalizedStatus) || permanentFailureStatuses.includes(normalizedStatus)) {
       // Complete (success) or permanently failed (invalid code)
@@ -442,9 +442,9 @@ export async function validatePendingCodes() {
 
         // Map validation statuses
         const validationStatuses = {
-          success: ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'],
-          valid: ['TOO_SMALL_SPEND_MORE', 'TOO_POOR_SPEND_MORE'],
-          expired: ['TIME_ERROR', 'USAGE_LIMIT'],
+          success: ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE', 'SAME TYPE EXCHANGE'],
+          valid: ['TOO_SMALL_SPEND_MORE', 'TOO_POOR_SPEND_MORE', 'TOO SMALL SPEND MORE', 'TOO POOR SPEND MORE'],
+          expired: ['TIME_ERROR', 'TIME ERROR', 'USAGE_LIMIT', 'USAGE LIMIT'],
           invalid: ['CDK_NOT_FOUND', 'CDK NOT FOUND']
         };
 

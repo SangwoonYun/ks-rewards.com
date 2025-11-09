@@ -114,6 +114,74 @@ export async function fetchGiftCodesFromAPI(): Promise<GiftCodeInfo[]> {
 }
 
 /**
+ * Validate existing gift codes to check if they're still active
+ */
+export async function validateExistingCodes() {
+  try {
+    const { giftCodes } = await import('../utils/db');
+    const { validateGiftCode } = await import('./redemptionService');
+
+    // Get all validated codes (currently considered active)
+    const validatedCodes = giftCodes.findByStatus('validated');
+
+    if (validatedCodes.length === 0) {
+      logger.info('No validated codes to check');
+      return {
+        success: true,
+        checkedCodes: 0,
+        expiredCodes: 0,
+        stillValidCodes: 0
+      };
+    }
+
+    logger.info(`Checking ${validatedCodes.length} validated code(s) for expiration...`);
+
+    let expiredCodes = 0;
+    let stillValidCodes = 0;
+    const expiredCodeList: string[] = [];
+
+    for (const codeEntry of validatedCodes) {
+      try {
+        logger.info(`Validating code: ${codeEntry.code}`);
+        const validationResult = await validateGiftCode(codeEntry.code);
+
+        // The validateGiftCode function already updates the database status
+        // We just need to count the results
+        if (validationResult.valid === false) {
+          expiredCodes++;
+          expiredCodeList.push(codeEntry.code);
+          logger.warn(`Code ${codeEntry.code} is now expired or invalid`);
+        } else if (validationResult.valid === true) {
+          stillValidCodes++;
+          logger.info(`Code ${codeEntry.code} is still valid`);
+        }
+
+        // Add a delay between validation checks to respect rate limits
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      } catch (error) {
+        logger.error(`Error validating code ${codeEntry.code}:`, getErrorMessage(error));
+      }
+    }
+
+    logger.info(`Validation check complete: ${stillValidCodes} still valid, ${expiredCodes} expired`);
+
+    return {
+      success: true,
+      checkedCodes: validatedCodes.length,
+      expiredCodes,
+      expiredCodeList,
+      stillValidCodes
+    };
+  } catch (error) {
+    logger.error('Error during code validation:', getErrorMessage(error));
+    return {
+      success: false,
+      error: getErrorMessage(error)
+    };
+  }
+}
+
+/**
  * Synchronize gift codes from external API to the local database
  */
 export async function syncGiftCodes() {
@@ -128,7 +196,8 @@ export async function syncGiftCodes() {
         success: true,
         newCodes: 0,
         existingCodes: 0,
-        totalApiCodes: 0
+        totalApiCodes: 0,
+        validationCheck: null
       };
     }
 
@@ -161,12 +230,17 @@ export async function syncGiftCodes() {
 
     logger.info(`Sync complete: ${newCodes} new, ${existingCodes} existing, ${apiCodes.length} total`);
 
+    // Validate existing codes to check for expired ones
+    logger.info('Checking existing validated codes for expiration...');
+    const validationCheck = await validateExistingCodes();
+
     return {
       success: true,
       newCodes,
       newCodeList,
       existingCodes,
-      totalApiCodes: apiCodes.length
+      totalApiCodes: apiCodes.length,
+      validationCheck
     };
   } catch (error) {
     logger.error('Error during gift code sync:', getErrorMessage(error));

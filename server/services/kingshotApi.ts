@@ -255,9 +255,9 @@ export async function redeemGiftCode(fid: string, code: string): Promise<Redempt
 
     let success = false;
 
-    if (['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'].includes(status)) {
+    if (['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE', 'SAME TYPE EXCHANGE'].includes(status)) {
       success = true;
-    } else if (['TIME_ERROR', 'CDK_NOT_FOUND', 'USAGE_LIMIT'].includes(status)) {
+    } else if (['TIME_ERROR', 'TIME ERROR', 'CDK_NOT_FOUND', 'CDK NOT FOUND', 'USAGE_LIMIT', 'USAGE LIMIT'].includes(status)) {
       success = false;
     } else if (status.includes('NOT_LOGIN') || status.includes('NOT LOGIN')) {
       // Special handling for login issues
