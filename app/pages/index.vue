@@ -40,7 +40,7 @@
         <span class="disclaimer-icon material-symbols-outlined" aria-hidden="true"></span>
         <div class="disclaimer-content">
           <div class="disclaimer-title"><strong>Disclaimer</strong></div>
-          <p>To respect Kingshot's rate limits we process registrations and redemptions through a queue. During busy times this can cause noticeable delays — please read the points below so you know what to expect.</p>
+          <p>To respect Kingshot's rate limits we process registrations and redemptions through a queue. During busy times this can cause noticeable delays. Please read the points below so you know what to expect.</p>
           <ul>
             <li>Initial registration and any immediate redemptions can take a few minutes.</li>
             <li>When many players are registered, redeeming newly discovered codes may be delayed.</li>
