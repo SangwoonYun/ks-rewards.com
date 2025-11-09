@@ -240,11 +240,19 @@ useHead({
   ]
 })
 
-// Filter codes to show validated (active) and expired codes
+// Filter and sort codes to show validated (active) codes first, then expired codes
 const displayedCodes = computed(() => {
-  return codes.value.filter(code =>
-    code.validation_status === 'validated' || code.validation_status === 'expired'
-  );
+  return codes.value
+    .filter(code =>
+      code.validation_status === 'validated' || code.validation_status === 'expired'
+    )
+    .sort((a, b) => {
+      // Active codes first, expired codes last
+      if (a.validation_status === 'validated' && b.validation_status === 'expired') return -1;
+      if (a.validation_status === 'expired' && b.validation_status === 'validated') return 1;
+      // Within the same status, sort by date (newest first)
+      return new Date(b.date_discovered).getTime() - new Date(a.date_discovered).getTime();
+    });
 });
 
 
@@ -691,7 +699,7 @@ input[type=text]:focus {
 }
 
 .code-tile-status.expired {
-  color: #9E9E9E;
+  color: #E06A6A;
 }
 
 
