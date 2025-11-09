@@ -101,7 +101,7 @@
                 <div class="redemption-details">
                   <span class="redemption-code">{{ redemption.code }}</span>
                   <span class="redemption-separator">•</span>
-                  <span class="redemption-time">{{ formatTime(redemption.redeemed_at) }}</span>
+                  <span class="redemption-time">{{ formatTime(redemption.redeemed_at) }} UTC</span>
                 </div>
               </div>
             </div>
