@@ -2,9 +2,7 @@
 import { cleanGiftCode } from './kingshotApi';
 import { logger } from '../utils/logger';
 import { getErrorMessage } from '../utils/errors';
-
-const API_URL = process.env.GIFTCODE_API_URL || 'http://ks-gift-code-api.whiteout-bot.com/giftcode_api.php';
-const API_KEY = process.env.GIFTCODE_API_KEY || 'super_secret_bot_token_nobody_will_ever_find';
+import { config } from '../utils/config';
 
 interface GiftCodeInfo {
   code: string;
@@ -59,9 +57,9 @@ export async function fetchGiftCodesFromAPI(): Promise<GiftCodeInfo[]> {
   try {
     logger.info('Fetching gift codes from external API...');
 
-    const response = await axios.get(API_URL, {
+    const response = await axios.get(config.giftCodeApi.url, {
       headers: {
-        'X-API-Key': API_KEY,
+        'X-API-Key': config.giftCodeApi.key,
         'Content-Type': 'application/json'
       },
       timeout: 15000

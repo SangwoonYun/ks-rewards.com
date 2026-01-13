@@ -1,13 +1,7 @@
 ﻿import crypto from 'crypto';
 import axios from 'axios';
 import { logger } from '../utils/logger';
-
-const LOGIN_URL = process.env.KS_LOGIN_URL || 'https://kingshot-giftcode.centurygame.com/api/player';
-const REDEEM_URL = process.env.KS_REDEEM_URL || 'https://kingshot-giftcode.centurygame.com/api/gift_code';
-const ENCRYPT_KEY = process.env.KS_ENCRYPT_KEY || 'mN4!pQs6JrYwV9';
-const MAX_RETRIES = parseInt(process.env.MAX_RETRIES || '5');
-const BASE_RETRY_DELAY_MS = parseInt(process.env.RETRY_DELAY_MS || '2000');
-const MIN_REQUEST_INTERVAL_MS = parseInt(process.env.MIN_REQUEST_INTERVAL_MS || '3000'); // 3 seconds between requests
+import { config } from '../utils/config';
 
 /**
  * Rate limiter to ensure minimum interval between API requests
@@ -35,7 +29,7 @@ class RateLimiter {
 }
 
 // Global rate limiter instance
-const rateLimiter = new RateLimiter(MIN_REQUEST_INTERVAL_MS);
+const rateLimiter = new RateLimiter(config.retry.minRequestIntervalMs);
 
 interface KingshotApiData {
   [key: string]: any;
@@ -73,7 +67,7 @@ function encodeData(data: KingshotApiData): KingshotApiData {
 
   const sign = crypto
     .createHash('md5')
-    .update(`${encodedData}${ENCRYPT_KEY}`)
+    .update(`${encodedData}${config.kingshot.encryptKey}`)
     .digest('hex');
 
   return { sign, ...data };
@@ -82,7 +76,7 @@ function encodeData(data: KingshotApiData): KingshotApiData {
 /**
  * Make a POST request with retry logic, rate limiting, and exponential backoff
  */
-async function makeRequest(url: string, payload: any, retries: number = MAX_RETRIES): Promise<any> {
+async function makeRequest(url: string, payload: any, retries: number = config.retry.maxRetries): Promise<any> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       // Apply rate limiting before each request
@@ -111,7 +105,7 @@ async function makeRequest(url: string, payload: any, retries: number = MAX_RETR
           const retryAfter = response.headers['retry-after'];
           const delay = retryAfter
             ? parseInt(retryAfter) * 1000
-            : BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1); // Exponential backoff: 2s, 4s, 8s, 16s, 32s
+            : config.retry.retryDelayMs * Math.pow(2, attempt - 1); // Exponential backoff: 2s, 4s, 8s, 16s, 32s
 
           logger.warn(`⚠️  Rate limit hit (429) on attempt ${attempt}/${retries}. Waiting ${delay}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, delay));
@@ -127,7 +121,7 @@ async function makeRequest(url: string, payload: any, retries: number = MAX_RETR
         // Check for a timeout retry message
         if (data.msg && data.msg.trim().replace('.', '') === 'TIMEOUT RETRY') {
           if (attempt < retries) {
-            const delay = BASE_RETRY_DELAY_MS * Math.pow(1.5, attempt - 1); // Exponential backoff for timeouts
+            const delay = config.retry.retryDelayMs * Math.pow(1.5, attempt - 1); // Exponential backoff for timeouts
             logger.info(`Attempt ${attempt}: Server requested retry. Waiting ${delay}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
             continue;
@@ -153,8 +147,8 @@ async function makeRequest(url: string, payload: any, retries: number = MAX_RETR
       if (attempt < retries && !error.message.includes('Client error')) {
         // Exponential backoff: 2s, 4s, 8s, 16s, 32s
         const delay = isRateLimit
-          ? BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1)
-          : BASE_RETRY_DELAY_MS * Math.pow(1.5, attempt - 1);
+          ? config.retry.retryDelayMs * Math.pow(2, attempt - 1)
+          : config.retry.retryDelayMs * Math.pow(1.5, attempt - 1);
 
         logger.info(`⏳ Waiting ${delay}ms before retry ${attempt + 1}/${retries}...`);
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -177,7 +171,7 @@ export async function validatePlayerId(fid: string): Promise<ValidationResult> {
       time: Date.now()
     });
 
-    const response = await makeRequest(LOGIN_URL, payload);
+    const response = await makeRequest(config.kingshot.loginUrl, payload);
 
     if (response.code === 0 && response.msg === 'success') {
       return {
@@ -223,7 +217,7 @@ export async function redeemGiftCode(fid: string, code: string): Promise<Redempt
       time: Date.now()
     });
 
-    const response = await makeRequest(REDEEM_URL, payload);
+    const response = await makeRequest(config.kingshot.redeemUrl, payload);
 
     // Handle specific error cases
     if (!response || typeof response !== 'object') {
@@ -266,7 +260,7 @@ export async function redeemGiftCode(fid: string, code: string): Promise<Redempt
       const reloginResult = await validatePlayerId(fid);
       if (reloginResult.success) {
         // Retry once with a new session
-        const retryResponse = await makeRequest(REDEEM_URL, payload);
+        const retryResponse = await makeRequest(config.kingshot.redeemUrl, payload);
         if (retryResponse.code === 0) {
           return {
             success: true,

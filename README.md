@@ -40,11 +40,37 @@ That's it! Access the website at `http://localhost:3000`
 
 ## Configuration
 
-Edit environment variables in `docker-compose.yml`:
+All configuration is managed through environment variables in `.env` files:
 
-- `REDEMPTION_INTERVAL_MINUTES`: Redemption processing frequency (default: 2)
-- `DISCOVERY_INTERVAL_MINUTES`: Code discovery frequency (default: 15)
-- `AUTO_REDEEM_INTERVAL_MINUTES`: Auto-queue frequency (default: 5)
+### Development
+
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` with your local settings
+
+### Production (Docker)
+
+The application uses `.env.production` for Docker deployments. The `docker-compose.yml` automatically loads this file.
+
+Key environment variables:
+
+- **Scheduler Settings**:
+  - `REDEMPTION_INTERVAL_MINUTES`: Redemption processing frequency (default: 2)
+  - `DISCOVERY_INTERVAL_MINUTES`: Code discovery frequency (default: 15)
+  - `BACKUP_INTERVAL_HOURS`: Database backup frequency (default: 6)
+
+- **Retry Configuration**:
+  - `MAX_RETRIES`: Maximum API retry attempts (default: 5)
+  - `RETRY_DELAY_MS`: Delay between retries (default: 2000)
+  - `MIN_REQUEST_INTERVAL_MS`: Minimum time between API requests (default: 3000)
+
+- **Database**:
+  - `DB_PATH`: Database file path (default: `./data/ks-rewards.db`)
+
+See `.env.example` for all available options.
 
 ## Database
 

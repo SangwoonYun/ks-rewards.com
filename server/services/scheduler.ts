@@ -2,10 +2,7 @@
 import { syncGiftCodes } from './giftCodeDiscovery';
 import { createBackup } from './backupService';
 import { logger } from '../utils/logger';
-
-const REDEMPTION_INTERVAL_MINUTES = parseInt(process.env.REDEMPTION_INTERVAL_MINUTES || '2');
-const DISCOVERY_INTERVAL_MINUTES = parseInt(process.env.DISCOVERY_INTERVAL_MINUTES || '15');
-const BACKUP_INTERVAL_HOURS = parseInt(process.env.BACKUP_INTERVAL_HOURS || '6');
+import { config } from '../utils/config';
 
 let scheduledIntervals: NodeJS.Timeout[] = [];
 
@@ -16,9 +13,9 @@ export function initializeScheduledTasks() {
     logger.info('Initializing scheduled tasks...');
 
   // Convert minutes to milliseconds
-  const redemptionIntervalMs = REDEMPTION_INTERVAL_MINUTES * 60 * 1000;
-  const discoveryIntervalMs = DISCOVERY_INTERVAL_MINUTES * 60 * 1000;
-  const backupIntervalMs = BACKUP_INTERVAL_HOURS * 60 * 60 * 1000;
+  const redemptionIntervalMs = config.scheduler.redemptionIntervalMinutes * 60 * 1000;
+  const discoveryIntervalMs = config.scheduler.discoveryIntervalMinutes * 60 * 1000;
+  const backupIntervalMs = config.scheduler.backupIntervalHours * 60 * 60 * 1000;
 
   // Process redemption queue every N minutes
   // Note: This only processes queued redemptions. Code validation is handled by the discovery scheduler.
@@ -85,9 +82,9 @@ export function initializeScheduledTasks() {
   scheduledIntervals.push(backupInterval);
 
   logger.info('✅ Scheduled tasks initialized');
-  logger.info(`- Redemption processing: every ${REDEMPTION_INTERVAL_MINUTES} minutes (${redemptionIntervalMs}ms)`);
-  logger.info(`- Gift code discovery: every ${DISCOVERY_INTERVAL_MINUTES} minutes (${discoveryIntervalMs}ms)`);
-  logger.info(`- Database backup: every ${BACKUP_INTERVAL_HOURS} hours (${backupIntervalMs}ms)`);
+  logger.info(`- Redemption processing: every ${config.scheduler.redemptionIntervalMinutes} minutes (${redemptionIntervalMs}ms)`);
+  logger.info(`- Gift code discovery: every ${config.scheduler.discoveryIntervalMinutes} minutes (${discoveryIntervalMs}ms)`);
+  logger.info(`- Database backup: every ${config.scheduler.backupIntervalHours} hours (${backupIntervalMs}ms)`);
 
   // Run initial checks in the background (don't block server startup)
   logger.info('Running initial checks...');

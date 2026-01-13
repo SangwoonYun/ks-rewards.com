@@ -10,19 +10,6 @@ services:
     volumes:
       - ./data:/app/data
       - ./backups:/app/backups
-    environment:
-      NODE_ENV: production
-      DB_PATH: /app/data/ks-rewards.db
-      KS_LOGIN_URL: https://kingshot-giftcode.centurygame.com/api/player
-      KS_REDEEM_URL: https://kingshot-giftcode.centurygame.com/api/gift_code
-      KS_ENCRYPT_KEY: mN4!pQs6JrYwV9
-      GIFTCODE_API_URL: http://ks-gift-code-api.whiteout-bot.com/giftcode_api.php
-      GIFTCODE_API_KEY: super_secret_bot_token_nobody_will_ever_find
-      REDEMPTION_INTERVAL_MINUTES: 15
-      DISCOVERY_INTERVAL_MINUTES: 5
-      BACKUP_INTERVAL_HOURS: 6
-      MAX_RETRIES: 5
-      RETRY_DELAY_MS: 3000
-      MIN_REQUEST_INTERVAL_MS: 3000
-      REDEEM_DELAY_MS: 3000
+    env_file:
+      - .env.production
     restart: unless-stopped
