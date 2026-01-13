@@ -34,3 +34,7 @@ data/
 *.db-wal
 *.db-shm
 
+# Locks
+bun.lock
+package-lock.json
+
