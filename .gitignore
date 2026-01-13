@@ -34,7 +34,7 @@ data/
 *.db-wal
 *.db-shm
 
-# Locks
-bun.lock
+# Lockfiles of unused package managers
 package-lock.json
-
+yarn.lock
+pnpm-lock.yaml

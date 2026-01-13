@@ -61,4 +61,3 @@ Edit environment variables in `docker-compose.yml`:
 ## License
 
 Made by player **adaja** (Kingdom 847). Automatic redemption logic adapted from [justncodes](https://github.com/justncodes).
-
