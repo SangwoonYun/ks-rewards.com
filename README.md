@@ -1,16 +1,14 @@
-﻿# Kingshot Rewards - Automatic Gift Code Redemption
+﻿# Kingshot Rewards – Automatic Gift Code Redemption
 
 Automatically monitors and redeems Kingshot gift codes for registered players.
 
-NOTE: This project is HEAVILY vibe coded, any help with quality verification is highly appreciated.
-
 ## Features
 
-- 🔄 **Automatic Monitoring**: Checks for new gift codes every 15 minutes
-- ⚡ **Instant Redemption**: Redeems codes immediately for newly registered users
-- 👥 **Multi-User Support**: Register multiple Player IDs
-- 📊 **Real-Time Updates**: See recent redemptions as they happen
-- 🔒 **Secure**: Runs in isolated Docker container
+- **Automatic Monitoring**: Checks for new gift codes every 15 minutes
+- **Instant Redemption**: Redeems codes immediately for newly registered users
+- **Multi-User Support**: Register multiple Player IDs
+- **Real-Time Updates**: See recent redemptions as they happen
+- **Secure**: Uses docker for an isolated deployment
 
 ## Quick Start
 
@@ -31,7 +29,7 @@ docker-compose logs -f
 docker-compose down
 ```
 
-That's it! Access the website at `http://your-server:3000`
+That's it! Access the website at `http://localhost:3000`
 
 ## Usage
 
@@ -50,15 +48,8 @@ Edit environment variables in `docker-compose.yml`:
 
 ## Database
 
-SQLite database is stored in `./data/ks-rewards.db` and persists across container restarts.
-
-## Documentation
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions, including:
-- Nginx reverse proxy setup
-- SSL/HTTPS configuration
-- Database backup/restore
-- Troubleshooting
+- SQLite database is stored in `./data/ks-rewards.db` and persists across container restarts.
+- Backed up every 24 hours to `./backups`.
 
 ## Tech Stack
 
@@ -66,12 +57,6 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions, includi
 - **Backend**: Nitro + TypeScript
 - **Database**: SQLite (better-sqlite3)
 - **Deployment**: Docker + Docker Compose
-
-## Notes
-
-- Favicon is located in `public/favicon.ico` and properly served in both dev and production
-- Database is persisted in `./data/ks-rewards.db`
-- Logs are rotated automatically in Docker
 
 ## License
 
