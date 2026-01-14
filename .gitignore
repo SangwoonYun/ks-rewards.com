@@ -22,6 +22,7 @@ pnpm-debug.log*
 .DS_Store
 .fleet
 .idea
+.vscode
 
 # Local env files
 .env
@@ -34,3 +35,7 @@ data/
 *.db-wal
 *.db-shm
 
+# Lockfiles of unused package managers
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

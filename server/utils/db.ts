@@ -2,6 +2,7 @@
 import path from 'path';
 import fs from 'fs';
 import { logger } from './logger';
+import { config } from './config';
 
 // Type definitions for database models
 export interface User {
@@ -56,7 +57,7 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-const dbPath = process.env.DB_PATH || path.join(dataDir, 'ks-rewards.db');
+const dbPath = config.db.path;
 const db = new Database(dbPath);
 
 // Enable WAL mode for better concurrency

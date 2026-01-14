@@ -2,10 +2,11 @@
 import path from 'path';
 import fs from 'fs';
 import { logger } from '../utils/logger';
+import { config } from '../utils/config';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const BACKUP_DIR = path.join(process.cwd(), 'backups');
-const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'ks-rewards.db');
+const DB_PATH = config.db.path;
 
 // Ensure backup directory exists
 if (!fs.existsSync(BACKUP_DIR)) {

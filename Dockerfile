@@ -1,30 +1,34 @@
 ﻿# Build stage
-FROM node:20-alpine AS builder
+FROM oven/bun:1-alpine AS builder
 
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json ./
+COPY bun.lock ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies with frozen lockfile for reproducible builds
+RUN bun install --frozen-lockfile
 
 # Copy application files
 COPY . .
 
 # Build Nuxt application
-RUN npm run build
+RUN bun run build
 
 # Production stage
-FROM node:20-alpine
+FROM oven/bun:1-alpine
 
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json ./
 
-# Install production dependencies only
-RUN npm ci --production --ignore-scripts
+# Copy lock file from builder to ensure same versions
+COPY --from=builder /app/bun.lock ./
+
+# Install production dependencies only with frozen lockfile
+RUN bun install --frozen-lockfile --production
 
 # Copy built application from builder
 COPY --from=builder /app/.output ./.output
@@ -35,7 +39,5 @@ RUN mkdir -p /app/data
 # Expose port
 EXPOSE 3000
 
-
 # Start the application
-CMD ["node", ".output/server/index.mjs"]
-
+CMD ["bun", "run", ".output/server/index.mjs"]

@@ -23,8 +23,10 @@ export async function validateGiftCode(code: string) {
 
     if (activeUsers.length > 0) {
       const randomUser = activeUsers[Math.floor(Math.random() * activeUsers.length)];
-      testFid = randomUser.fid;
-      logger.info(`Using random active user ${testFid} for validation`);
+      if (randomUser) {
+        testFid = randomUser.fid;
+        logger.info(`Using random active user ${testFid} for validation`);
+      }
     } else {
       logger.info(`Using default test FID ${testFid} for validation`);
     }
@@ -37,16 +39,18 @@ export async function validateGiftCode(code: string) {
         // Try another random user
         const otherUsers = activeUsers.filter(u => u.fid !== testFid);
         const backupUser = otherUsers[Math.floor(Math.random() * otherUsers.length)];
-        testFid = backupUser.fid;
-        logger.info(`Trying backup user ${testFid} for validation`);
-        const backupLoginResult = await validatePlayerId(testFid);
-        if (!backupLoginResult.success) {
-          logger.error(`Failed to validate backup player ${testFid}: ${backupLoginResult.error}`);
-          return {
-            valid: null,
-            status: 'LOGIN_FAILED',
-            message: 'Could not authenticate test players'
-          };
+        if (backupUser) {
+          testFid = backupUser.fid;
+          logger.info(`Trying backup user ${testFid} for validation`);
+          const backupLoginResult = await validatePlayerId(testFid);
+          if (!backupLoginResult.success) {
+            logger.error(`Failed to validate backup player ${testFid}: ${backupLoginResult.error}`);
+            return {
+              valid: null,
+              status: 'LOGIN_FAILED',
+              message: 'Could not authenticate test players'
+            };
+          }
         }
       } else {
         return {

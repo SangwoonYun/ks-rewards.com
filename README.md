@@ -1,16 +1,14 @@
-﻿# Kingshot Rewards - Automatic Gift Code Redemption
+﻿# Kingshot Rewards – Automatic Gift Code Redemption
 
 Automatically monitors and redeems Kingshot gift codes for registered players.
 
-NOTE: This project is HEAVILY vibe coded, any help with quality verification is highly appreciated.
-
 ## Features
 
-- 🔄 **Automatic Monitoring**: Checks for new gift codes every 15 minutes
-- ⚡ **Instant Redemption**: Redeems codes immediately for newly registered users
-- 👥 **Multi-User Support**: Register multiple Player IDs
-- 📊 **Real-Time Updates**: See recent redemptions as they happen
-- 🔒 **Secure**: Runs in isolated Docker container
+- **Automatic Monitoring**: Checks for new gift codes every 15 minutes
+- **Instant Redemption**: Redeems codes immediately for newly registered users
+- **Multi-User Support**: Register multiple Player IDs
+- **Real-Time Updates**: See recent redemptions as they happen
+- **Secure**: Uses docker for an isolated deployment
 
 ## Quick Start
 
@@ -31,7 +29,7 @@ docker-compose logs -f
 docker-compose down
 ```
 
-That's it! Access the website at `http://your-server:3000`
+That's it! Access the website at `http://localhost:3000`
 
 ## Usage
 
@@ -42,23 +40,42 @@ That's it! Access the website at `http://your-server:3000`
 
 ## Configuration
 
-Edit environment variables in `docker-compose.yml`:
+All configuration is managed through environment variables in `.env` files:
 
-- `REDEMPTION_INTERVAL_MINUTES`: Redemption processing frequency (default: 2)
-- `DISCOVERY_INTERVAL_MINUTES`: Code discovery frequency (default: 15)
-- `AUTO_REDEEM_INTERVAL_MINUTES`: Auto-queue frequency (default: 5)
+### Development
+
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` with your local settings
+
+### Production (Docker)
+
+The application uses `.env.production` for Docker deployments. The `docker-compose.yml` automatically loads this file.
+
+Key environment variables:
+
+- **Scheduler Settings**:
+  - `REDEMPTION_INTERVAL_MINUTES`: Redemption processing frequency (default: 2)
+  - `DISCOVERY_INTERVAL_MINUTES`: Code discovery frequency (default: 15)
+  - `BACKUP_INTERVAL_HOURS`: Database backup frequency (default: 6)
+
+- **Retry Configuration**:
+  - `MAX_RETRIES`: Maximum API retry attempts (default: 5)
+  - `RETRY_DELAY_MS`: Delay between retries (default: 2000)
+  - `MIN_REQUEST_INTERVAL_MS`: Minimum time between API requests (default: 3000)
+
+- **Database**:
+  - `DB_PATH`: Database file path (default: `./data/ks-rewards.db`)
+
+See `.env.example` for all available options.
 
 ## Database
 
-SQLite database is stored in `./data/ks-rewards.db` and persists across container restarts.
-
-## Documentation
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions, including:
-- Nginx reverse proxy setup
-- SSL/HTTPS configuration
-- Database backup/restore
-- Troubleshooting
+- SQLite database is stored in `./data/ks-rewards.db` and persists across container restarts.
+- Backed up every 24 hours to `./backups`.
 
 ## Tech Stack
 
@@ -67,13 +84,6 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions, includi
 - **Database**: SQLite (better-sqlite3)
 - **Deployment**: Docker + Docker Compose
 
-## Notes
-
-- Favicon is located in `public/favicon.ico` and properly served in both dev and production
-- Database is persisted in `./data/ks-rewards.db`
-- Logs are rotated automatically in Docker
-
 ## License
 
 Made by player **adaja** (Kingdom 847). Automatic redemption logic adapted from [justncodes](https://github.com/justncodes).
-
