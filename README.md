@@ -1,4 +1,4 @@
-# This repo has moved to codeberg.org/adaja/ks-rewards.com
+# This repo has moved to codeberg.org/ks-rewards/ks-rewards.com
  
  # Kingshot Rewards – Automatic Gift Code Redemption
 
