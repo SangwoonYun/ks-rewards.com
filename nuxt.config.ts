@@ -31,21 +31,21 @@ export default defineNuxtConfig({
   },
 
   // Runtime config for environment variables
+  // Override at runtime with NUXT_ prefix (e.g. NUXT_DB_PATH)
   runtimeConfig: {
-    // Private keys (server-side only)
-    dbPath: process.env.DB_PATH || './data/ks-rewards.db',
-    ksLoginUrl: process.env.KS_LOGIN_URL || 'https://kingshot-giftcode.centurygame.com/api/player',
-    ksRedeemUrl: process.env.KS_REDEEM_URL || 'https://kingshot-giftcode.centurygame.com/api/gift_code',
-    ksEncryptKey: process.env.KS_ENCRYPT_KEY || 'mN4!pQs6JrYwV9',
-    maxRetries: process.env.MAX_RETRIES || '3',
-    retryDelayMs: process.env.RETRY_DELAY_MS || '2000',
-    redeemDelayMs: process.env.REDEEM_DELAY_MS || '1000',
-    discoveryIntervalMinutes: process.env.DISCOVERY_INTERVAL_MINUTES || '15',
-    redemptionIntervalMinutes: process.env.REDEMPTION_INTERVAL_MINUTES || '2',
-
-    // Public keys (exposed to client)
-    public: {
-      // Add any public config here if needed
-    }
+    dbPath: './data/ks-rewards.db',
+    ksLoginUrl: 'https://kingshot-giftcode.centurygame.com/api/player',
+    ksRedeemUrl: 'https://kingshot-giftcode.centurygame.com/api/gift_code',
+    ksEncryptKey: 'mN4!pQs6JrYwV9',
+    giftCodeApiUrl: 'http://ks-gift-code-api.whiteout-bot.com/giftcode_api.php',
+    giftCodeApiKey: 'super_secret_bot_token_nobody_will_ever_find',
+    maxRetries: '5',
+    retryDelayMs: '2000',
+    redeemDelayMs: '1000',
+    minRequestIntervalMs: '3000',
+    discoveryIntervalMinutes: '15',
+    redemptionIntervalMinutes: '2',
+    backupIntervalHours: '6',
+    public: {}
   }
 })

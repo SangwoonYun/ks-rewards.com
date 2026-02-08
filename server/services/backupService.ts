@@ -4,9 +4,11 @@ import fs from 'fs';
 import { logger } from '../utils/logger';
 import { config } from '../utils/config';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
 const BACKUP_DIR = path.join(process.cwd(), 'backups');
-const DB_PATH = config.db.path;
+
+function getDbPath() {
+  return config.db.path;
+}
 
 // Ensure backup directory exists
 if (!fs.existsSync(BACKUP_DIR)) {
@@ -27,7 +29,7 @@ export async function createBackup(): Promise<string> {
     logger.info(`Creating database backup: ${backupFileName}`);
 
     // Open source database in readonly mode
-    const sourceDb = new Database(DB_PATH, { readonly: true });
+    const sourceDb = new Database(getDbPath(), { readonly: true });
 
     try {
       // Create backup using SQLite's backup API
@@ -154,14 +156,14 @@ export async function restoreFromBackup(backupFileName: string): Promise<void> {
     // Create a backup of the current database before restoring
     const currentBackupName = `ks-rewards_pre-restore_${Date.now()}.db`;
     const currentBackupPath = path.join(BACKUP_DIR, currentBackupName);
-    fs.copyFileSync(DB_PATH, currentBackupPath);
+    fs.copyFileSync(getDbPath(), currentBackupPath);
     logger.info(`Current database backed up to: ${currentBackupName}`);
 
     // Close any existing connections (this should be done before calling restore)
     // The application may need to be restarted after restore
 
     // Copy backup to main database location
-    fs.copyFileSync(backupPath, DB_PATH);
+    fs.copyFileSync(backupPath, getDbPath());
 
     logger.info(`✅ Database restored from: ${backupFileName}`);
     logger.warn('⚠️  Application should be restarted for changes to take effect');
