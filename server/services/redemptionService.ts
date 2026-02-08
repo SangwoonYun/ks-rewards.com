@@ -1,8 +1,7 @@
 ﻿import { queue, redemptions, users, giftCodes, type User, type GiftCode, type Redemption, type QueueItem } from '../utils/db';
 import {redeemGiftCode, validatePlayerId} from './kingshotApi';
 import { logger } from '../utils/logger';
-
-const DELAY_BETWEEN_REDEMPTIONS = parseInt(process.env.REDEEM_DELAY_MS || '3000');
+import { config } from '../utils/config';
 
 interface RedemptionQueueItem {
   id: number;
@@ -344,7 +343,7 @@ export async function processRedemptionQueue(batchSize: number = 100, validatePe
       }
 
       // Delay between redemptions to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_REDEMPTIONS));
+      await new Promise(resolve => setTimeout(resolve, config.retry.redeemDelayMs));
     }
 
     logger.info(`Redemption batch complete: ${successCount} success, ${failedCount} failed`);
@@ -369,13 +368,16 @@ export async function queueRedemptionsForCode(code: string, priority: number = 0
     const usersList: User[] = activeUsers ?? users.findActive();
     let queuedCount = 0;
 
-    // Define success statuses consistently
-    const successStatuses = ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'];
+    // Skip users who already succeeded or permanently failed
+    const skipStatuses = [
+      'SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE',
+      'TOO_SMALL_SPEND_MORE', 'TOO SMALL SPEND MORE',
+      'TOO_POOR_SPEND_MORE', 'TOO POOR SPEND MORE'
+    ];
 
     for (const user of usersList) {
-      // Check if already redeemed
       const existing: Redemption | undefined = redemptions.findByFidAndCode(user.fid, code);
-      if (existing && successStatuses.includes(existing.status)) {
+      if (existing && skipStatuses.includes(existing.status)) {
         continue;
       }
 

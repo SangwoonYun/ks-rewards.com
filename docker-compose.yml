@@ -1,15 +1,30 @@
-﻿version: '3.3'
-
-services:
+﻿services:
   ks-rewards:
     build: .
     container_name: ks-rewards
-    user: "0:0"
+    user: 0:0
     ports:
-      - "3001:3000"
+      - 4127:3000
     volumes:
       - ./data:/app/data
       - ./backups:/app/backups
-    env_file:
-      - .env.production
+    environment:
+      - TZ=Asia/Seoul
+      - NODE_ENV=production
+      - PORT=3000
+      # All config via Nuxt runtimeConfig (NUXT_ prefix)
+      - NUXT_DB_PATH=/app/data/ks-rewards.db
+      - NUXT_KS_LOGIN_URL=https://kingshot-giftcode.centurygame.com/api/player
+      - NUXT_KS_REDEEM_URL=https://kingshot-giftcode.centurygame.com/api/gift_code
+      - NUXT_KS_ENCRYPT_KEY=mN4!pQs6JrYwV9
+      - NUXT_GIFT_CODE_API_URL=http://ks-gift-code-api.whiteout-bot.com/giftcode_api.php
+      - NUXT_GIFT_CODE_API_KEY=super_secret_bot_token_nobody_will_ever_find
+      - NUXT_MAX_RETRIES=5
+      - NUXT_RETRY_DELAY_MS=3000
+      - NUXT_REDEEM_DELAY_MS=3000
+      - NUXT_MIN_REQUEST_INTERVAL_MS=3000
+      - NUXT_REDEMPTION_INTERVAL_MINUTES=15
+      - NUXT_DISCOVERY_INTERVAL_MINUTES=5
+      - NUXT_BACKUP_INTERVAL_HOURS=6
     restart: unless-stopped
+networks: {}

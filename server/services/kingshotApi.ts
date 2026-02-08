@@ -259,8 +259,9 @@ export async function redeemGiftCode(fid: string, code: string): Promise<Redempt
       logger.warn(`Session expired for FID ${fid}, attempting to re-login...`);
       const reloginResult = await validatePlayerId(fid);
       if (reloginResult.success) {
-        // Retry once with a new session
-        const retryResponse = await makeRequest(config.kingshot.redeemUrl, payload);
+        // Retry once with a new session and fresh timestamp
+        const retryPayload = encodeData({ fid, cdk: code, time: Date.now() });
+        const retryResponse = await makeRequest(config.kingshot.redeemUrl, retryPayload);
         if (retryResponse.code === 0) {
           return {
             success: true,

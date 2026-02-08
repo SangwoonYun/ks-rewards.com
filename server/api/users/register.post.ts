@@ -88,9 +88,8 @@ export default defineEventHandler(async (event) => {
       logger.info(`🚀 Starting immediate redemption for new user ${fid}`);
 
       try {
-        // Get all pending items for this user
-        const pendingItems = await queue.getPending(100);
-        const userItems = pendingItems.filter(item => item.fid === fid);
+        // Get pending items for this user
+        const userItems = queue.getPendingByFid(fid, 100);
 
         for (const item of userItems) {
           try {
@@ -105,7 +104,7 @@ export default defineEventHandler(async (event) => {
             const { redemptions } = await import('../../utils/db');
             await redemptions.create(fid, item.code, normalizedStatus);
 
-            if (normalizedStatus == 'SUCCESS') {
+            if (['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'].includes(normalizedStatus)) {
               redeemedCount++;
               logger.info(`✅ Immediately redeemed ${item.code} for ${fid}: ${normalizedStatus}`);
             } else {

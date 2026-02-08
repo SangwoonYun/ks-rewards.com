@@ -242,30 +242,53 @@ export const queue = {
     return stmt.run(fid, code, priority);
   },
 
-  // Bulk queue: add all combinations of active users and validated codes that haven't been redeemed yet
-  // Uses INSERT OR IGNORE with a SELECT to add rows in a single statement for performance.
+  // Bulk queue: add all combinations of active users and validated codes
+  // Excludes users who already succeeded or permanently failed for a given code
   bulkQueueValidatedForUsers: (priority: number = 0) => {
     const stmt = db.prepare(`
-      INSERT OR IGNORE INTO redemption_queue (fid, code, priority)
-      SELECT u.fid, g.code, ?
+      INSERT INTO redemption_queue (fid, code, priority, status, attempts)
+      SELECT u.fid, g.code, ?, 'pending', 0
       FROM users u
       CROSS JOIN gift_codes g
-      LEFT JOIN redemptions r ON r.fid = u.fid AND r.code = g.code
       WHERE u.active = 1
         AND g.validation_status = 'validated'
-        AND r.id IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM redemptions r
+          WHERE r.fid = u.fid AND r.code = g.code
+            AND r.status IN (
+              'SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE',
+              'TOO_SMALL_SPEND_MORE', 'TOO SMALL SPEND MORE',
+              'TOO_POOR_SPEND_MORE', 'TOO POOR SPEND MORE'
+            )
+        )
+      ON CONFLICT(fid, code) DO UPDATE SET
+        priority = excluded.priority,
+        status = CASE
+          WHEN redemption_queue.status IN ('failed', 'pending') THEN 'pending'
+          ELSE redemption_queue.status
+        END
     `);
     return stmt.run(priority);
   },
 
   getPending: (limit: number): QueueItem[] => {
     const stmt = db.prepare(`
-      SELECT * FROM redemption_queue 
-      WHERE status = 'pending' 
-      ORDER BY priority DESC, created_at ASC 
+      SELECT * FROM redemption_queue
+      WHERE status = 'pending'
+      ORDER BY priority DESC, created_at ASC
       LIMIT ?
     `);
     return stmt.all(limit) as QueueItem[];
+  },
+
+  getPendingByFid: (fid: string, limit: number): QueueItem[] => {
+    const stmt = db.prepare(`
+      SELECT * FROM redemption_queue
+      WHERE status = 'pending' AND fid = ?
+      ORDER BY priority DESC, created_at ASC
+      LIMIT ?
+    `);
+    return stmt.all(fid, limit) as QueueItem[];
   },
 
   updateStatus: (id: number, status: string, errorMessage?: string) => {

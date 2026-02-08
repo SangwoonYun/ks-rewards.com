@@ -1,57 +1,55 @@
-﻿/**
+/**
  * Centralized configuration management
- * All environment variables are loaded from .env file
+ * Uses Nuxt runtimeConfig so env vars can be overridden at runtime
+ * with the NUXT_ prefix (e.g. NUXT_DB_PATH, NUXT_KS_ENCRYPT_KEY)
  */
 
-// Helper to get optional env variable with default
-function getEnv(key: string, defaultValue: string): string {
-  return process.env[key] || defaultValue;
+export function getConfig() {
+  const rc = useRuntimeConfig();
+
+  return {
+    nodeEnv: process.env.NODE_ENV || 'development',
+    port: parseInt(String(process.env.PORT || '3000'), 10),
+
+    db: {
+      path: rc.dbPath as string,
+    },
+
+    kingshot: {
+      loginUrl: rc.ksLoginUrl as string,
+      redeemUrl: rc.ksRedeemUrl as string,
+      encryptKey: rc.ksEncryptKey as string,
+    },
+
+    giftCodeApi: {
+      url: rc.giftCodeApiUrl as string,
+      key: rc.giftCodeApiKey as string,
+    },
+
+    retry: {
+      maxRetries: parseInt(String(rc.maxRetries), 10),
+      retryDelayMs: parseInt(String(rc.retryDelayMs), 10),
+      minRequestIntervalMs: parseInt(String(rc.minRequestIntervalMs), 10),
+      redeemDelayMs: parseInt(String(rc.redeemDelayMs), 10),
+    },
+
+    scheduler: {
+      redemptionIntervalMinutes: parseInt(String(rc.redemptionIntervalMinutes), 10),
+      discoveryIntervalMinutes: parseInt(String(rc.discoveryIntervalMinutes), 10),
+      backupIntervalHours: parseInt(String(rc.backupIntervalHours), 10),
+    },
+  } as const;
 }
 
-// Helper to parse integer with default
-function getIntEnv(key: string, defaultValue: number): number {
-  const value = process.env[key];
-  if (!value) return defaultValue;
-  const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? defaultValue : parsed;
-}
+// Backward-compatible export: lazy singleton
+// Works in Nitro server context where useRuntimeConfig() is available
+let _config: ReturnType<typeof getConfig> | null = null;
 
-export const config = {
-  // Environment
-  nodeEnv: getEnv('NODE_ENV', 'development'),
-  port: getIntEnv('PORT', 3000),
-
-  // Database
-  db: {
-    path: getEnv('DB_PATH', './data/ks-rewards.db'),
+export const config = new Proxy({} as ReturnType<typeof getConfig>, {
+  get(_target, prop) {
+    if (!_config) {
+      _config = getConfig();
+    }
+    return (_config as any)[prop];
   },
-
-  // Kingshot API
-  kingshot: {
-    loginUrl: getEnv('KS_LOGIN_URL', 'https://kingshot-giftcode.centurygame.com/api/player'),
-    redeemUrl: getEnv('KS_REDEEM_URL', 'https://kingshot-giftcode.centurygame.com/api/gift_code'),
-    encryptKey: getEnv('KS_ENCRYPT_KEY', 'mN4!pQs6JrYwV9'),
-  },
-
-  // Gift Code API
-  giftCodeApi: {
-    url: getEnv('GIFTCODE_API_URL', 'http://ks-gift-code-api.whiteout-bot.com/giftcode_api.php'),
-    key: getEnv('GIFTCODE_API_KEY', 'super_secret_bot_token_nobody_will_ever_find'),
-  },
-
-  // Retry Configuration
-  retry: {
-    maxRetries: getIntEnv('MAX_RETRIES', 5),
-    retryDelayMs: getIntEnv('RETRY_DELAY_MS', 2000),
-    minRequestIntervalMs: getIntEnv('MIN_REQUEST_INTERVAL_MS', 3000),
-    redeemDelayMs: getIntEnv('REDEEM_DELAY_MS', 2000),
-  },
-
-  // Scheduler Configuration
-  scheduler: {
-    redemptionIntervalMinutes: getIntEnv('REDEMPTION_INTERVAL_MINUTES', 2),
-    discoveryIntervalMinutes: getIntEnv('DISCOVERY_INTERVAL_MINUTES', 15),
-    backupIntervalHours: getIntEnv('BACKUP_INTERVAL_HOURS', 6),
-  },
-} as const;
-
+});
