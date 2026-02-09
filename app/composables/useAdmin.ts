@@ -4,7 +4,14 @@ export function useAdmin() {
 
   async function checkAuth(): Promise<boolean> {
     try {
-      await $fetch('/api/admin/auth/me');
+      const headers: Record<string, string> = {};
+      if (import.meta.server) {
+        const cookies = useRequestHeaders(['cookie']);
+        if (cookies.cookie) {
+          headers.cookie = cookies.cookie;
+        }
+      }
+      await $fetch('/api/admin/auth/me', { headers });
       isAuthenticated.value = true;
       return true;
     } catch {
