@@ -15,6 +15,18 @@
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
       </select>
+      <button
+        class="action-btn btn-apply-all"
+        :disabled="applyingAll"
+        @click="applyAllCodes"
+      >
+        {{ applyingAll ? 'Applying...' : 'Apply All Codes' }}
+      </button>
+    </div>
+
+    <div v-if="applyAllResult" class="result-banner" :class="applyAllResult.success ? 'result-success' : 'result-error'">
+      {{ applyAllResult.message }}
+      <button class="dismiss-btn" @click="applyAllResult = null">&times;</button>
     </div>
 
     <div class="info-bar">
@@ -44,7 +56,7 @@
               </span>
             </td>
             <td>{{ formatDate(user.created_at) }}</td>
-            <td>
+            <td class="actions-cell">
               <button
                 class="action-btn"
                 :class="user.active ? 'btn-deactivate' : 'btn-activate'"
@@ -53,6 +65,17 @@
               >
                 {{ user.active ? 'Deactivate' : 'Activate' }}
               </button>
+              <button
+                v-if="user.active"
+                class="action-btn btn-apply"
+                :disabled="applying === user.fid"
+                @click="applyCodes(user)"
+              >
+                {{ applying === user.fid ? 'Applying...' : 'Apply Codes' }}
+              </button>
+              <span v-if="applyResults[user.fid]" class="apply-result" :class="applyResults[user.fid].success ? 'text-success' : 'text-error'">
+                {{ applyResults[user.fid].message }}
+              </span>
             </td>
           </tr>
           <tr v-if="users.length === 0 && !loading">
@@ -79,6 +102,10 @@ const statusFilter = ref('');
 const users = ref<User[]>([]);
 const loading = ref(true);
 const toggling = ref<string | null>(null);
+const applying = ref<string | null>(null);
+const applyResults = ref<Record<string, { success: boolean; message: string }>>({});
+const applyingAll = ref(false);
+const applyAllResult = ref<{ success: boolean; message: string } | null>(null);
 
 let debounceTimer: ReturnType<typeof setTimeout>;
 
@@ -115,6 +142,54 @@ async function toggleUser(user: User) {
   }
 }
 
+async function applyCodes(user: User) {
+  applying.value = user.fid;
+  delete applyResults.value[user.fid];
+  try {
+    const res = await $fetch(`/api/admin/users/${user.fid}/apply-codes`, { method: 'POST' }) as any;
+    applyResults.value[user.fid] = {
+      success: res.success,
+      message: res.queuedCount === 0
+        ? 'No codes to apply'
+        : `${res.redeemedCount}/${res.queuedCount} applied`,
+    };
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+      delete applyResults.value[user.fid];
+    }, 5000);
+  } catch (e: any) {
+    applyResults.value[user.fid] = {
+      success: false,
+      message: 'Failed to apply codes',
+    };
+  } finally {
+    applying.value = null;
+  }
+}
+
+async function applyAllCodes() {
+  if (!confirm('Apply all validated gift codes to all active users? This may take a while.')) return;
+
+  applyingAll.value = true;
+  applyAllResult.value = null;
+  try {
+    const res = await $fetch('/api/admin/users/apply-all', { method: 'POST' }) as any;
+    applyAllResult.value = {
+      success: res.success,
+      message: res.queuedCount === 0
+        ? 'No unredeemed codes to apply'
+        : `Queued ${res.queuedCount}, processed ${res.processed} (${res.successCount} success, ${res.failedCount} failed)`,
+    };
+  } catch (e: any) {
+    applyAllResult.value = {
+      success: false,
+      message: 'Failed to apply codes for all users',
+    };
+  } finally {
+    applyingAll.value = false;
+  }
+}
+
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString();
 }
@@ -139,6 +214,7 @@ onMounted(fetchUsers);
   gap: 12px;
   margin-bottom: 16px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .search-input {
@@ -242,6 +318,13 @@ onMounted(fetchUsers);
   color: #E06A6A;
 }
 
+.actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .action-btn {
   padding: 6px 12px;
   border: none;
@@ -251,6 +334,7 @@ onMounted(fetchUsers);
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .action-btn:disabled {
@@ -274,5 +358,69 @@ onMounted(fetchUsers);
 
 .btn-activate:hover:not(:disabled) {
   background: rgba(107, 142, 35, 0.25);
+}
+
+.btn-apply {
+  background: rgba(70, 130, 180, 0.12);
+  color: #4682B4;
+}
+
+.btn-apply:hover:not(:disabled) {
+  background: rgba(70, 130, 180, 0.25);
+}
+
+.btn-apply-all {
+  background: rgba(70, 130, 180, 0.15);
+  color: #4682B4;
+  padding: 10px 18px;
+  font-size: 0.85rem;
+}
+
+.btn-apply-all:hover:not(:disabled) {
+  background: rgba(70, 130, 180, 0.3);
+}
+
+.apply-result {
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.text-success {
+  color: #6B8E23;
+}
+
+.text-error {
+  color: #E06A6A;
+}
+
+.result-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.result-success {
+  background: rgba(107, 142, 35, 0.12);
+  color: #6B8E23;
+}
+
+.result-error {
+  background: rgba(224, 106, 106, 0.12);
+  color: #E06A6A;
+}
+
+.dismiss-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: inherit;
+  padding: 0 4px;
+  line-height: 1;
 }
 </style>
