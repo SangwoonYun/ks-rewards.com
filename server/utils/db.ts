@@ -80,17 +80,17 @@ export const users = {
   },
 
   findByFid: (fid: string): User | undefined => {
-    const stmt = db.prepare('SELECT * FROM users WHERE fid = ?');
+    const stmt = db.prepare("SELECT *, (created_at || 'Z') AS created_at, (updated_at || 'Z') AS updated_at FROM users WHERE fid = ?");
     return stmt.get(fid) as User | undefined;
   },
 
   findAll: (): User[] => {
-    const stmt = db.prepare('SELECT * FROM users ORDER BY created_at DESC');
+    const stmt = db.prepare("SELECT *, (created_at || 'Z') AS created_at, (updated_at || 'Z') AS updated_at FROM users ORDER BY created_at DESC");
     return stmt.all() as User[];
   },
 
   findActive: (): User[] => {
-    const stmt = db.prepare('SELECT * FROM users WHERE active = 1 ORDER BY created_at DESC');
+    const stmt = db.prepare("SELECT *, (created_at || 'Z') AS created_at, (updated_at || 'Z') AS updated_at FROM users WHERE active = 1 ORDER BY created_at DESC");
     return stmt.all() as User[];
   },
 
@@ -118,7 +118,7 @@ export const users = {
 export const giftCodes = {
   findAll: (limit?: number): GiftCode[] => {
     const sql = `
-      SELECT * FROM gift_codes 
+      SELECT *, (date_discovered || 'Z') AS date_discovered FROM gift_codes
       ORDER BY date_discovered DESC
       ${limit ? ' LIMIT ?' : ''}
     `;
@@ -127,12 +127,12 @@ export const giftCodes = {
   },
 
   findByCode: (code: string): GiftCode | undefined => {
-    const stmt = db.prepare('SELECT * FROM gift_codes WHERE code = ?');
+    const stmt = db.prepare("SELECT *, (date_discovered || 'Z') AS date_discovered FROM gift_codes WHERE code = ?");
     return stmt.get(code) as GiftCode | undefined;
   },
 
   findByStatus: (status: string): GiftCode[] => {
-    const stmt = db.prepare('SELECT * FROM gift_codes WHERE validation_status = ? ORDER BY date_discovered DESC');
+    const stmt = db.prepare("SELECT *, (date_discovered || 'Z') AS date_discovered FROM gift_codes WHERE validation_status = ? ORDER BY date_discovered DESC");
     return stmt.all(status) as GiftCode[];
   },
 
@@ -177,7 +177,7 @@ export const giftCodes = {
 
   findValid: (): GiftCode[] => {
     const stmt = db.prepare(`
-      SELECT * FROM gift_codes 
+      SELECT *, (date_discovered || 'Z') AS date_discovered FROM gift_codes
       WHERE validation_status = 'validated'
       ORDER BY date_discovered DESC
     `);
@@ -187,34 +187,34 @@ export const giftCodes = {
 
 export const redemptions = {
   findAll: (): Redemption[] => {
-    const stmt = db.prepare('SELECT * FROM redemptions ORDER BY redeemed_at DESC');
+    const stmt = db.prepare("SELECT *, (redeemed_at || 'Z') AS redeemed_at FROM redemptions ORDER BY redeemed_at DESC");
     return stmt.all() as Redemption[];
   },
 
   findByCode: (code: string): Redemption[] => {
-    const stmt = db.prepare('SELECT * FROM redemptions WHERE code = ? ORDER BY redeemed_at DESC');
+    const stmt = db.prepare("SELECT *, (redeemed_at || 'Z') AS redeemed_at FROM redemptions WHERE code = ? ORDER BY redeemed_at DESC");
     return stmt.all(code) as Redemption[];
   },
 
   findByFid: (fid: string): Redemption[] => {
-    const stmt = db.prepare('SELECT * FROM redemptions WHERE fid = ? ORDER BY redeemed_at DESC');
+    const stmt = db.prepare("SELECT *, (redeemed_at || 'Z') AS redeemed_at FROM redemptions WHERE fid = ? ORDER BY redeemed_at DESC");
     return stmt.all(fid) as Redemption[];
   },
 
   findRecent: (limit: number = 50): Redemption[] => {
     const stmt = db.prepare(`
-      SELECT r.*, u.nickname, u.kingdom, u.avatar_url 
-      FROM redemptions r 
-      LEFT JOIN users u ON r.fid = u.fid 
+      SELECT r.*, (r.redeemed_at || 'Z') AS redeemed_at, u.nickname, u.kingdom, u.avatar_url
+      FROM redemptions r
+      LEFT JOIN users u ON r.fid = u.fid
       WHERE r.status = 'SUCCESS'
-      ORDER BY r.redeemed_at DESC 
+      ORDER BY r.redeemed_at DESC
       LIMIT ?
     `);
     return stmt.all(limit) as Redemption[];
   },
 
   findByFidAndCode: (fid: string, code: string): Redemption | undefined => {
-    const stmt = db.prepare('SELECT * FROM redemptions WHERE fid = ? AND code = ? ORDER BY redeemed_at DESC LIMIT 1');
+    const stmt = db.prepare("SELECT *, (redeemed_at || 'Z') AS redeemed_at FROM redemptions WHERE fid = ? AND code = ? ORDER BY redeemed_at DESC LIMIT 1");
     return stmt.get(fid, code) as Redemption | undefined;
   },
 
@@ -273,7 +273,8 @@ export const queue = {
 
   getPending: (limit: number): QueueItem[] => {
     const stmt = db.prepare(`
-      SELECT * FROM redemption_queue
+      SELECT *, (created_at || 'Z') AS created_at, (updated_at || 'Z') AS updated_at
+      FROM redemption_queue
       WHERE status = 'pending'
       ORDER BY priority DESC, created_at ASC
       LIMIT ?
@@ -283,7 +284,8 @@ export const queue = {
 
   getPendingByFid: (fid: string, limit: number): QueueItem[] => {
     const stmt = db.prepare(`
-      SELECT * FROM redemption_queue
+      SELECT *, (created_at || 'Z') AS created_at, (updated_at || 'Z') AS updated_at
+      FROM redemption_queue
       WHERE status = 'pending' AND fid = ?
       ORDER BY priority DESC, created_at ASC
       LIMIT ?
@@ -310,7 +312,32 @@ export const queue = {
   deleteByCode: (code: string) => {
     const stmt = db.prepare('DELETE FROM redemption_queue WHERE code = ?');
     return stmt.run(code);
-  }
+  },
+
+  getAll: (limit: number = 200): QueueItem[] => {
+    const stmt = db.prepare(`
+      SELECT *, (created_at || 'Z') AS created_at, (updated_at || 'Z') AS updated_at
+      FROM redemption_queue
+      ORDER BY updated_at DESC
+      LIMIT ?
+    `);
+    return stmt.all(limit) as QueueItem[];
+  },
+
+  countPending: (): number => {
+    const stmt = db.prepare(`SELECT COUNT(*) as count FROM redemption_queue WHERE status = 'pending'`);
+    const result = stmt.get() as { count: number };
+    return result.count;
+  },
+
+  resetToPending: (id: number) => {
+    const stmt = db.prepare(`
+      UPDATE redemption_queue
+      SET status = 'pending', error_message = NULL, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND status IN ('failed', 'processing')
+    `);
+    return stmt.run(id);
+  },
 };
 
 // Run migrations on startup

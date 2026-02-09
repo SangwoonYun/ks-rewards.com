@@ -38,6 +38,12 @@ export function getConfig() {
       discoveryIntervalMinutes: parseInt(String(rc.discoveryIntervalMinutes), 10),
       backupIntervalHours: parseInt(String(rc.backupIntervalHours), 10),
     },
+
+    admin: {
+      username: rc.adminUsername as string,
+      password: rc.adminPassword as string,
+      jwtSecret: rc.adminJwtSecret as string,
+    },
   } as const;
 }
 

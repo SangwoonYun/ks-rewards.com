@@ -26,5 +26,9 @@
       - NUXT_REDEMPTION_INTERVAL_MINUTES=15
       - NUXT_DISCOVERY_INTERVAL_MINUTES=5
       - NUXT_BACKUP_INTERVAL_HOURS=6
+      # Admin credentials
+      - NUXT_ADMIN_USERNAME=admin
+      - NUXT_ADMIN_PASSWORD=change-me
+      - NUXT_ADMIN_JWT_SECRET=change-me-in-production-to-a-random-64-char-string
     restart: unless-stopped
 networks: {}

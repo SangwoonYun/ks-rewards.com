@@ -46,6 +46,9 @@ export default defineNuxtConfig({
     discoveryIntervalMinutes: '15',
     redemptionIntervalMinutes: '2',
     backupIntervalHours: '6',
+    adminUsername: 'admin',
+    adminPassword: '',
+    adminJwtSecret: 'change-me-in-production',
     public: {}
   }
 })
