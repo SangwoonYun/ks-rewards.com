@@ -1,17 +1,17 @@
 ﻿<template>
   <div class="container">
     <header class="site-header">
-      <h1>Kingshot Rewards — Automatic Gift Code Redemption</h1>
+      <h1>Kingshot Rewards — 자동 기프트 코드 수령</h1>
     </header>
 
     <section class="controls">
       <div class="field">
-        <label for="playerId">Player ID(s)</label>
+        <label for="playerId">플레이어 ID</label>
         <input
           id="playerId"
           v-model="playerInput"
           type="text"
-          placeholder="Enter one or more Player IDs separated by commas (e.g. 12345678, 23456789)"
+          placeholder="쉼표로 구분하여 여러 플레이어 ID 입력 (예: 12345678, 23456789)"
           @keyup.enter="registerPlayer"
         />
       </div>
@@ -23,7 +23,7 @@
           :disabled="isRegistering"
           @click="registerPlayer"
         >
-          {{ isRegistering ? 'Registering...' : 'Register for Auto Redemption' }}
+          {{ isRegistering ? '등록 중...' : '자동 수령 등록' }}
         </button>
       </div>
 
@@ -32,19 +32,19 @@
 
     <section class="info">
       <h2>About</h2>
-      <p><strong>What it does:</strong> This service monitors for new Kingshot gift codes and automatically redeems them for you. Whenever a new code appears the website will redeem it on your behalf. No need to manually redeem gift codes anymore!</p>
-      <p><strong>How to register:</strong> Simply enter your Player ID(s) and click on the Register button. Once done you will stay registered even after closing the website. You will see new gift code rewards appear in your game mail whenever a new code gets released.</p>
-      <p><strong>To find your Player ID:</strong> Open the game → Profile → Info. Your Player ID appears under your name.</p>
+      <p><strong>기능:</strong> Kingshot 기프트 코드를 자동으로 감지하여 등록된 플레이어 ID로 즉시 수령합니다.</p>
+      <p><strong>등록 방법:</strong> 플레이어 ID를 입력 후 등록 버튼을 누르세요. 이후 사이트를 닫아도 계속 자동 수령됩니다.</p>
+      <p><strong>플레이어 ID 확인:</strong> 게임 실행 → 프로필 → 정보 탭에서 이름 아래 표시됩니다.</p>
       <div class="disclaimer" role="note" aria-label="Disclaimer">
         <!-- Use Material Symbols glyph via CSS pseudo-element (no inline text to select) -->
         <span class="disclaimer-icon material-symbols-outlined" aria-hidden="true"></span>
         <div class="disclaimer-content">
           <div class="disclaimer-title"><strong>Disclaimer</strong></div>
-          <p>To respect Kingshot's rate limits we process registrations and redemptions through a queue. During busy times this can cause noticeable delays. Please read the points below so you know what to expect.</p>
+          <p>Kingshot 서버의 요청 제한을 준수하기 위해 모든 등록 및 수령은 큐 기반으로 처리됩니다.</p>
           <ul>
-            <li>Initial registration and any immediate redemptions can take a few minutes.</li>
-            <li>When many players are registered, redeeming newly discovered codes may be delayed.</li>
-            <li>If the issue grows too big then a known fix will be implemented to deal with this problem.</li>
+            <li>초기 등록 및 즉시 수령은 몇 분 정도 소요될 수 있습니다.</li>
+            <li>등록 인원이 많을 경우 새 코드 수령이 지연될 수 있습니다.</li>
+            <li>지연이 과도해질 경우 개선 로직이 적용될 예정입니다.</li>
           </ul>
         </div>
       </div>
@@ -52,7 +52,7 @@
 
     <section class="info">
       <h2>Contact</h2>
-      <p>If you have any feedback or want your Player ID removed from the redemption list, feel free to contact me at <a href="mailto:contact@ks-rewards.com">contact@ks-rewards.com</a></p>
+      <p>피드백 또는 플레이어 ID 삭제 요청은 <a href="mailto:dev.swyun@gmail.com">dev.swyun@gmail.com</a>으로 연락 주세요.</p>
     </section>
 
     <section class="live">
@@ -65,18 +65,18 @@
                 <span class="code-tile-code">{{ code.code }}</span>
               </div>
               <div :class="['code-tile-status', code.validation_status === 'expired' ? 'expired' : 'active']">
-                {{ code.validation_status === 'expired' ? 'Expired' : 'Active' }}
+                {{ code.validation_status === 'expired' ? '만료됨' : '사용 가능' }}
               </div>
             </div>
           </template>
           <template v-else>
-            <div class="empty-message">No codes yet.</div>
+            <div class="empty-message">등록된 코드가 없습니다.</div>
           </template>
         </div>
       </div>
 
       <div class="panel">
-        <h3>Recent Redemptions</h3>
+        <h3>최근 수령 내역</h3>
         <div id="redemptions" :class="['redemptions-grid', { empty: redemptions.length === 0 }]">
           <template v-if="redemptions.length > 0">
             <div
@@ -101,13 +101,13 @@
                 <div class="redemption-details">
                   <span class="redemption-code">{{ redemption.code }}</span>
                   <span class="redemption-separator">•</span>
-                  <span class="redemption-time">{{ formatTime(redemption.redeemed_at) }} UTC</span>
+                  <span class="redemption-time">{{ formatTimeKST(redemption.redeemed_at) }} KST</span>
                 </div>
               </div>
             </div>
           </template>
           <template v-else>
-            <div class="empty-message">No redemptions yet.</div>
+            <div class="empty-message">아직 수령 기록이 없습니다.</div>
           </template>
         </div>
       </div>
@@ -183,30 +183,45 @@ const codesStats = ref<CodesStats>({
 
 // Add SEO meta tags and structured data for the homepage
 useHead({
-   title: 'Kingshot Rewards — Automatic Gift Code Redemption',
-   meta: [
-    { name: 'description', content: 'Kingshot Rewards monitors Kingshot gift codes and automatically redeems them for registered Player IDs. Register your Player ID to let the site redeem codes for you.' },
-    { name: 'keywords', content: 'kingshot gift codes, kingshot codes, kingshot rewards, auto redeem, giftcodes' },
+  title: 'Kingshot Rewards — 자동 기프트 코드 수령 서비스',
+  meta: [
+    {
+      name: 'description',
+      content: 'Kingshot Rewards는 Kingshot 기프트 코드를 자동으로 감지하고 등록된 플레이어 ID로 즉시 수령해주는 서비스입니다. 플레이어 ID를 등록하면 더 이상 수동으로 코드를 입력할 필요가 없습니다.'
+    },
+    {
+      name: 'keywords',
+      content: 'kingshot gift codes, kingshot codes, kingshot rewards, 자동 수령, 기프트코드, 킹샷 코드'
+    },
     { name: 'robots', content: 'index,follow' },
-    { property: 'og:title', content: 'Kingshot Rewards — Automatic Gift Code Redemption' },
-    { property: 'og:description', content: 'Monitor Kingshot gift codes and have them redeemed automatically for your registered Player IDs.' },
+
+    { property: 'og:title', content: 'Kingshot Rewards — 자동 기프트 코드 수령' },
+    {
+      property: 'og:description',
+      content: 'Kingshot 기프트 코드를 자동으로 감지하여 등록된 플레이어 ID로 즉시 수령합니다.'
+    },
     { property: 'og:type', content: 'website' },
     { property: 'og:url', content: 'https://ks-rewards.com/' },
     { property: 'og:image', content: 'https://ks-rewards.com/favicon.ico' },
+
     { name: 'twitter:card', content: 'summary' },
-    { name: 'twitter:title', content: 'Kingshot Rewards — Automatic Gift Code Redemption' },
-    { name: 'twitter:description', content: 'Monitor Kingshot gift codes and have them redeemed automatically for your registered Player IDs.' }
+    { name: 'twitter:title', content: 'Kingshot Rewards — 자동 기프트 코드 수령' },
+    {
+      name: 'twitter:description',
+      content: 'Kingshot 기프트 코드를 자동으로 감지하고 등록된 플레이어 ID로 즉시 수령합니다.'
+    }
   ],
+
   link: [
-    // Preconnect and stylesheet for Google Material Symbols
     { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
     { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-    // Variable icon font (recommended): provides axes ranges so icons can be tuned via CSS
+
     { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=info' },
-    // Static icon font fallback (loads a single instance of the icon glyphs with fixed axes)
     { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=info' },
+
     { rel: 'canonical', href: 'https://ks-rewards.com/' }
   ],
+
   script: [
     ({
       type: 'application/ld+json',
@@ -215,7 +230,7 @@ useHead({
         "@type": "WebSite",
         "name": "Kingshot Rewards",
         "url": "https://ks-rewards.com/",
-        "description": "Automatically discovers and redeems Kingshot gift codes for registered Player IDs.",
+        "description": "Kingshot 기프트 코드를 자동으로 감지하여 등록된 플레이어 ID로 즉시 수령해주는 서비스입니다.",
         "potentialAction": {
           "@type": "SearchAction",
           "target": "https://ks-rewards.com/?q={search_term_string}",
@@ -223,6 +238,7 @@ useHead({
         }
       })
     } as any),
+
     ({
       type: 'application/ld+json',
       children: JSON.stringify({
@@ -232,8 +248,8 @@ useHead({
         "url": "https://ks-rewards.com/",
         "contactPoint": [{
           "@type": "ContactPoint",
-          "email": "contact@ks-rewards.com",
-          "contactType": "customer support"
+          "email": "dev.swyun@gmail.com",
+          "contactType": "고객 지원"
         }]
       })
     } as any)
@@ -257,8 +273,20 @@ const displayedCodes = computed(() => {
 
 
 // Helper functions
-const formatTime = (time: string) => {
-  return new Date(time).toLocaleTimeString();
+const formatTimeKST = (time: string) => {
+  if (!time) return '';
+  const date = new Date(time); // ISO 8601 UTC format from API
+
+  return new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).format(date);
 };
 
 // API functions
@@ -304,7 +332,7 @@ async function fetchRedemptions() {
 async function registerPlayer() {
   const input = playerInput.value.trim();
   if (!input) {
-    statusMessage.value = 'Please enter at least one player ID';
+    statusMessage.value = '플레이어 ID를 최소 1개 이상 입력해 주세요.';
     statusType.value = 'error';
     return;
   }
@@ -313,7 +341,7 @@ async function registerPlayer() {
   const fids = input.split(',').map(f => f.trim()).filter(f => f);
 
   if (fids.length === 0) {
-    statusMessage.value = 'Please enter at least one valid player ID';
+    statusMessage.value = '유효한 플레이어 ID를 최소 1개 이상 입력해 주세요.';
     statusType.value = 'error';
     return;
   }
@@ -321,14 +349,14 @@ async function registerPlayer() {
   // Validate all are numeric
   for (const fid of fids) {
     if (!/^\d+$/.test(fid)) {
-      statusMessage.value = `Invalid player ID: ${fid}. Player IDs must be numeric.`;
+      statusMessage.value = `잘못된 플레이어 ID: ${fid}. 플레이어 ID는 숫자만 가능합니다.`;
       statusType.value = 'error';
       return;
     }
   }
 
   isRegistering.value = true;
-  statusMessage.value = `Registering ${fids.length} player ID(s)... - This may take a few minutes`;
+  statusMessage.value = `${fids.length}개 플레이어 ID 등록 중... (최대 몇 분 소요될 수 있습니다)`;
   statusType.value = '';
 
   let successCount = 0;
@@ -345,19 +373,19 @@ async function registerPlayer() {
 
         if (response.success) {
           if (response.alreadyRegistered) {
-            results.push(`${fid}: Already registered`);
+            results.push(`${fid}: 이미 등록됨`);
           } else if (response.redeemedCount) {
-            results.push(`${fid}: Registered, successfully redeemed ${response.redeemedCount} code${response.redeemedCount !== 1 ? 's' : ''}`);
+            results.push(`${fid}: 등록 완료, 코드 ${response.redeemedCount}개 수령 성공`);
           } else {
-            results.push(`${fid}: Registered`);
+            results.push(`${fid}: 등록 완료`);
           }
           successCount++;
         } else {
-          results.push(`${fid}: Failed - ${response.error || 'Unknown error'}`);
+          results.push(`${fid}: 실패 - ${response.error || '알 수 없는 오류'}`);
           failCount++;
         }
       } catch (error: any) {
-        results.push(`${fid}: Error - ${error.message || String(error)}`);
+        results.push(`${fid}: 오류 - ${error.message || String(error)}`);
         failCount++;
       }
     }
@@ -367,7 +395,7 @@ async function registerPlayer() {
       playerInput.value = ''; // Clear input on success
 
       // Wait a moment to let immediate redemptions complete, then refresh
-      statusMessage.value += ' Refreshing redemptions...';
+      statusMessage.value += ' 수령 내역 갱신 중...';
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       // Refresh data
@@ -375,13 +403,14 @@ async function registerPlayer() {
       await fetchRedemptions();
 
       // Show a concise summary plus the per-fid results so users see what happened
-      const summary = `✅ ${successCount} player(s) registered successfully`;
+      const summary = `✅ ${successCount}명(건) 등록 완료`;
       statusMessage.value = results.length > 0 ? `${summary}: [${results.join(', ')}]` : summary;
     } else {
       statusType.value = 'error';
+      if (!statusMessage.value) statusMessage.value = '등록에 실패했습니다.';
     }
   } catch (error: any) {
-    statusMessage.value = `Registration error: ${error.message || String(error)}`;
+    statusMessage.value = `등록 처리 중 오류: ${error.message || String(error)}`;
     statusType.value = 'error';
   } finally {
     isRegistering.value = false;
