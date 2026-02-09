@@ -51,6 +51,16 @@ export interface Setting {
   updated_at: string;
 }
 
+export interface PriorityUser {
+  fid: string;
+  priority: number;
+  added_at: string;
+  nickname?: string | null;
+  kingdom?: string | null;
+  avatar_url?: string | null;
+  active?: number;
+}
+
 // Create data directory if it doesn't exist
 const dataDir = path.join(process.cwd(), 'data');
 if (!fs.existsSync(dataDir)) {
@@ -230,11 +240,11 @@ export const redemptions = {
 export const queue = {
   add: (fid: string, code: string, priority: number = 0) => {
     const stmt = db.prepare(`
-      INSERT INTO redemption_queue (fid, code, priority, status, attempts) 
+      INSERT INTO redemption_queue (fid, code, priority, status, attempts)
       VALUES (?, ?, ?, 'pending', 0)
       ON CONFLICT(fid, code) DO UPDATE SET
-        priority = excluded.priority,
-        status = CASE 
+        priority = MAX(redemption_queue.priority, excluded.priority),
+        status = CASE
           WHEN redemption_queue.status = 'processing' THEN redemption_queue.status
           ELSE 'pending'
         END
@@ -244,12 +254,14 @@ export const queue = {
 
   // Bulk queue: add all combinations of active users and validated codes
   // Excludes users who already succeeded or permanently failed for a given code
+  // Respects priority_users table: priority users get their configured priority
   bulkQueueValidatedForUsers: (priority: number = 0) => {
     const stmt = db.prepare(`
       INSERT INTO redemption_queue (fid, code, priority, status, attempts)
-      SELECT u.fid, g.code, ?, 'pending', 0
+      SELECT u.fid, g.code, COALESCE(pu.priority, ?), 'pending', 0
       FROM users u
       CROSS JOIN gift_codes g
+      LEFT JOIN priority_users pu ON u.fid = pu.fid
       WHERE u.active = 1
         AND g.validation_status = 'validated'
         AND NOT EXISTS (
@@ -262,7 +274,7 @@ export const queue = {
             )
         )
       ON CONFLICT(fid, code) DO UPDATE SET
-        priority = excluded.priority,
+        priority = MAX(redemption_queue.priority, excluded.priority),
         status = CASE
           WHEN redemption_queue.status IN ('failed', 'pending') THEN 'pending'
           ELSE redemption_queue.status
@@ -337,6 +349,66 @@ export const queue = {
       WHERE id = ? AND status IN ('failed', 'processing')
     `);
     return stmt.run(id);
+  },
+
+  getPriorityItems: (limit: number = 200): QueueItem[] => {
+    const stmt = db.prepare(`
+      SELECT *, (created_at || 'Z') AS created_at, (updated_at || 'Z') AS updated_at
+      FROM redemption_queue
+      WHERE priority > 0
+      ORDER BY priority DESC, created_at ASC
+      LIMIT ?
+    `);
+    return stmt.all(limit) as QueueItem[];
+  },
+};
+
+export const priorityUsers = {
+  add: (fid: string, priority: number = 10) => {
+    const stmt = db.prepare(`
+      INSERT INTO priority_users (fid, priority)
+      VALUES (?, ?)
+      ON CONFLICT(fid) DO UPDATE SET
+        priority = excluded.priority,
+        added_at = CURRENT_TIMESTAMP
+    `);
+    return stmt.run(fid, priority);
+  },
+
+  remove: (fid: string) => {
+    const stmt = db.prepare('DELETE FROM priority_users WHERE fid = ?');
+    return stmt.run(fid);
+  },
+
+  findByFid: (fid: string): PriorityUser | undefined => {
+    const stmt = db.prepare(`
+      SELECT pu.*, (pu.added_at || 'Z') AS added_at, u.nickname, u.kingdom, u.avatar_url, u.active
+      FROM priority_users pu
+      LEFT JOIN users u ON pu.fid = u.fid
+      WHERE pu.fid = ?
+    `);
+    return stmt.get(fid) as PriorityUser | undefined;
+  },
+
+  findAll: (): PriorityUser[] => {
+    const stmt = db.prepare(`
+      SELECT pu.*, (pu.added_at || 'Z') AS added_at, u.nickname, u.kingdom, u.avatar_url, u.active
+      FROM priority_users pu
+      LEFT JOIN users u ON pu.fid = u.fid
+      ORDER BY pu.priority DESC, pu.added_at ASC
+    `);
+    return stmt.all() as PriorityUser[];
+  },
+
+  getAllFids: (): string[] => {
+    const stmt = db.prepare('SELECT fid FROM priority_users');
+    return (stmt.all() as { fid: string }[]).map(r => r.fid);
+  },
+
+  getPriorityForFid: (fid: string): number => {
+    const stmt = db.prepare('SELECT priority FROM priority_users WHERE fid = ?');
+    const row = stmt.get(fid) as { priority: number } | undefined;
+    return row ? row.priority : 0;
   },
 };
 
@@ -450,6 +522,16 @@ export function runMigrations() {
         key TEXT PRIMARY KEY,
         value TEXT,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create priority_users table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS priority_users (
+        fid TEXT PRIMARY KEY,
+        priority INTEGER DEFAULT 10,
+        added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (fid) REFERENCES users(fid)
       )
     `);
 
