@@ -1,4 +1,4 @@
-﻿import { queue, redemptions, users, giftCodes, type User, type GiftCode, type Redemption, type QueueItem } from '../utils/db';
+﻿import { queue, redemptions, users, giftCodes, priorityUsers, type User, type GiftCode, type Redemption, type QueueItem } from '../utils/db';
 import {redeemGiftCode, validatePlayerId} from './kingshotApi';
 import { logger } from '../utils/logger';
 import { config } from '../utils/config';
@@ -375,13 +375,19 @@ export async function queueRedemptionsForCode(code: string, priority: number = 0
       'TOO_POOR_SPEND_MORE', 'TOO POOR SPEND MORE'
     ];
 
+    // Priority users get their configured priority (if higher than default)
+    const priorityFids = new Set(priorityUsers.getAllFids());
+
     for (const user of usersList) {
       const existing: Redemption | undefined = redemptions.findByFidAndCode(user.fid, code);
       if (existing && skipStatuses.includes(existing.status)) {
         continue;
       }
 
-      queue.add(user.fid, code, priority);
+      const userPriority = priorityFids.has(user.fid)
+        ? Math.max(priority, priorityUsers.getPriorityForFid(user.fid))
+        : priority;
+      queue.add(user.fid, code, userPriority);
       queuedCount++;
     }
 

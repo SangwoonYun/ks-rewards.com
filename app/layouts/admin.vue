@@ -17,6 +17,9 @@
         <NuxtLink to="/admin/redemptions" class="admin-nav-link" active-class="active">
           <span class="nav-icon">&#9632;</span> Redemptions
         </NuxtLink>
+        <NuxtLink to="/admin/priority" class="admin-nav-link" active-class="active">
+          <span class="nav-icon">&#9632;</span> Priority Queue
+        </NuxtLink>
       </nav>
       <div class="admin-sidebar-footer">
         <NuxtLink to="/" class="admin-nav-link back-link">

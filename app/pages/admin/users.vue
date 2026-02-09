@@ -73,6 +73,15 @@
               >
                 {{ applying === user.fid ? 'Applying...' : 'Apply Codes' }}
               </button>
+              <button
+                v-if="user.active"
+                class="action-btn"
+                :class="isPriorityUser(user.fid) ? 'btn-priority-remove' : 'btn-priority-add'"
+                :disabled="togglingPriority === user.fid"
+                @click="togglePriority(user)"
+              >
+                {{ togglingPriority === user.fid ? '...' : (isPriorityUser(user.fid) ? 'Remove Priority' : 'Add Priority') }}
+              </button>
               <span v-if="applyResults[user.fid]" class="apply-result" :class="applyResults[user.fid].success ? 'text-success' : 'text-error'">
                 {{ applyResults[user.fid].message }}
               </span>
@@ -106,6 +115,46 @@ const applying = ref<string | null>(null);
 const applyResults = ref<Record<string, { success: boolean; message: string }>>({});
 const applyingAll = ref(false);
 const applyAllResult = ref<{ success: boolean; message: string } | null>(null);
+const priorityFids = ref<Set<string>>(new Set());
+const togglingPriority = ref<string | null>(null);
+
+function isPriorityUser(fid: string) {
+  return priorityFids.value.has(fid);
+}
+
+async function fetchPriorityUsers() {
+  try {
+    const res: any = await $fetch('/api/admin/priority/queue');
+    priorityFids.value = new Set(res.registeredUsers.map((u: any) => u.fid));
+  } catch (e) {
+    console.error('Failed to fetch priority users:', e);
+  }
+}
+
+async function togglePriority(user: User) {
+  togglingPriority.value = user.fid;
+  try {
+    if (isPriorityUser(user.fid)) {
+      await $fetch('/api/admin/priority/remove', {
+        method: 'POST',
+        body: { fid: user.fid },
+      });
+      priorityFids.value.delete(user.fid);
+      priorityFids.value = new Set(priorityFids.value);
+    } else {
+      await $fetch('/api/admin/priority/add', {
+        method: 'POST',
+        body: { fid: user.fid },
+      });
+      priorityFids.value.add(user.fid);
+      priorityFids.value = new Set(priorityFids.value);
+    }
+  } catch (e) {
+    console.error('Failed to toggle priority:', e);
+  } finally {
+    togglingPriority.value = null;
+  }
+}
 
 let debounceTimer: ReturnType<typeof setTimeout>;
 
@@ -194,7 +243,10 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString();
 }
 
-onMounted(fetchUsers);
+onMounted(() => {
+  fetchUsers();
+  fetchPriorityUsers();
+});
 </script>
 
 <style scoped>
@@ -367,6 +419,24 @@ onMounted(fetchUsers);
 
 .btn-apply:hover:not(:disabled) {
   background: rgba(70, 130, 180, 0.25);
+}
+
+.btn-priority-add {
+  background: rgba(138, 43, 226, 0.12);
+  color: #8A2BE2;
+}
+
+.btn-priority-add:hover:not(:disabled) {
+  background: rgba(138, 43, 226, 0.25);
+}
+
+.btn-priority-remove {
+  background: rgba(138, 43, 226, 0.25);
+  color: #8A2BE2;
+}
+
+.btn-priority-remove:hover:not(:disabled) {
+  background: rgba(138, 43, 226, 0.12);
 }
 
 .btn-apply-all {
