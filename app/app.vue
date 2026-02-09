@@ -9,6 +9,8 @@
       <Link rel="stylesheet" href="/styles.css" />
     </Head>
     <NuxtRouteAnnouncer />
-    <NuxtPage />
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
   </div>
 </template>

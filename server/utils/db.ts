@@ -310,7 +310,31 @@ export const queue = {
   deleteByCode: (code: string) => {
     const stmt = db.prepare('DELETE FROM redemption_queue WHERE code = ?');
     return stmt.run(code);
-  }
+  },
+
+  getAll: (limit: number = 200): QueueItem[] => {
+    const stmt = db.prepare(`
+      SELECT * FROM redemption_queue
+      ORDER BY updated_at DESC
+      LIMIT ?
+    `);
+    return stmt.all(limit) as QueueItem[];
+  },
+
+  countPending: (): number => {
+    const stmt = db.prepare(`SELECT COUNT(*) as count FROM redemption_queue WHERE status = 'pending'`);
+    const result = stmt.get() as { count: number };
+    return result.count;
+  },
+
+  resetToPending: (id: number) => {
+    const stmt = db.prepare(`
+      UPDATE redemption_queue
+      SET status = 'pending', error_message = NULL, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND status IN ('failed', 'processing')
+    `);
+    return stmt.run(id);
+  },
 };
 
 // Run migrations on startup
