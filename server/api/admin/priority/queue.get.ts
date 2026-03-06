@@ -1,14 +1,21 @@
 import { priorityUsers, queue } from '../../../utils/db';
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
+  const query = getQuery(event);
+  const queueLimit = parseInt(query.queueLimit as string) || 20;
+  const queueOffset = parseInt(query.queueOffset as string) || 0;
+
   const registeredUsers = priorityUsers.findAll();
-  const queueItems = queue.getPriorityItems(200);
-  const pendingCount = queueItems.filter(i => i.status === 'pending').length;
+  const allQueueItems = queue.getPriorityItems(10000);
+  const pendingCount = allQueueItems.filter(i => i.status === 'pending').length;
+  const totalQueueItems = allQueueItems.length;
+  const queueItems = allQueueItems.slice(queueOffset, queueOffset + queueLimit);
 
   return {
     registeredUsers,
     queueItems,
     pendingCount,
-    totalQueueItems: queueItems.length,
+    totalQueueItems,
+    queueHasMore: queueOffset + queueLimit < totalQueueItems,
   };
 });

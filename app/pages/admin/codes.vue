@@ -41,13 +41,13 @@
     <div v-if="message" class="message" :class="messageType">{{ message }}</div>
 
     <div class="info-bar">
-      <span>{{ codes.length }} codes</span>
+      <span>{{ codes.length }} / {{ totalCodes }} codes</span>
       <span v-if="stats" class="stats-summary">
         ({{ stats.validated }} valid, {{ stats.pending }} pending, {{ stats.expired }} expired, {{ stats.invalid }} invalid)
       </span>
     </div>
 
-    <div class="table-wrapper">
+    <div ref="tableWrapperRef" class="table-wrapper">
       <table class="admin-table">
         <thead>
           <tr>
@@ -81,11 +81,15 @@
           <tr v-if="codes.length === 0 && !loading">
             <td colspan="5" class="empty">No codes found</td>
           </tr>
+          <tr v-if="hasMore">
+            <td colspan="5" class="sentinel-cell">
+              <div ref="sentinelRef" class="sentinel"></div>
+            </td>
+          </tr>
         </tbody>
       </table>
+      <div v-if="loading" class="loading">Loading...</div>
     </div>
-
-    <div v-if="loading" class="loading">Loading...</div>
   </div>
 </template>
 
@@ -97,9 +101,16 @@ definePageMeta({
   middleware: ['admin'],
 });
 
+const PAGE_SIZE = 50;
+
 const search = ref('');
 const statusFilter = ref('');
 const codes = ref<GiftCode[]>([]);
+const totalCodes = ref(0);
+const hasMore = ref(false);
+const offset = ref(0);
+const sentinelRef = ref<HTMLElement | null>(null);
+const tableWrapperRef = ref<HTMLElement | null>(null);
 const stats = ref<any>(null);
 const loading = ref(true);
 const showAddForm = ref(false);
@@ -119,16 +130,41 @@ function debouncedFetch() {
 
 async function fetchCodes() {
   loading.value = true;
+  offset.value = 0;
+  codes.value = [];
   try {
-    const params: Record<string, string> = {};
+    const params: Record<string, string> = { limit: String(PAGE_SIZE), offset: '0' };
     if (search.value.trim()) params.search = search.value.trim();
     if (statusFilter.value) params.status = statusFilter.value;
 
     const res: any = await $fetch('/api/admin/codes', { params });
     codes.value = res.codes;
+    totalCodes.value = res.total;
+    hasMore.value = res.hasMore;
+    offset.value = res.codes.length;
     stats.value = res.stats;
   } catch (e) {
     console.error('Failed to fetch codes:', e);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function fetchMoreCodes() {
+  if (loading.value || !hasMore.value) return;
+  loading.value = true;
+  try {
+    const params: Record<string, string> = { limit: String(PAGE_SIZE), offset: String(offset.value) };
+    if (search.value.trim()) params.search = search.value.trim();
+    if (statusFilter.value) params.status = statusFilter.value;
+
+    const res: any = await $fetch('/api/admin/codes', { params });
+    codes.value.push(...res.codes);
+    totalCodes.value = res.total;
+    hasMore.value = res.hasMore;
+    offset.value += res.codes.length;
+  } catch (e) {
+    console.error('Failed to fetch more codes:', e);
   } finally {
     loading.value = false;
   }
@@ -201,13 +237,32 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString();
 }
 
+let observer: IntersectionObserver | null = null;
+
+watch(sentinelRef, (el) => {
+  if (observer) observer.disconnect();
+  if (!el || !tableWrapperRef.value) return;
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) fetchMoreCodes();
+  }, { root: tableWrapperRef.value, threshold: 0 });
+  observer.observe(el);
+});
+
 onMounted(fetchCodes);
+
+onUnmounted(() => {
+  observer?.disconnect();
+});
 </script>
 
 <style scoped>
 .admin-page {
   font-family: 'Cinzel', serif;
   color: #5C4A35;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .page-title {
@@ -329,7 +384,9 @@ onMounted(fetchCodes);
 .table-wrapper {
   background: rgba(255, 255, 255, 0.98);
   border-radius: 10px;
-  overflow: hidden;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
   border: 1px solid rgba(92, 74, 53, 0.08);
 }
@@ -349,6 +406,17 @@ onMounted(fetchCodes);
   letter-spacing: 1px;
   color: #8B7355;
   border-bottom: 1px solid rgba(92, 74, 53, 0.08);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.sentinel-cell {
+  padding: 0 !important;
+}
+
+.sentinel {
+  height: 1px;
 }
 
 .admin-table td {

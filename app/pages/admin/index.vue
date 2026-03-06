@@ -49,6 +49,7 @@
             <thead>
               <tr>
                 <th>FID</th>
+                <th></th>
                 <th>Nickname</th>
                 <th>Code</th>
                 <th>Status</th>
@@ -58,13 +59,17 @@
             <tbody>
               <tr v-for="r in data.recentRedemptions" :key="r.id">
                 <td>{{ r.fid }}</td>
+                <td class="avatar-cell">
+                  <img v-if="r.avatar_url" :src="r.avatar_url" :alt="r.nickname || r.fid" class="avatar" referrerpolicy="no-referrer" />
+                  <div v-else class="avatar avatar-placeholder">{{ (r.nickname || r.fid).charAt(0).toUpperCase() }}</div>
+                </td>
                 <td>{{ r.nickname || '-' }}</td>
                 <td><code>{{ r.code }}</code></td>
                 <td><span class="badge" :class="statusClass(r.status)">{{ r.status }}</span></td>
                 <td>{{ formatDate(r.redeemed_at) }}</td>
               </tr>
               <tr v-if="data.recentRedemptions.length === 0">
-                <td colspan="5" class="empty">No recent redemptions</td>
+                <td colspan="6" class="empty">No recent redemptions</td>
               </tr>
             </tbody>
           </table>
@@ -215,6 +220,29 @@ onUnmounted(() => clearInterval(interval));
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.85rem;
+}
+
+.avatar-cell {
+  padding: 6px 8px !important;
+  width: 36px;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar-placeholder {
+  background: rgba(212, 165, 116, 0.3);
+  color: #6b472c;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .empty {

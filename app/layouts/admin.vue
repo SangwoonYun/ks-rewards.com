@@ -8,14 +8,14 @@
         <NuxtLink to="/admin" class="admin-nav-link" :class="{ active: route.path === '/admin' }">
           <span class="nav-icon">&#9632;</span> Dashboard
         </NuxtLink>
-        <NuxtLink to="/admin/users" class="admin-nav-link" active-class="active">
-          <span class="nav-icon">&#9632;</span> Users
-        </NuxtLink>
         <NuxtLink to="/admin/codes" class="admin-nav-link" active-class="active">
           <span class="nav-icon">&#9632;</span> Gift Codes
         </NuxtLink>
         <NuxtLink to="/admin/redemptions" class="admin-nav-link" active-class="active">
           <span class="nav-icon">&#9632;</span> Redemptions
+        </NuxtLink>
+        <NuxtLink to="/admin/users" class="admin-nav-link" active-class="active">
+          <span class="nav-icon">&#9632;</span> Users
         </NuxtLink>
         <NuxtLink to="/admin/priority" class="admin-nav-link" active-class="active">
           <span class="nav-icon">&#9632;</span> Priority Queue
@@ -38,14 +38,19 @@
 <script setup lang="ts">
 const route = useRoute();
 const { logout } = useAdmin();
+
+useHead({
+  bodyAttrs: { style: 'padding: 0' },
+});
 </script>
 
 <style scoped>
 .admin-wrapper {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
   background: linear-gradient(135deg, #F3ECE0 0%, #E9DFC8 100%);
   font-family: 'Cinzel', serif;
+  overflow: hidden;
 }
 
 .admin-sidebar {
@@ -142,7 +147,9 @@ const { logout } = useAdmin();
   flex: 1;
   margin-left: 250px;
   padding: 32px;
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 @media (max-width: 768px) {

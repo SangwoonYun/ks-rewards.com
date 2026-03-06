@@ -21,7 +21,7 @@
     </div>
 
     <!-- History Tab -->
-    <div v-if="activeTab === 'history'">
+    <div v-if="activeTab === 'history'" class="tab-content">
       <div class="toolbar">
         <input
           v-model="fidFilter"
@@ -38,13 +38,17 @@
           @input="debouncedFetchHistory"
         />
       </div>
+      <div class="info-bar">
+        <span>{{ historyList.length }} / {{ totalHistory }} redemptions</span>
+      </div>
 
-      <div class="table-wrapper">
+      <div ref="historyWrapperRef" class="table-wrapper">
         <table class="admin-table">
           <thead>
             <tr>
               <th>ID</th>
               <th>FID</th>
+              <th></th>
               <th>Nickname</th>
               <th>Code</th>
               <th>Status</th>
@@ -55,22 +59,31 @@
             <tr v-for="r in historyList" :key="r.id">
               <td>{{ r.id }}</td>
               <td>{{ r.fid }}</td>
+              <td class="avatar-cell">
+                <img v-if="r.avatar_url" :src="r.avatar_url" :alt="r.nickname || r.fid" class="avatar" referrerpolicy="no-referrer" />
+                <div v-else class="avatar avatar-placeholder">{{ (r.nickname || r.fid).charAt(0).toUpperCase() }}</div>
+              </td>
               <td>{{ r.nickname || '-' }}</td>
               <td><code>{{ r.code }}</code></td>
               <td><span class="badge" :class="redemptionStatusClass(r.status)">{{ r.status }}</span></td>
               <td>{{ formatDate(r.redeemed_at) }}</td>
             </tr>
             <tr v-if="historyList.length === 0 && !loadingHistory">
-              <td colspan="6" class="empty">No redemptions found</td>
+              <td colspan="7" class="empty">No redemptions found</td>
+            </tr>
+            <tr v-if="historyHasMore">
+              <td colspan="7" class="sentinel-cell">
+                <div ref="historySentinelRef" class="sentinel"></div>
+              </td>
             </tr>
           </tbody>
         </table>
+        <div v-if="loadingHistory" class="loading">Loading...</div>
       </div>
-      <div v-if="loadingHistory" class="loading">Loading...</div>
     </div>
 
     <!-- Queue Tab -->
-    <div v-if="activeTab === 'queue'">
+    <div v-if="activeTab === 'queue'" class="tab-content">
       <div class="toolbar">
         <span class="info-text">{{ pendingCount }} pending items in queue</span>
         <button
@@ -84,14 +97,19 @@
       </div>
 
       <div v-if="retryMessage" class="message message-success">{{ retryMessage }}</div>
+      <div class="info-bar">
+        <span>{{ queueList.length }} / {{ totalQueue }} items</span>
+      </div>
 
-      <div class="table-wrapper">
+      <div ref="queueWrapperRef" class="table-wrapper">
         <table class="admin-table">
           <thead>
             <tr>
               <th><input type="checkbox" @change="toggleAll" :checked="allSelected" /></th>
               <th>ID</th>
               <th>FID</th>
+              <th></th>
+              <th>Nickname</th>
               <th>Code</th>
               <th>Status</th>
               <th>Attempts</th>
@@ -111,6 +129,11 @@
               </td>
               <td>{{ item.id }}</td>
               <td>{{ item.fid }}</td>
+              <td class="avatar-cell">
+                <img v-if="item.avatar_url" :src="item.avatar_url" :alt="item.nickname || item.fid" class="avatar" referrerpolicy="no-referrer" />
+                <div v-else class="avatar avatar-placeholder">{{ (item.nickname || item.fid).charAt(0).toUpperCase() }}</div>
+              </td>
+              <td>{{ item.nickname || '-' }}</td>
               <td><code>{{ item.code }}</code></td>
               <td><span class="badge" :class="queueStatusClass(item.status)">{{ item.status }}</span></td>
               <td>{{ item.attempts }}</td>
@@ -118,12 +141,17 @@
               <td>{{ formatDate(item.created_at) }}</td>
             </tr>
             <tr v-if="queueList.length === 0 && !loadingQueue">
-              <td colspan="8" class="empty">Queue is empty</td>
+              <td colspan="10" class="empty">Queue is empty</td>
+            </tr>
+            <tr v-if="queueHasMore">
+              <td colspan="10" class="sentinel-cell">
+                <div ref="queueSentinelRef" class="sentinel"></div>
+              </td>
             </tr>
           </tbody>
         </table>
+        <div v-if="loadingQueue" class="loading">Loading...</div>
       </div>
-      <div v-if="loadingQueue" class="loading">Loading...</div>
     </div>
   </div>
 </template>
@@ -136,16 +164,28 @@ definePageMeta({
   middleware: ['admin'],
 });
 
+const PAGE_SIZE = 50;
+
 const activeTab = ref<'history' | 'queue'>('history');
 
 // History state
 const fidFilter = ref('');
 const codeFilter = ref('');
 const historyList = ref<Redemption[]>([]);
+const totalHistory = ref(0);
+const historyHasMore = ref(false);
+const historyOffset = ref(0);
+const historyWrapperRef = ref<HTMLElement | null>(null);
+const historySentinelRef = ref<HTMLElement | null>(null);
 const loadingHistory = ref(true);
 
 // Queue state
 const queueList = ref<QueueItem[]>([]);
+const totalQueue = ref(0);
+const queueHasMore = ref(false);
+const queueOffset = ref(0);
+const queueWrapperRef = ref<HTMLElement | null>(null);
+const queueSentinelRef = ref<HTMLElement | null>(null);
 const pendingCount = ref(0);
 const loadingQueue = ref(false);
 const selectedIds = ref<number[]>([]);
@@ -161,13 +201,18 @@ function debouncedFetchHistory() {
 
 async function fetchHistory() {
   loadingHistory.value = true;
+  historyOffset.value = 0;
+  historyList.value = [];
   try {
-    const params: Record<string, string> = {};
+    const params: Record<string, string> = { limit: String(PAGE_SIZE), offset: '0' };
     if (fidFilter.value.trim()) params.fid = fidFilter.value.trim();
     if (codeFilter.value.trim()) params.code = codeFilter.value.trim();
 
     const res: any = await $fetch('/api/admin/redemptions', { params });
     historyList.value = res.redemptions;
+    totalHistory.value = res.total;
+    historyHasMore.value = res.hasMore;
+    historyOffset.value = res.redemptions.length;
   } catch (e) {
     console.error('Failed to fetch history:', e);
   } finally {
@@ -175,14 +220,59 @@ async function fetchHistory() {
   }
 }
 
+async function fetchMoreHistory() {
+  if (loadingHistory.value || !historyHasMore.value) return;
+  loadingHistory.value = true;
+  try {
+    const params: Record<string, string> = { limit: String(PAGE_SIZE), offset: String(historyOffset.value) };
+    if (fidFilter.value.trim()) params.fid = fidFilter.value.trim();
+    if (codeFilter.value.trim()) params.code = codeFilter.value.trim();
+
+    const res: any = await $fetch('/api/admin/redemptions', { params });
+    historyList.value.push(...res.redemptions);
+    totalHistory.value = res.total;
+    historyHasMore.value = res.hasMore;
+    historyOffset.value += res.redemptions.length;
+  } catch (e) {
+    console.error('Failed to fetch more history:', e);
+  } finally {
+    loadingHistory.value = false;
+  }
+}
+
 async function fetchQueue() {
   loadingQueue.value = true;
+  queueOffset.value = 0;
+  queueList.value = [];
   try {
-    const res: any = await $fetch('/api/admin/redemptions/queue');
+    const res: any = await $fetch('/api/admin/redemptions/queue', {
+      params: { limit: String(PAGE_SIZE), offset: '0' },
+    });
     queueList.value = res.items;
+    totalQueue.value = res.total;
+    queueHasMore.value = res.hasMore;
+    queueOffset.value = res.items.length;
     pendingCount.value = res.pendingCount;
   } catch (e) {
     console.error('Failed to fetch queue:', e);
+  } finally {
+    loadingQueue.value = false;
+  }
+}
+
+async function fetchMoreQueue() {
+  if (loadingQueue.value || !queueHasMore.value) return;
+  loadingQueue.value = true;
+  try {
+    const res: any = await $fetch('/api/admin/redemptions/queue', {
+      params: { limit: String(PAGE_SIZE), offset: String(queueOffset.value) },
+    });
+    queueList.value.push(...res.items);
+    totalQueue.value = res.total;
+    queueHasMore.value = res.hasMore;
+    queueOffset.value += res.items.length;
+  } catch (e) {
+    console.error('Failed to fetch more queue:', e);
   } finally {
     loadingQueue.value = false;
   }
@@ -254,9 +344,35 @@ function formatDate(d: string) {
   return new Date(d).toLocaleString();
 }
 
+let historyObserver: IntersectionObserver | null = null;
+let queueObserver: IntersectionObserver | null = null;
+
+watch(historySentinelRef, (el) => {
+  if (historyObserver) historyObserver.disconnect();
+  if (!el || !historyWrapperRef.value) return;
+  historyObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) fetchMoreHistory();
+  }, { root: historyWrapperRef.value, threshold: 0 });
+  historyObserver.observe(el);
+});
+
+watch(queueSentinelRef, (el) => {
+  if (queueObserver) queueObserver.disconnect();
+  if (!el || !queueWrapperRef.value) return;
+  queueObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) fetchMoreQueue();
+  }, { root: queueWrapperRef.value, threshold: 0 });
+  queueObserver.observe(el);
+});
+
 onMounted(() => {
   fetchHistory();
   fetchQueue();
+});
+
+onUnmounted(() => {
+  historyObserver?.disconnect();
+  queueObserver?.disconnect();
 });
 </script>
 
@@ -264,6 +380,10 @@ onMounted(() => {
 .admin-page {
   font-family: 'Cinzel', serif;
   color: #5C4A35;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .page-title {
@@ -388,10 +508,25 @@ onMounted(() => {
   border: 1px solid rgba(107, 142, 35, 0.2);
 }
 
+.info-bar {
+  font-size: 0.8rem;
+  color: #8B7355;
+  margin-bottom: 12px;
+}
+
+.tab-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .table-wrapper {
   background: rgba(255, 255, 255, 0.98);
   border-radius: 10px;
-  overflow: hidden;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
   border: 1px solid rgba(92, 74, 53, 0.08);
 }
@@ -411,6 +546,40 @@ onMounted(() => {
   letter-spacing: 1px;
   color: #8B7355;
   border-bottom: 1px solid rgba(92, 74, 53, 0.08);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.sentinel-cell {
+  padding: 0 !important;
+}
+
+.sentinel {
+  height: 1px;
+}
+
+.avatar-cell {
+  padding: 6px 8px !important;
+  width: 36px;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar-placeholder {
+  background: rgba(212, 165, 116, 0.3);
+  color: #6b472c;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .admin-table td {
