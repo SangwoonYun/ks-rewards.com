@@ -43,6 +43,8 @@ export interface QueueItem {
   attempts: number;
   created_at: string;
   updated_at: string;
+  nickname?: string | null;
+  avatar_url?: string | null;
 }
 
 export interface Setting {
@@ -328,9 +330,11 @@ export const queue = {
 
   getAll: (limit: number = 200): QueueItem[] => {
     const stmt = db.prepare(`
-      SELECT *, (created_at || 'Z') AS created_at, (updated_at || 'Z') AS updated_at
-      FROM redemption_queue
-      ORDER BY updated_at DESC
+      SELECT rq.*, (rq.created_at || 'Z') AS created_at, (rq.updated_at || 'Z') AS updated_at,
+             u.nickname, u.avatar_url
+      FROM redemption_queue rq
+      LEFT JOIN users u ON rq.fid = u.fid
+      ORDER BY rq.updated_at DESC
       LIMIT ?
     `);
     return stmt.all(limit) as QueueItem[];
@@ -353,10 +357,12 @@ export const queue = {
 
   getPriorityItems: (limit: number = 200): QueueItem[] => {
     const stmt = db.prepare(`
-      SELECT *, (created_at || 'Z') AS created_at, (updated_at || 'Z') AS updated_at
-      FROM redemption_queue
-      WHERE priority > 0
-      ORDER BY priority DESC, created_at ASC
+      SELECT rq.*, (rq.created_at || 'Z') AS created_at, (rq.updated_at || 'Z') AS updated_at,
+             u.nickname, u.avatar_url
+      FROM redemption_queue rq
+      LEFT JOIN users u ON rq.fid = u.fid
+      WHERE rq.priority > 0
+      ORDER BY rq.priority DESC, rq.created_at ASC
       LIMIT ?
     `);
     return stmt.all(limit) as QueueItem[];

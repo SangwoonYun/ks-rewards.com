@@ -30,14 +30,15 @@
     </div>
 
     <div class="info-bar">
-      <span>{{ users.length }} users found</span>
+      <span>{{ users.length }} / {{ totalUsers }} users</span>
     </div>
 
-    <div class="table-wrapper">
+    <div ref="tableWrapperRef" class="table-wrapper">
       <table class="admin-table">
         <thead>
           <tr>
             <th>FID</th>
+            <th></th>
             <th>Nickname</th>
             <th>Kingdom</th>
             <th>Status</th>
@@ -48,6 +49,16 @@
         <tbody>
           <tr v-for="user in users" :key="user.fid">
             <td>{{ user.fid }}</td>
+            <td class="avatar-cell">
+              <img
+                v-if="user.avatar_url"
+                :src="user.avatar_url"
+                :alt="user.nickname || user.fid"
+                class="avatar"
+                referrerpolicy="no-referrer"
+              />
+              <div v-else class="avatar avatar-placeholder">{{ (user.nickname || user.fid).charAt(0).toUpperCase() }}</div>
+            </td>
             <td>{{ user.nickname || '-' }}</td>
             <td>{{ user.kingdom || '-' }}</td>
             <td>
@@ -88,13 +99,17 @@
             </td>
           </tr>
           <tr v-if="users.length === 0 && !loading">
-            <td colspan="6" class="empty">No users found</td>
+            <td colspan="7" class="empty">No users found</td>
+          </tr>
+          <tr v-if="hasMore">
+            <td colspan="7" class="sentinel-cell">
+              <div ref="sentinelRef" class="sentinel"></div>
+            </td>
           </tr>
         </tbody>
       </table>
+      <div v-if="loading" class="loading">Loading...</div>
     </div>
-
-    <div v-if="loading" class="loading">Loading...</div>
   </div>
 </template>
 
@@ -106,10 +121,17 @@ definePageMeta({
   middleware: ['admin'],
 });
 
+const PAGE_SIZE = 50;
+
 const search = ref('');
 const statusFilter = ref('');
 const users = ref<User[]>([]);
 const loading = ref(true);
+const totalUsers = ref(0);
+const hasMore = ref(false);
+const offset = ref(0);
+const sentinelRef = ref<HTMLElement | null>(null);
+const tableWrapperRef = ref<HTMLElement | null>(null);
 const toggling = ref<string | null>(null);
 const applying = ref<string | null>(null);
 const applyResults = ref<Record<string, { success: boolean; message: string }>>({});
@@ -165,15 +187,40 @@ function debouncedFetch() {
 
 async function fetchUsers() {
   loading.value = true;
+  offset.value = 0;
+  users.value = [];
   try {
-    const params: Record<string, string> = {};
+    const params: Record<string, string> = { limit: String(PAGE_SIZE), offset: '0' };
     if (search.value.trim()) params.search = search.value.trim();
     if (statusFilter.value) params.status = statusFilter.value;
 
-    const res = await $fetch('/api/admin/users', { params });
-    users.value = (res as any).users;
+    const res = await $fetch('/api/admin/users', { params }) as any;
+    users.value = res.users;
+    totalUsers.value = res.total;
+    hasMore.value = res.hasMore;
+    offset.value = res.users.length;
   } catch (e) {
     console.error('Failed to fetch users:', e);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function fetchMoreUsers() {
+  if (loading.value || !hasMore.value) return;
+  loading.value = true;
+  try {
+    const params: Record<string, string> = { limit: String(PAGE_SIZE), offset: String(offset.value) };
+    if (search.value.trim()) params.search = search.value.trim();
+    if (statusFilter.value) params.status = statusFilter.value;
+
+    const res = await $fetch('/api/admin/users', { params }) as any;
+    users.value.push(...res.users);
+    totalUsers.value = res.total;
+    hasMore.value = res.hasMore;
+    offset.value += res.users.length;
+  } catch (e) {
+    console.error('Failed to fetch more users:', e);
   } finally {
     loading.value = false;
   }
@@ -243,9 +290,24 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString();
 }
 
+let observer: IntersectionObserver | null = null;
+
+watch(sentinelRef, (el) => {
+  if (observer) observer.disconnect();
+  if (!el || !tableWrapperRef.value) return;
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) fetchMoreUsers();
+  }, { root: tableWrapperRef.value, threshold: 0 });
+  observer.observe(el);
+});
+
 onMounted(() => {
   fetchUsers();
   fetchPriorityUsers();
+});
+
+onUnmounted(() => {
+  observer?.disconnect();
 });
 </script>
 
@@ -253,6 +315,10 @@ onMounted(() => {
 .admin-page {
   font-family: 'Cinzel', serif;
   color: #5C4A35;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .page-title {
@@ -307,7 +373,9 @@ onMounted(() => {
 .table-wrapper {
   background: rgba(255, 255, 255, 0.98);
   border-radius: 10px;
-  overflow: hidden;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
   border: 1px solid rgba(92, 74, 53, 0.08);
 }
@@ -327,6 +395,9 @@ onMounted(() => {
   letter-spacing: 1px;
   color: #8B7355;
   border-bottom: 1px solid rgba(92, 74, 53, 0.08);
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .admin-table td {
@@ -492,5 +563,36 @@ onMounted(() => {
   color: inherit;
   padding: 0 4px;
   line-height: 1;
+}
+
+.sentinel-cell {
+  padding: 0 !important;
+}
+
+.sentinel {
+  height: 1px;
+}
+
+.avatar-cell {
+  padding: 6px 8px !important;
+  width: 36px;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar-placeholder {
+  background: rgba(212, 165, 116, 0.3);
+  color: #6b472c;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

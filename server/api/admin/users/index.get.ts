@@ -4,6 +4,8 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const search = (query.search as string || '').trim().toLowerCase();
   const status = query.status as string;
+  const limit = parseInt(query.limit as string) || 50;
+  const offset = parseInt(query.offset as string) || 0;
 
   let result: User[] = users.findAll();
 
@@ -20,5 +22,8 @@ export default defineEventHandler(async (event) => {
     );
   }
 
-  return { success: true, users: result, total: result.length };
+  const total = result.length;
+  const paginated = result.slice(offset, offset + limit);
+
+  return { success: true, users: paginated, total, hasMore: offset + limit < total };
 });
