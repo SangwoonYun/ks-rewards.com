@@ -16,7 +16,6 @@ export function getConfig() {
     },
 
     kingshot: {
-      loginUrl: rc.ksLoginUrl as string,
       redeemUrl: rc.ksRedeemUrl as string,
       encryptKey: rc.ksEncryptKey as string,
     },

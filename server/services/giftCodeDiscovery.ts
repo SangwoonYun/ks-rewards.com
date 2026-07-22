@@ -38,7 +38,8 @@ function parseGiftCodeLine(line: string): GiftCodeInfo | null {
     return null;
   }
 
-  const date = new Date(year, month - 1, day);
+  // Use AOE (Anywhere on Earth, UTC-12) so a code is valid on its date regardless of timezone
+  const date = new Date(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-12:00`);
   if (isNaN(date.getTime())) {
     return null;
   }

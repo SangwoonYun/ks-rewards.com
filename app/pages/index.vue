@@ -16,6 +16,17 @@
         />
       </div>
 
+      <div class="field">
+        <label for="serverId">서버 번호</label>
+        <input
+          id="serverId"
+          v-model="serverInput"
+          type="text"
+          placeholder="예: 120"
+          @keyup.enter="registerPlayer"
+        />
+      </div>
+
       <div class="buttons">
         <button
           id="startBtn"
@@ -170,6 +181,7 @@ interface RegisterResponse {
 const statusMessage = ref('');
 const statusType = ref('');
 const playerInput = ref('');
+const serverInput = ref('');
 const isRegistering = ref(false);
 const codes = ref<GiftCode[]>([]);
 const redemptions = ref<Redemption[]>([]);
@@ -355,6 +367,13 @@ async function registerPlayer() {
     }
   }
 
+  const kid = serverInput.value.trim();
+  if (!kid || !/^\d+$/.test(kid)) {
+    statusMessage.value = '서버 번호를 숫자로 입력해 주세요.';
+    statusType.value = 'error';
+    return;
+  }
+
   isRegistering.value = true;
   statusMessage.value = `${fids.length}개 플레이어 ID 등록 중... (최대 몇 분 소요될 수 있습니다)`;
   statusType.value = '';
@@ -368,7 +387,7 @@ async function registerPlayer() {
       try {
         const response = await $fetch<RegisterResponse>('/api/users/register', {
           method: 'POST',
-          body: { fid }
+          body: { fid, kid }
         });
 
         if (response.success) {
@@ -393,6 +412,7 @@ async function registerPlayer() {
     if (successCount > 0) {
       statusType.value = 'success';
       playerInput.value = ''; // Clear input on success
+      serverInput.value = '';
 
       // Wait a moment to let immediate redemptions complete, then refresh
       statusMessage.value += ' 수령 내역 갱신 중...';
