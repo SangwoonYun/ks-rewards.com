@@ -14,7 +14,6 @@
       - PORT=3000
       # All config via Nuxt runtimeConfig (NUXT_ prefix)
       - NUXT_DB_PATH=/app/data/ks-rewards.db
-      - NUXT_KS_LOGIN_URL=https://kingshot-giftcode.centurygame.com/api/player
       - NUXT_KS_REDEEM_URL=https://kingshot-giftcode.centurygame.com/api/gift_code
       - NUXT_KS_ENCRYPT_KEY=mN4!pQs6JrYwV9
       - NUXT_GIFT_CODE_API_URL=http://ks-gift-code-api.whiteout-bot.com/giftcode_api.php

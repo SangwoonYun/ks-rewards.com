@@ -17,11 +17,17 @@
         <option value="expired">Expired</option>
         <option value="invalid">Invalid</option>
       </select>
+      <button class="toolbar-btn btn-info" :disabled="syncing" @click="triggerSync">
+        {{ syncing ? 'Syncing...' : 'Sync Now' }}
+      </button>
       <button class="toolbar-btn btn-primary" @click="showAddForm = !showAddForm">
         {{ showAddForm ? 'Cancel' : '+ Add Code' }}
       </button>
       <button class="toolbar-btn btn-secondary" :disabled="validating" @click="triggerValidation">
         {{ validating ? 'Validating...' : 'Validate Pending' }}
+      </button>
+      <button class="toolbar-btn btn-warn" :disabled="revalidating" @click="triggerRevalidateInvalid">
+        {{ revalidating ? 'Revalidating...' : 'Revalidate Invalid' }}
       </button>
     </div>
 
@@ -68,7 +74,14 @@
             </td>
             <td>{{ code.source }}</td>
             <td>{{ formatDate(code.date_discovered) }}</td>
-            <td>
+            <td class="actions-cell">
+              <button
+                class="action-btn btn-revalidate"
+                :disabled="revalidatingCode === code.code"
+                @click="revalidateCode(code.code)"
+              >
+                {{ revalidatingCode === code.code ? '...' : 'Revalidate' }}
+              </button>
               <button
                 class="action-btn btn-delete"
                 :disabled="deleting === code.code"
@@ -117,7 +130,10 @@ const showAddForm = ref(false);
 const newCode = ref('');
 const adding = ref(false);
 const deleting = ref<string | null>(null);
+const revalidatingCode = ref<string | null>(null);
 const validating = ref(false);
+const revalidating = ref(false);
+const syncing = ref(false);
 const message = ref('');
 const messageType = ref('');
 
@@ -205,6 +221,60 @@ async function deleteCode(code: string) {
     messageType.value = 'message-error';
   } finally {
     deleting.value = null;
+  }
+}
+
+async function revalidateCode(code: string) {
+  revalidatingCode.value = code;
+  message.value = '';
+  try {
+    const res: any = await $fetch(`/api/admin/codes/${encodeURIComponent(code)}/revalidate`, { method: 'POST' });
+    const statusChanged = res.previousStatus !== res.currentStatus;
+    message.value = statusChanged
+      ? `Code "${code}": ${res.previousStatus} → ${res.currentStatus}`
+      : `Code "${code}": still ${res.currentStatus}`;
+    messageType.value = res.currentStatus === 'validated' ? 'message-success' : 'message-error';
+    const idx = codes.value.findIndex(c => c.code === code);
+    if (idx !== -1) codes.value[idx] = { ...codes.value[idx], validation_status: res.currentStatus };
+    const statsRes: any = await $fetch('/api/admin/codes', { params: { limit: '1', offset: '0' } });
+    if (statsRes.stats) stats.value = statsRes.stats;
+  } catch (e: any) {
+    message.value = e?.data?.message || `Failed to revalidate "${code}"`;
+    messageType.value = 'message-error';
+  } finally {
+    revalidatingCode.value = null;
+  }
+}
+
+async function triggerRevalidateInvalid() {
+  revalidating.value = true;
+  message.value = '';
+  try {
+    const res: any = await $fetch('/api/admin/codes/revalidate-invalid', { method: 'POST' });
+    message.value = `Revalidation complete: ${res.restored ?? 0} restored, ${res.stillInvalid ?? 0} still invalid, ${res.transient ?? 0} skipped (transient)`;
+    messageType.value = 'message-success';
+    fetchCodes();
+  } catch (e: any) {
+    message.value = e?.data?.message || 'Revalidation failed';
+    messageType.value = 'message-error';
+  } finally {
+    revalidating.value = false;
+  }
+}
+
+async function triggerSync() {
+  syncing.value = true;
+  message.value = '';
+  try {
+    const res: any = await $fetch('/api/admin/codes/sync', { method: 'POST' });
+    message.value = `Sync complete: ${res.newCodes ?? 0} new, ${res.existingCodes ?? 0} existing`;
+    messageType.value = 'message-success';
+    fetchCodes();
+  } catch (e: any) {
+    message.value = e?.data?.message || 'Sync failed';
+    messageType.value = 'message-error';
+  } finally {
+    syncing.value = false;
   }
 }
 
@@ -342,6 +412,24 @@ onUnmounted(() => {
   background: rgba(139, 111, 71, 0.22);
 }
 
+.btn-info {
+  background: rgba(70, 130, 180, 0.12);
+  color: #4682B4;
+}
+
+.btn-info:hover:not(:disabled) {
+  background: rgba(70, 130, 180, 0.22);
+}
+
+.btn-warn {
+  background: rgba(212, 100, 50, 0.12);
+  color: #C05020;
+}
+
+.btn-warn:hover:not(:disabled) {
+  background: rgba(212, 100, 50, 0.22);
+}
+
 .add-form {
   display: flex;
   gap: 12px;
@@ -476,6 +564,21 @@ onUnmounted(() => {
 .action-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.btn-revalidate {
+  background: rgba(70, 130, 180, 0.12);
+  color: #4682B4;
+}
+
+.btn-revalidate:hover:not(:disabled) {
+  background: rgba(70, 130, 180, 0.25);
 }
 
 .btn-delete {

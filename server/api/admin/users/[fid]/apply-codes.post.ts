@@ -1,4 +1,4 @@
-import { queue, redemptions } from '../../../../utils/db';
+import { queue, redemptions, users } from '../../../../utils/db';
 import { queueUnredeemedCodesForUser } from '../../../../services/redemptionService';
 import { redeemGiftCode } from '../../../../services/kingshotApi';
 import { logger } from '../../../../utils/logger';
@@ -8,6 +8,11 @@ export default defineEventHandler(async (event) => {
 
   if (!fid) {
     throw createError({ statusCode: 400, message: 'FID is required' });
+  }
+
+  const user = users.findByFid(fid);
+  if (!user || !user.kingdom) {
+    throw createError({ statusCode: 400, message: 'No server/kingdom on record for this user' });
   }
 
   try {
@@ -31,7 +36,7 @@ export default defineEventHandler(async (event) => {
       try {
         queue.updateStatus(item.id, 'processing', undefined);
 
-        const result = await redeemGiftCode(fid, item.code);
+        const result = await redeemGiftCode(fid, user.kingdom as string, item.code);
         const normalizedStatus = result.status?.toString().trim().replace(/[.!?]+$/, '').toUpperCase() || 'UNKNOWN';
 
         redemptions.create(fid, item.code, normalizedStatus);

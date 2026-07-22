@@ -34,7 +34,6 @@ export default defineNuxtConfig({
   // Override at runtime with NUXT_ prefix (e.g. NUXT_DB_PATH)
   runtimeConfig: {
     dbPath: './data/ks-rewards.db',
-    ksLoginUrl: 'https://kingshot-giftcode.centurygame.com/api/player',
     ksRedeemUrl: 'https://kingshot-giftcode.centurygame.com/api/gift_code',
     ksEncryptKey: 'mN4!pQs6JrYwV9',
     giftCodeApiUrl: 'http://ks-gift-code-api.whiteout-bot.com/giftcode_api.php',

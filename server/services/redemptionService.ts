@@ -1,5 +1,5 @@
 ﻿import { queue, redemptions, users, giftCodes, priorityUsers, type User, type GiftCode, type Redemption, type QueueItem } from '../utils/db';
-import {redeemGiftCode, validatePlayerId} from './kingshotApi';
+import { redeemGiftCode } from './kingshotApi';
 import { logger } from '../utils/logger';
 import { config } from '../utils/config';
 
@@ -16,52 +16,23 @@ interface RedemptionQueueItem {
  */
 export async function validateGiftCode(code: string) {
   try {
-    // Try to use a random active user for validation
-    const activeUsers: User[] = users.findActive();
-    let testFid = '27370737'; // Default test FID
+    // Use a random active user (with a known server/kingdom) as the test player
+    const activeUsers: User[] = users.findActive().filter(u => u.kingdom);
+    const testUser = activeUsers[Math.floor(Math.random() * activeUsers.length)];
 
-    if (activeUsers.length > 0) {
-      const randomUser = activeUsers[Math.floor(Math.random() * activeUsers.length)];
-      if (randomUser) {
-        testFid = randomUser.fid;
-        logger.info(`Using random active user ${testFid} for validation`);
-      }
-    } else {
-      logger.info(`Using default test FID ${testFid} for validation`);
+    if (!testUser) {
+      logger.warn('No active user with a known server available for validation');
+      return {
+        valid: null,
+        status: 'NO_TEST_USER',
+        message: 'No registered user available to validate the code'
+      };
     }
 
-    // First validate the player ID to ensure we can log in
-    const loginResult = await validatePlayerId(testFid);
-    if (!loginResult.success) {
-      logger.warn(`Failed to validate player ${testFid}: ${loginResult.error}`);
-      if (activeUsers.length > 1) {
-        // Try another random user
-        const otherUsers = activeUsers.filter(u => u.fid !== testFid);
-        const backupUser = otherUsers[Math.floor(Math.random() * otherUsers.length)];
-        if (backupUser) {
-          testFid = backupUser.fid;
-          logger.info(`Trying backup user ${testFid} for validation`);
-          const backupLoginResult = await validatePlayerId(testFid);
-          if (!backupLoginResult.success) {
-            logger.error(`Failed to validate backup player ${testFid}: ${backupLoginResult.error}`);
-            return {
-              valid: null,
-              status: 'LOGIN_FAILED',
-              message: 'Could not authenticate test players'
-            };
-          }
-        }
-      } else {
-        return {
-          valid: null,
-          status: 'LOGIN_FAILED',
-          message: 'Could not authenticate test player'
-        };
-      }
-    }
+    logger.info(`Using active user ${testUser.fid} (kid ${testUser.kingdom}) for validation`);
 
     // Now try to redeem the code
-    const result = await redeemGiftCode(testFid, code);
+    const result = await redeemGiftCode(testUser.fid, testUser.kingdom as string, code);
 
     // Map validation statuses - keep consistent across all functions
     const validationStatuses = {
@@ -133,9 +104,21 @@ export async function validateGiftCode(code: string) {
         details: 'Invalid code'
       };
     } else {
-      // Any other unknown status is treated as invalid to prevent endless pending states
+      // Transient errors (network/server-side) — do not change the code's status
+      const transientStatuses = ['TIMEOUT_RETRY', 'NOT_LOGIN', 'INVALID_RESPONSE', 'ERROR', 'UNKNOWN', 'LOGIN_FAILED'];
+      if (transientStatuses.includes(normalizedStatus)) {
+        logger.warn(`⚠️ Gift code ${code} validation skipped due to transient error - status: ${normalizedStatus}`);
+        return {
+          valid: null,
+          status: normalizedStatus,
+          message: result.message,
+          details: 'Transient error, status unchanged'
+        };
+      }
+
+      // Truly unrecognized status — mark invalid only as a last resort
       giftCodes.markInvalid(code);
-      logger.warn(`❌ Gift code ${code} marked invalid (unknown status) - status: ${normalizedStatus}`);
+      logger.warn(`❌ Gift code ${code} marked invalid (unrecognized status) - status: ${normalizedStatus}`);
 
       // Remove any queued redemption attempts for this invalid code
       try {
@@ -183,27 +166,19 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
       };
     }
 
-    // Perform the redemption (this also validates the player and gets the current nickname)
-    const result = await redeemGiftCode(fid, code);
-
-    // Update user nickname, kingdom, and avatar if we got them from the redemption
-    if (result.nickname || result.kingdom || result.avatar_url) {
-      const user = users.findByFid(fid);
-      if (user) {
-        if (result.nickname && user.nickname !== result.nickname) {
-          users.updateNickname(fid, result.nickname);
-          logger.info(`Updated nickname for ${fid}: ${user.nickname} -> ${result.nickname}`);
-        }
-        if (result.kingdom && user.kingdom !== result.kingdom) {
-          users.updateKingdom(fid, result.kingdom);
-          logger.info(`Updated kingdom for ${fid}: ${user.kingdom} -> ${result.kingdom}`);
-        }
-        if (result.avatar_url && user.avatar_url !== result.avatar_url) {
-          users.updateAvatar(fid, result.avatar_url);
-          logger.info(`Updated avatar for ${fid}`);
-        }
-      }
+    const user = users.findByFid(fid);
+    if (!user || !user.kingdom) {
+      logger.error(`Cannot redeem for FID ${fid}: no server/kingdom on record`);
+      queue.updateStatus(id, 'failed', 'No server/kingdom on record for this user');
+      return {
+        success: false,
+        status: 'NO_KID',
+        message: 'No server/kingdom on record for this user'
+      };
     }
+
+    // Perform the redemption
+    const result = await redeemGiftCode(fid, user.kingdom, code);
 
     // Normalize status for comparison (remove trailing punctuation)
     const normalizedStatus = result.status?.toString().trim().replace(/[.!?]+$/, '').toUpperCase() || 'UNKNOWN';
@@ -538,5 +513,74 @@ export async function autoRedeemValidatedCodes() {
   } catch (error) {
     logger.error('Error in auto-redeem:', error);
     throw error;
+  }
+}
+
+/**
+ * Re-validate codes that were previously marked invalid.
+ * Codes that turn out to be valid are restored to 'pending' for re-queueing.
+ */
+export async function revalidateInvalidCodes() {
+  try {
+    const invalidCodes = giftCodes.findByStatus('invalid');
+    if (invalidCodes.length === 0) {
+      logger.info('No invalid codes to revalidate');
+      return { processed: 0, restored: 0, stillInvalid: 0, transient: 0 };
+    }
+
+    logger.info(`Revalidating ${invalidCodes.length} invalid code(s)...`);
+
+    let restored = 0;
+    let stillInvalid = 0;
+    let transient = 0;
+    const restoredList: string[] = [];
+
+    for (const codeEntry of invalidCodes) {
+      try {
+        logger.info(`Revalidating previously-invalid code: ${codeEntry.code}`);
+        // Temporarily set to pending so validateGiftCode can write the real outcome
+        giftCodes.updateValidation(codeEntry.code, 'pending');
+
+        const result = await validateGiftCode(codeEntry.code);
+
+        if (result.valid === true) {
+          restored++;
+          restoredList.push(codeEntry.code);
+          logger.info(`✅ Code ${codeEntry.code} restored to validated`);
+        } else if (result.valid === null) {
+          // Transient error — roll back to invalid rather than leaving as pending
+          giftCodes.updateValidation(codeEntry.code, 'invalid');
+          transient++;
+          logger.warn(`⚠️ Code ${codeEntry.code} could not be checked (transient), kept invalid`);
+        } else {
+          stillInvalid++;
+          logger.info(`Code ${codeEntry.code} confirmed invalid`);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      } catch (error) {
+        // On unexpected error roll back to invalid
+        giftCodes.updateValidation(codeEntry.code, 'invalid');
+        logger.error(`Error revalidating code ${codeEntry.code}:`, getErrorMessage(error));
+      }
+    }
+
+    if (restored > 0) {
+      logger.info(`Queueing ${restored} restored code(s) for all active users...`);
+      await autoRedeemValidatedCodes();
+    }
+
+    logger.info(`Revalidation complete: ${restored} restored, ${stillInvalid} still invalid, ${transient} transient`);
+
+    return {
+      processed: invalidCodes.length,
+      restored,
+      restoredList,
+      stillInvalid,
+      transient
+    };
+  } catch (error) {
+    logger.error('Error revalidating invalid codes:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }

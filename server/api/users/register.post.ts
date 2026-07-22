@@ -1,12 +1,12 @@
 ﻿import { users, queue } from '../../utils/db';
-import { validatePlayerId, redeemGiftCode } from '../../services/kingshotApi';
+import { redeemGiftCode } from '../../services/kingshotApi';
 import { queueUnredeemedCodesForUser } from '../../services/redemptionService';
 import { logger } from '../../utils/logger';
 
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
-    const { fid } = body;
+    const { fid, kid } = body;
 
     if (!fid) {
       return {
@@ -15,7 +15,14 @@ export default defineEventHandler(async (event) => {
       };
     }
 
-    // Validate FID format
+    if (!kid) {
+      return {
+        success: false,
+        error: 'Server number (kid) is required'
+      };
+    }
+
+    // Validate FID and kid format
     if (!/^\d+$/.test(fid)) {
       return {
         success: false,
@@ -23,32 +30,20 @@ export default defineEventHandler(async (event) => {
       };
     }
 
-    // Validate the FID with Kingshot API (always do this to get current nickname)
-    logger.info(`Validating user FID: ${fid}`);
-    const validation = await validatePlayerId(fid);
-
-    if (!validation.success) {
+    if (!/^\d+$/.test(String(kid))) {
       return {
         success: false,
-        error: `Invalid FID: ${validation.error}`
+        error: 'Server number must be numeric'
       };
     }
 
     // Check if user already exists
     const existingUser = await users.findByFid(fid);
     if (existingUser) {
-      // Update nickname, kingdom, and avatar if they have changed
-      if (validation.nickname && validation.nickname !== existingUser.nickname) {
-        await users.updateNickname(fid, validation.nickname);
-        logger.info(`✅ Updated nickname for ${fid}: ${existingUser.nickname} -> ${validation.nickname}`);
-      }
-      if (validation.kingdom && validation.kingdom !== existingUser.kingdom) {
-        await users.updateKingdom(fid, validation.kingdom);
-        logger.info(`✅ Updated kingdom for ${fid}: ${existingUser.kingdom} -> ${validation.kingdom}`);
-      }
-      if (validation.avatar_url && validation.avatar_url !== existingUser.avatar_url) {
-        await users.updateAvatar(fid, validation.avatar_url);
-        logger.info(`✅ Updated avatar for ${fid}`);
+      // Update the server/kingdom if it has changed
+      if (String(kid) !== existingUser.kingdom) {
+        await users.updateKingdom(fid, String(kid));
+        logger.info(`✅ Updated kingdom for ${fid}: ${existingUser.kingdom} -> ${kid}`);
       }
 
       return {
@@ -56,9 +51,7 @@ export default defineEventHandler(async (event) => {
         message: 'User already registered',
         user: {
           ...existingUser,
-          nickname: validation.nickname || existingUser.nickname,
-          kingdom: validation.kingdom || existingUser.kingdom,
-          avatar_url: validation.avatar_url || existingUser.avatar_url
+          kingdom: String(kid)
         },
         redeemedCount: 0,
         alreadyRegistered: true
@@ -66,21 +59,14 @@ export default defineEventHandler(async (event) => {
     }
 
     // Create new user
-    await users.create(fid, validation.nickname || null, 1);
+    await users.create(fid, null, 1);
+    await users.updateKingdom(fid, String(kid));
     const user = await users.findByFid(fid);
-
-    // Update kingdom and avatar if available
-    if (validation.kingdom && user) {
-      await users.updateKingdom(fid, validation.kingdom);
-    }
-    if (validation.avatar_url && user) {
-      await users.updateAvatar(fid, validation.avatar_url);
-    }
 
     // Queue unredeemed codes for this user
     const queuedCount = await queueUnredeemedCodesForUser(fid, 10); // High priority for new users
 
-    logger.info(`✅ User registered: ${fid} (${validation.nickname}), ${queuedCount} codes queued`);
+    logger.info(`✅ User registered: ${fid} (kid ${kid}), ${queuedCount} codes queued`);
 
     // Immediately process redemptions for this new user
     let redeemedCount = 0;
@@ -97,7 +83,7 @@ export default defineEventHandler(async (event) => {
             await queue.updateStatus(item.id, 'processing', undefined);
 
             // Perform the redemption
-            const result = await redeemGiftCode(fid, item.code);
+            const result = await redeemGiftCode(fid, String(kid), item.code);
             const normalizedStatus = result.status?.toString().trim().replace(/[.!?]+$/, '').toUpperCase() || 'UNKNOWN';
 
             // Save redemption result

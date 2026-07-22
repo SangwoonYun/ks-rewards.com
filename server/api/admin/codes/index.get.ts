@@ -18,6 +18,15 @@ export default defineEventHandler(async (event) => {
     codes = codes.filter(c => c.code.toLowerCase().includes(search));
   }
 
+  // Show validated codes first, keeping date_discovered DESC ordering within each group
+  if (!status) {
+    codes = [...codes].sort((a, b) => {
+      const aValidated = a.validation_status === 'validated' ? 0 : 1;
+      const bValidated = b.validation_status === 'validated' ? 0 : 1;
+      return aValidated - bValidated;
+    });
+  }
+
   const total = codes.length;
   const paginated = codes.slice(offset, offset + limit);
   const stats = giftCodes.stats();

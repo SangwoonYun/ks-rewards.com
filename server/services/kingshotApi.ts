@@ -35,22 +35,10 @@ interface KingshotApiData {
   [key: string]: any;
 }
 
-interface ValidationResult {
-  success: boolean;
-  nickname?: string;
-  kingdom?: string;
-  avatar_url?: string;
-  data?: any;
-  error?: string;
-}
-
 interface RedemptionResult {
   success: boolean;
   status: string;
   message: string;
-  nickname?: string;
-  kingdom?: string;
-  avatar_url?: string;
 }
 
 /**
@@ -162,59 +150,16 @@ async function makeRequest(url: string, payload: any, retries: number = config.r
 }
 
 /**
- * Validate a player ID by logging in
- */
-export async function validatePlayerId(fid: string): Promise<ValidationResult> {
-  try {
-    const payload = encodeData({
-      fid: fid,
-      time: Date.now()
-    });
-
-    const response = await makeRequest(config.kingshot.loginUrl, payload);
-
-    if (response.code === 0 && response.msg === 'success') {
-      return {
-        success: true,
-        nickname: response.data?.nickname || null,
-        kingdom: response.data?.kid ? String(Math.floor(response.data.kid)) : undefined,
-        avatar_url: response.data?.avatar_image || null,
-        data: response.data
-      };
-    }
-
-    return {
-      success: false,
-      error: response.msg || 'Unknown error'
-    };
-  } catch (error: any) {
-    logger.error('Error validating player ID:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
-/**
  * Redeem a gift code for a player
+ * fid: numeric player id, kid: numeric server/kingdom id, code: gift code
  */
-export async function redeemGiftCode(fid: string, code: string): Promise<RedemptionResult> {
+export async function redeemGiftCode(fid: string, kid: string, code: string): Promise<RedemptionResult> {
   try {
-    // First validate the player to ensure session is active and get nickname
-    const loginResult = await validatePlayerId(fid);
-    if (!loginResult.success) {
-      return {
-        success: false,
-        status: 'NOT_LOGIN',
-        message: loginResult.error || 'Failed to authenticate player'
-      };
-    }
-
     const payload = encodeData({
       fid: fid,
       cdk: code,
-      time: Date.now()
+      kid: kid,
+      time: Math.floor(Date.now() / 1000)
     });
 
     const response = await makeRequest(config.kingshot.redeemUrl, payload);
@@ -224,21 +169,7 @@ export async function redeemGiftCode(fid: string, code: string): Promise<Redempt
       return {
         success: false,
         status: 'INVALID_RESPONSE',
-        message: 'Invalid response from server',
-        nickname: loginResult.nickname,
-        kingdom: loginResult.kingdom,
-        avatar_url: loginResult.avatar_url
-      };
-    }
-
-    if (response.code === -4) {
-      return {
-        success: false,
-        status: 'NOT_LOGIN',
-        message: response.msg || 'Session expired or invalid',
-        nickname: loginResult.nickname,
-        kingdom: loginResult.kingdom,
-        avatar_url: loginResult.avatar_url
+        message: 'Invalid response from server'
       };
     }
 
@@ -247,41 +178,12 @@ export async function redeemGiftCode(fid: string, code: string): Promise<Redempt
     // Remove trailing punctuation (., !, ?) and convert to uppercase
     const status = rawStatus.toString().trim().replace(/[.!?]+$/, '').toUpperCase();
 
-    let success = false;
-
-    if (['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE', 'SAME TYPE EXCHANGE'].includes(status)) {
-      success = true;
-    } else if (['TIME_ERROR', 'TIME ERROR', 'CDK_NOT_FOUND', 'CDK NOT FOUND', 'USAGE_LIMIT', 'USAGE LIMIT'].includes(status)) {
-      success = false;
-    } else if (status.includes('NOT_LOGIN') || status.includes('NOT LOGIN')) {
-      // Special handling for login issues
-      success = false;
-      logger.warn(`Session expired for FID ${fid}, attempting to re-login...`);
-      const reloginResult = await validatePlayerId(fid);
-      if (reloginResult.success) {
-        // Retry once with a new session and fresh timestamp
-        const retryPayload = encodeData({ fid, cdk: code, time: Date.now() });
-        const retryResponse = await makeRequest(config.kingshot.redeemUrl, retryPayload);
-        if (retryResponse.code === 0) {
-          return {
-            success: true,
-            status: retryResponse.msg || 'SUCCESS',
-            message: retryResponse.msg || 'Code redeemed after re-login',
-            nickname: reloginResult.nickname,
-            kingdom: reloginResult.kingdom,
-            avatar_url: reloginResult.avatar_url
-          };
-        }
-      }
-    }
+    const success = ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE', 'SAME TYPE EXCHANGE'].includes(status);
 
     return {
       success,
       status,
-      message: response.msg || 'No message from server',
-      nickname: loginResult.nickname,
-      kingdom: loginResult.kingdom,
-      avatar_url: loginResult.avatar_url
+      message: response.msg || 'No message from server'
     };
   } catch (error: any) {
     logger.error(`Error redeeming gift code ${code} for FID ${fid}:`, error);
