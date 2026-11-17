@@ -72,13 +72,13 @@
           </thead>
           <tbody>
             <tr v-for="pu in registeredUsers" :key="pu.fid">
-              <td>{{ pu.fid }}</td>
+              <td data-label="FID">{{ pu.fid }}</td>
               <td class="avatar-cell">
                 <img :src="pu.avatar_url || '/images/default-avatar.png'" :alt="pu.nickname || pu.fid" class="avatar" referrerpolicy="no-referrer" />
               </td>
-              <td>{{ pu.nickname || '-' }}</td>
-              <td>{{ pu.kingdom || '-' }}</td>
-              <td>
+              <td data-label="Nickname">{{ pu.nickname || '-' }}</td>
+              <td data-label="Kingdom">{{ pu.kingdom || '-' }}</td>
+              <td data-label="Priority">
                 <input
                   v-if="editingFid === pu.fid"
                   ref="priorityInputRef"
@@ -97,13 +97,13 @@
                   @dblclick="startEdit(pu)"
                 >{{ pu.priority }}</span>
               </td>
-              <td>
+              <td data-label="Status">
                 <span class="badge" :class="pu.active ? 'badge-success' : 'badge-danger'">
                   {{ pu.active ? 'Active' : 'Inactive' }}
                 </span>
               </td>
-              <td>{{ formatDate(pu.added_at) }}</td>
-              <td>
+              <td data-label="Added">{{ formatDate(pu.added_at) }}</td>
+              <td class="actions-cell">
                 <button
                   class="action-btn btn-remove"
                   :disabled="removing === pu.fid"
@@ -145,18 +145,18 @@
           </thead>
           <tbody>
             <tr v-for="item in queueItems" :key="item.id">
-              <td>{{ item.id }}</td>
-              <td>{{ item.fid }}</td>
+              <td data-label="ID">{{ item.id }}</td>
+              <td data-label="FID">{{ item.fid }}</td>
               <td class="avatar-cell">
                 <img :src="item.avatar_url || '/images/default-avatar.png'" :alt="item.nickname || item.fid" class="avatar" referrerpolicy="no-referrer" />
               </td>
-              <td>{{ item.nickname || '-' }}</td>
-              <td><code>{{ item.code }}</code></td>
-              <td><span class="badge badge-priority">{{ item.priority }}</span></td>
-              <td><span class="badge" :class="statusClass(item.status)">{{ item.status }}</span></td>
-              <td>{{ item.attempts }}</td>
-              <td class="error-cell">{{ item.error_message || '-' }}</td>
-              <td>{{ formatDate(item.created_at) }}</td>
+              <td data-label="Nickname">{{ item.nickname || '-' }}</td>
+              <td data-label="Code"><code>{{ item.code }}</code></td>
+              <td data-label="Priority"><span class="badge badge-priority">{{ item.priority }}</span></td>
+              <td data-label="Status"><span class="badge" :class="statusClass(item.status)">{{ item.status }}</span></td>
+              <td data-label="Attempts">{{ item.attempts }}</td>
+              <td class="error-cell" data-label="Error">{{ item.error_message || '-' }}</td>
+              <td data-label="Created">{{ formatDate(item.created_at) }}</td>
             </tr>
             <tr v-if="queueItems.length === 0 && !loading">
               <td colspan="10" class="empty">No priority items in queue</td>
@@ -405,303 +405,113 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.admin-page {
-  font-family: 'Cinzel', serif;
-  color: #5C4A35;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
-.page-title {
-  font-size: 1.6rem;
-  color: #6b472c;
-  margin: 0 0 24px;
-}
-
 .page-desc {
-  font-size: 0.85rem;
-  color: #8B7355;
   margin: 0 0 12px;
-}
-
-.tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 20px;
-  border-bottom: 2px solid rgba(92, 74, 53, 0.08);
-  padding-bottom: 0;
-}
-
-.tab-btn {
-  padding: 10px 20px;
-  border: none;
-  background: transparent;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #8B7355;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.tab-btn:hover {
-  color: #6b472c;
-}
-
-.tab-btn.active {
-  color: #6b472c;
-  border-bottom-color: #D4A574;
-}
-
-.tab-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 9px;
-  background: #E06A6A;
-  color: #fff;
-  font-size: 0.65rem;
-}
-
-.tab-badge-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 9px;
-  background: rgba(138, 43, 226, 0.15);
-  color: #8A2BE2;
-  font-size: 0.65rem;
-}
-
-.tab-content {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
+  font-size: 0.875rem;
+  color: var(--text-3);
 }
 
 .toolbar {
-  margin-bottom: 16px;
-}
-
-.info-bar {
-  font-size: 0.8rem;
-  color: #8B7355;
-  margin-bottom: 12px;
+  display: block;
 }
 
 /* Dropdown */
 .dropdown-wrapper {
   position: relative;
-  max-width: 400px;
+  max-width: 420px;
 }
 
 .search-input {
   width: 100%;
-  padding: 10px 14px;
-  border: 1px solid rgba(92, 74, 53, 0.2);
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.9rem;
-  color: #5C4A35;
-  background: #FFF8EF;
-  box-sizing: border-box;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #D4A574;
-  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
 }
 
 .dropdown-list {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
-  max-height: 260px;
-  overflow-y: auto;
-  background: #fff;
-  border: 1px solid rgba(92, 74, 53, 0.15);
-  border-top: none;
-  border-radius: 0 0 8px 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 50;
+  max-height: 280px;
+  padding: 4px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
 }
 
 .dropdown-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
   cursor: pointer;
-  transition: background 0.15s ease;
-  font-size: 0.85rem;
 }
 
 .dropdown-item:hover {
-  background: rgba(245, 230, 211, 0.5);
+  background: var(--surface-2);
 }
 
 .dropdown-nickname {
-  font-weight: 700;
-  color: #5C4A35;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .dropdown-fid {
-  color: #8B7355;
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
 }
 
 .dropdown-badge {
   margin-left: auto;
-  font-size: 0.65rem;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 8px;
-  background: rgba(138, 43, 226, 0.12);
-  color: #8A2BE2;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--violet-soft);
+  color: var(--violet-text);
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .dropdown-empty {
-  padding: 12px 14px;
-  color: #8B7355;
-  font-size: 0.85rem;
+  padding: 12px;
   text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-3);
 }
 
-/* Tables */
-.table-wrapper {
-  background: rgba(255, 255, 255, 0.98);
-  border-radius: 10px;
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-  border: 1px solid rgba(92, 74, 53, 0.08);
+.result-banner {
+  max-width: 420px;
+  margin: 12px 0 0;
 }
 
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
+.badge-priority {
+  cursor: default;
 }
 
-.admin-table th {
-  background: #FFF8EF;
-  padding: 12px 16px;
-  text-align: left;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: #8B7355;
-  border-bottom: 1px solid rgba(92, 74, 53, 0.08);
-  position: sticky;
-  top: 0;
-  z-index: 1;
+.badge-priority.editable {
+  cursor: pointer;
 }
 
-.sentinel-cell {
-  padding: 0 !important;
+.badge-priority.editable:hover {
+  background: var(--violet-soft-2);
 }
-
-.sentinel {
-  height: 1px;
-}
-
-.avatar-cell {
-  padding: 6px 8px !important;
-  width: 36px;
-}
-
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-  display: block;
-}
-
-.admin-table td {
-  padding: 10px 16px;
-  border-bottom: 1px solid rgba(92, 74, 53, 0.05);
-}
-
-.admin-table tbody tr:hover {
-  background: rgba(245, 230, 211, 0.3);
-}
-
-.admin-table code {
-  background: rgba(107, 71, 44, 0.08);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.85rem;
-}
-
-.error-cell {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.8rem;
-  color: #8B7355;
-}
-
-.empty {
-  text-align: center;
-  color: #8B7355;
-  padding: 24px !important;
-}
-
-.loading {
-  text-align: center;
-  padding: 20px;
-  color: #8B7355;
-}
-
-/* Badges */
-.badge {
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.badge-priority { background: rgba(138, 43, 226, 0.12); color: #8A2BE2; cursor: default; }
-.badge-priority.editable { cursor: pointer; }
-.badge-priority.editable:hover { background: rgba(138, 43, 226, 0.25); }
 
 .priority-input {
-  width: 52px;
-  padding: 3px 6px;
-  border: 1px solid #D4A574;
-  border-radius: 6px;
-  font-family: inherit;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #8A2BE2;
-  background: #FFF8EF;
+  width: 60px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--violet-text);
+  font-size: 0.875rem;
+  font-weight: 600;
   text-align: center;
   outline: none;
-  box-shadow: 0 0 0 2px rgba(138, 43, 226, 0.2);
+  box-shadow: var(--ring);
 }
 
 .priority-input::-webkit-inner-spin-button,
@@ -710,69 +520,15 @@ onUnmounted(() => {
   margin: 0;
 }
 
-.badge-success { background: rgba(107, 142, 35, 0.12); color: #6B8E23; }
-.badge-warning { background: rgba(212, 165, 116, 0.2); color: #A0826D; }
-.badge-danger { background: rgba(224, 106, 106, 0.12); color: #E06A6A; }
-.badge-info { background: rgba(70, 130, 180, 0.12); color: #4682B4; }
-.badge-muted { background: rgba(139, 115, 85, 0.1); color: #8B7355; }
+@media (max-width: 720px) {
+  .dropdown-wrapper,
+  .result-banner {
+    max-width: none;
+  }
 
-/* Buttons */
-.action-btn {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 6px;
-  font-family: inherit;
-  font-size: 0.75rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-remove {
-  background: rgba(224, 106, 106, 0.12);
-  color: #E06A6A;
-}
-
-.btn-remove:hover:not(:disabled) {
-  background: rgba(224, 106, 106, 0.25);
-}
-
-/* Result banner */
-.result-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  border-radius: 8px;
-  margin-top: 12px;
-  max-width: 400px;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.result-success {
-  background: rgba(107, 142, 35, 0.12);
-  color: #6B8E23;
-}
-
-.result-error {
-  background: rgba(224, 106, 106, 0.12);
-  color: #E06A6A;
-}
-
-.dismiss-btn {
-  background: none;
-  border: none;
-  font-size: 1.2rem;
-  cursor: pointer;
-  color: inherit;
-  padding: 0 4px;
-  line-height: 1;
+  .priority-input {
+    height: 34px;
+    font-size: 16px;
+  }
 }
 </style>

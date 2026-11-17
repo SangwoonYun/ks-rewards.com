@@ -17,11 +17,14 @@ export default defineNuxtConfig({
       ],
       link: [
         { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
-        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: 'anonymous' },
-        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap' }
+        { rel: 'preconnect', href: 'https://cdn.jsdelivr.net', crossorigin: 'anonymous' },
+        { rel: 'stylesheet', href: 'https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css' }
       ]
     }
   },
+
+  // Design tokens and base styles (admin-only styles are imported by the admin layout)
+  css: ['~/assets/css/base.css'],
 
   // Static images (e.g. the default avatar shown for every user without one): let browsers reuse
   // them across page loads instead of revalidating each time

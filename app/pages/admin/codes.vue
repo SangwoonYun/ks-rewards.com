@@ -66,14 +66,14 @@
         </thead>
         <tbody>
           <tr v-for="code in codes" :key="code.code">
-            <td><code>{{ code.code }}</code></td>
-            <td>
+            <td data-label="Code"><code>{{ code.code }}</code></td>
+            <td data-label="Status">
               <span class="badge" :class="codeStatusClass(code.validation_status)">
                 {{ code.validation_status }}
               </span>
             </td>
-            <td>{{ code.source }}</td>
-            <td>{{ formatDate(code.date_discovered) }}</td>
+            <td data-label="Source">{{ code.source }}</td>
+            <td data-label="Discovered">{{ formatDate(code.date_discovered) }}</td>
             <td class="actions-cell">
               <button
                 class="action-btn btn-revalidate"
@@ -327,267 +327,36 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.admin-page {
-  font-family: 'Cinzel', serif;
-  color: #5C4A35;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
-.page-title {
-  font-size: 1.6rem;
-  color: #6b472c;
-  margin: 0 0 24px;
-}
-
-.toolbar {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.search-input {
-  flex: 1;
-  min-width: 200px;
-  padding: 10px 14px;
-  border: 1px solid rgba(92, 74, 53, 0.2);
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.9rem;
-  color: #5C4A35;
-  background: #FFF8EF;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #D4A574;
-  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
-}
-
-.filter-select {
-  padding: 10px 14px;
-  border: 1px solid rgba(92, 74, 53, 0.2);
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.9rem;
-  color: #5C4A35;
-  background: #FFF8EF;
-  cursor: pointer;
-}
-
-.toolbar-btn {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.toolbar-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #6b472c, #7b5a36);
-  color: #F5E6D3;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #7b5a36, #8B6F47);
-}
-
-.btn-secondary {
-  background: rgba(139, 111, 71, 0.12);
-  color: #8B6F47;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: rgba(139, 111, 71, 0.22);
-}
-
-.btn-info {
-  background: rgba(70, 130, 180, 0.12);
-  color: #4682B4;
-}
-
-.btn-info:hover:not(:disabled) {
-  background: rgba(70, 130, 180, 0.22);
-}
-
-.btn-warn {
-  background: rgba(212, 100, 50, 0.12);
-  color: #C05020;
-}
-
-.btn-warn:hover:not(:disabled) {
-  background: rgba(212, 100, 50, 0.22);
-}
-
 .add-form {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   margin-bottom: 16px;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.98);
-  border-radius: 10px;
-  border: 1px solid rgba(92, 74, 53, 0.08);
-}
-
-.message {
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  margin-bottom: 16px;
-}
-
-.message-success {
-  background: rgba(107, 142, 35, 0.1);
-  color: #6B8E23;
-  border: 1px solid rgba(107, 142, 35, 0.2);
-}
-
-.message-error {
-  background: rgba(224, 106, 106, 0.1);
-  color: #E06A6A;
-  border: 1px solid rgba(224, 106, 106, 0.2);
-}
-
-.info-bar {
-  font-size: 0.8rem;
-  color: #8B7355;
-  margin-bottom: 12px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
 }
 
 .stats-summary {
   margin-left: 4px;
 }
 
-.table-wrapper {
-  background: rgba(255, 255, 255, 0.98);
-  border-radius: 10px;
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-  border: 1px solid rgba(92, 74, 53, 0.08);
-}
+@media (max-width: 720px) {
+  .toolbar .filter-select {
+    flex: 1;
+  }
 
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
+  .toolbar .toolbar-btn {
+    flex: 1 1 calc(50% - 4px);
+  }
 
-.admin-table th {
-  background: #FFF8EF;
-  padding: 12px 16px;
-  text-align: left;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: #8B7355;
-  border-bottom: 1px solid rgba(92, 74, 53, 0.08);
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
+  .add-form {
+    flex-wrap: wrap;
+  }
 
-.sentinel-cell {
-  padding: 0 !important;
-}
-
-.sentinel {
-  height: 1px;
-}
-
-.admin-table td {
-  padding: 10px 16px;
-  border-bottom: 1px solid rgba(92, 74, 53, 0.05);
-}
-
-.admin-table tbody tr:hover {
-  background: rgba(245, 230, 211, 0.3);
-}
-
-.admin-table code {
-  background: rgba(107, 71, 44, 0.08);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.85rem;
-}
-
-.empty {
-  text-align: center;
-  color: #8B7355;
-  padding: 24px !important;
-}
-
-.loading {
-  text-align: center;
-  padding: 20px;
-  color: #8B7355;
-}
-
-.badge {
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.badge-success { background: rgba(107, 142, 35, 0.12); color: #6B8E23; }
-.badge-warning { background: rgba(212, 165, 116, 0.2); color: #A0826D; }
-.badge-danger { background: rgba(224, 106, 106, 0.12); color: #E06A6A; }
-.badge-muted { background: rgba(139, 115, 85, 0.1); color: #8B7355; }
-
-.action-btn {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 6px;
-  font-family: inherit;
-  font-size: 0.75rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.actions-cell {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.btn-revalidate {
-  background: rgba(70, 130, 180, 0.12);
-  color: #4682B4;
-}
-
-.btn-revalidate:hover:not(:disabled) {
-  background: rgba(70, 130, 180, 0.25);
-}
-
-.btn-delete {
-  background: rgba(224, 106, 106, 0.12);
-  color: #E06A6A;
-}
-
-.btn-delete:hover:not(:disabled) {
-  background: rgba(224, 106, 106, 0.25);
+  .add-form .toolbar-btn {
+    flex: 1;
+  }
 }
 </style>

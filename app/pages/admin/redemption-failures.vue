@@ -130,7 +130,7 @@
         </thead>
         <tbody>
           <tr v-for="user in visibleUsers" :key="user.fid">
-            <td class="check-cell">
+            <td class="check-cell" data-label="Select">
               <input
                 type="checkbox"
                 :checked="isChecked(user.fid)"
@@ -138,7 +138,7 @@
                 @change="toggleOne(user.fid)"
               />
             </td>
-            <td>{{ user.fid }}</td>
+            <td data-label="FID">{{ user.fid }}</td>
             <td class="avatar-cell">
               <img
                 :src="user.avatar_url || '/images/default-avatar.png'"
@@ -147,8 +147,8 @@
                 referrerpolicy="no-referrer"
               />
             </td>
-            <td>{{ user.nickname || '-' }}</td>
-            <td class="kingdom-cell" title="Double-click to edit" @dblclick="startEdit(user)">
+            <td data-label="Nickname">{{ user.nickname || '-' }}</td>
+            <td class="kingdom-cell" data-label="Kingdom" title="Double-click to edit" @dblclick="startEdit(user)">
               <span v-if="saving === user.fid" class="saving">Verifying...</span>
               <input
                 v-else-if="editing === user.fid"
@@ -163,7 +163,7 @@
               />
               <span v-else>{{ user.kingdom || '-' }}</span>
             </td>
-            <td class="reason-cell">
+            <td class="reason-cell" data-label="Reason">
               <span
                 v-for="f in user.failures"
                 :key="f.status"
@@ -174,8 +174,8 @@
                 {{ STATUS_LABELS[f.status] ?? f.status }} ×{{ f.codes.length }}
               </span>
             </td>
-            <td class="nowrap">{{ formatDate(user.last_failed_at) }}</td>
-            <td class="result-cell">
+            <td class="nowrap" data-label="Last Failed">{{ formatDate(user.last_failed_at) }}</td>
+            <td class="result-cell" data-label="Result">
               <span v-if="searchByFid[user.fid]" class="search-status" :class="`search-${searchByFid[user.fid]!.status}`">
                 {{ searchLabel(searchByFid[user.fid]!) }}
               </span>
@@ -642,313 +642,141 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.admin-page {
-  font-family: 'Cinzel', serif;
-  color: #5C4A35;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
 .page-title {
-  font-size: 1.6rem;
-  color: #6b472c;
-  margin: 0 0 12px;
+  margin-bottom: 8px;
 }
 
 .description {
-  font-size: 0.85rem;
-  color: #8B7355;
   margin: 0 0 16px;
-  line-height: 1.5;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--text-3);
 }
 
 .toolbar {
-  display: flex;
-  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  flex-wrap: wrap;
   margin-bottom: 12px;
 }
 
 .toolbar-actions {
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: 6px;
 }
 
+/* Category tabs (pills) with the search box on the right */
 .tabs {
-  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  border-bottom: none;
+  overflow: visible;
 }
 
 .tab {
-  padding: 6px 12px;
-  border: 1px solid rgba(92, 74, 53, 0.15);
-  border-radius: 16px;
-  background: #FFF8EF;
-  font-family: inherit;
-  font-size: 0.8rem;
-  color: #8B7355;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--text-2);
+  font-size: 0.8125rem;
+  font-weight: 500;
   cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.tab:hover {
+  background: var(--surface-2);
 }
 
 .tab.active {
-  background: #6b472c;
-  border-color: #6b472c;
+  background: var(--text);
+  border-color: var(--text);
   color: #fff;
 }
 
 .tab-count {
-  font-family: system-ui, sans-serif;
-  font-weight: 700;
-  margin-left: 2px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
 }
 
-.filter-input {
+.tabs .filter-input {
+  width: 200px;
   margin-left: auto;
-  width: 180px;
-  padding: 6px 10px;
-  border: 1px solid rgba(92, 74, 53, 0.2);
-  border-radius: 6px;
-  font-family: system-ui, sans-serif;
-  font-size: 0.8rem;
-  color: #5C4A35;
-  background: #fff;
-}
-
-.filter-input:focus {
-  outline: none;
-  border-color: #D4A574;
-  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
 }
 
 .hint {
-  font-size: 0.8rem;
-  color: #8B7355;
   margin: 0 0 12px;
-  font-family: system-ui, sans-serif;
-}
-
-.bulk-cancel {
-  margin-left: 8px;
-  padding: 3px 10px;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--text-3);
 }
 
 .count-info {
-  font-size: 0.8rem;
-  color: #8B7355;
+  font-size: 0.8125rem;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.bulk-cancel {
+  height: 26px;
+  margin-left: 8px;
 }
 
 .search-summary {
-  font-size: 0.8rem;
-  color: #6b472c;
-  background: #FFF8EF;
-  border: 1px solid rgba(92, 74, 53, 0.1);
-  border-radius: 8px;
-  padding: 8px 12px;
   margin-bottom: 12px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-xs);
+  color: var(--text-2);
+  font-size: 0.8125rem;
+  line-height: 1.6;
 }
 
 .progress {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin-top: 8px;
 }
 
 .progress-track {
   flex: 1;
-  height: 10px;
-  background: rgba(92, 74, 53, 0.1);
-  border-radius: 5px;
+  height: 8px;
   overflow: hidden;
+  background: var(--surface-2);
+  border-radius: 999px;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #D4A574 0%, #6B8E23 100%);
-  border-radius: 5px;
+  background: var(--primary);
+  border-radius: 999px;
   transition: width 0.4s ease;
 }
 
 .progress-label {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  color: var(--text-3);
 }
 
 .found-list {
-  margin-top: 4px;
-  color: #6B8E23;
-}
-
-.table-wrapper {
-  background: rgba(255, 255, 255, 0.98);
-  border-radius: 10px;
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-  border: 1px solid rgba(92, 74, 53, 0.08);
-}
-
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
-
-.admin-table th {
-  background: #FFF8EF;
-  padding: 12px 16px;
-  text-align: left;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: #8B7355;
-  border-bottom: 1px solid rgba(92, 74, 53, 0.08);
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-.admin-table td {
-  padding: 10px 16px;
-  border-bottom: 1px solid rgba(92, 74, 53, 0.05);
-}
-
-.admin-table tbody tr:hover {
-  background: rgba(245, 230, 211, 0.3);
-}
-
-.btn-deactivate {
-  background: rgba(224, 106, 106, 0.12);
-  color: #E06A6A;
-}
-
-.btn-deactivate:hover:not(:disabled) {
-  background: rgba(224, 106, 106, 0.25);
-}
-
-.btn-activate {
-  background: rgba(107, 142, 35, 0.12);
-  color: #6B8E23;
-}
-
-.btn-activate:hover:not(:disabled) {
-  background: rgba(107, 142, 35, 0.25);
+  margin-top: 6px;
+  color: var(--success-text);
 }
 
 .check-cell {
-  width: 32px;
-}
-
-.empty {
-  text-align: center;
-  color: #8B7355;
-  padding: 24px !important;
-}
-
-.muted {
-  color: #B8A68E;
-}
-
-.badge {
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.badge-success {
-  background: rgba(107, 142, 35, 0.12);
-  color: #6B8E23;
-}
-
-.badge-danger {
-  background: rgba(224, 106, 106, 0.12);
-  color: #E06A6A;
-}
-
-.search-status {
-  font-size: 0.8rem;
-}
-
-.search-queued,
-.search-waiting,
-.search-cancelled {
-  color: #8B7355;
-}
-
-.search-searching {
-  color: #B07D3E;
-}
-
-.search-found {
-  color: #6B8E23;
-  font-weight: 700;
-}
-
-.search-not_found,
-.search-aborted {
-  color: #C0843A;
-}
-
-.search-no_player {
-  color: #E06A6A;
-  font-weight: 700;
-}
-
-.action-btn {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 6px;
-  font-family: inherit;
-  font-size: 0.75rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-primary {
-  background: #6b472c;
-  color: #fff;
-}
-
-.btn-secondary {
-  background: #D4A574;
-  color: #fff;
-}
-
-.btn-refresh {
-  background: rgba(184, 134, 11, 0.12);
-  color: #B8860B;
-}
-
-.btn-refresh:hover:not(:disabled) {
-  background: rgba(184, 134, 11, 0.25);
-}
-
-.btn-apply {
-  background: rgba(70, 130, 180, 0.12);
-  color: #4682B4;
-}
-
-.btn-apply:hover:not(:disabled) {
-  background: rgba(70, 130, 180, 0.25);
-}
-
-.btn-danger {
-  background: #E06A6A;
-  color: #fff;
+  width: 40px;
 }
 
 .kingdom-cell {
@@ -957,68 +785,20 @@ onUnmounted(() => {
 
 .kingdom-input {
   width: 90px;
-  padding: 4px 8px;
-  border: 1px solid #D4A574;
-  border-radius: 6px;
-  font-family: inherit;
-  font-size: 0.9rem;
-  color: #5C4A35;
-  background: #FFF8EF;
-}
-
-.kingdom-input:focus {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.875rem;
   outline: none;
-  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
+  box-shadow: var(--ring);
 }
 
 .saving {
-  color: #8B7355;
   font-style: italic;
-}
-
-.result-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  font-size: 0.85rem;
-}
-
-.result-success {
-  background: rgba(107, 142, 35, 0.12);
-  color: #6B8E23;
-}
-
-.result-error {
-  background: rgba(224, 106, 106, 0.12);
-  color: #E06A6A;
-}
-
-.dismiss-btn {
-  background: none;
-  border: none;
-  font-size: 1.1rem;
-  color: inherit;
-  cursor: pointer;
-}
-
-.action-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.avatar-cell {
-  padding: 6px 8px !important;
-  width: 36px;
-}
-
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-  display: block;
+  color: var(--text-3);
 }
 
 .reason-cell {
@@ -1029,8 +809,7 @@ onUnmounted(() => {
   display: inline-block;
   margin: 2px 4px 2px 0;
   padding: 2px 8px;
-  border-radius: 10px;
-  font-family: system-ui, sans-serif;
+  border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
@@ -1038,42 +817,105 @@ onUnmounted(() => {
 }
 
 .reason-wrong_kingdom {
-  background: rgba(192, 132, 58, 0.15);
-  color: #A0652A;
+  background: var(--warning-soft);
+  color: var(--warning-text);
+  box-shadow: inset 0 0 0 1px #fde68a;
 }
 
 .reason-no_account {
-  background: rgba(224, 106, 106, 0.12);
-  color: #E06A6A;
+  background: var(--danger-soft);
+  color: var(--danger-text);
+  box-shadow: inset 0 0 0 1px #fecaca;
 }
 
 .reason-other {
-  background: rgba(92, 74, 53, 0.08);
-  color: #8B7355;
+  background: var(--surface-2);
+  color: var(--text-3);
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 
 .result-cell {
-  font-size: 0.8rem;
   max-width: 240px;
+  font-size: 0.8125rem;
 }
 
-.text-success {
-  color: #6B8E23;
+.search-status {
+  font-size: 0.8125rem;
 }
 
-.text-error {
-  color: #E06A6A;
+.search-queued,
+.search-waiting,
+.search-cancelled {
+  color: var(--text-3);
+}
+
+.search-searching {
+  color: var(--primary-text);
+}
+
+.search-found {
+  color: var(--success-text);
+  font-weight: 600;
+}
+
+.search-not_found,
+.search-aborted {
+  color: var(--warning-text);
+}
+
+.search-no_player {
+  color: var(--danger-text);
+  font-weight: 600;
 }
 
 .nowrap {
   white-space: nowrap;
 }
 
-.actions-cell {
-  white-space: nowrap;
-}
+@media (max-width: 720px) {
+  /* The search box goes full width below the pills */
+  .tabs .filter-input {
+    flex-basis: 100%;
+    width: 100%;
+    margin: 4px 0 0;
+  }
 
-.actions-cell .action-btn + .action-btn {
-  margin-left: 4px;
+  .toolbar-actions {
+    width: 100%;
+  }
+
+  .toolbar-actions .action-btn {
+    flex: 1 1 calc(50% - 3px);
+  }
+
+  .progress {
+    flex-wrap: wrap;
+  }
+
+  .progress-track {
+    flex-basis: 100%;
+  }
+
+  .progress-label {
+    white-space: normal;
+  }
+
+  .reason-cell,
+  .result-cell {
+    max-width: none;
+  }
+
+  .reason-cell {
+    flex-wrap: wrap;
+  }
+
+  .nowrap {
+    white-space: normal;
+  }
+
+  .kingdom-input {
+    height: 34px;
+    font-size: 16px;
+  }
 }
 </style>

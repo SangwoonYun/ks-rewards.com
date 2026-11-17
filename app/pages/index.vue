@@ -1,131 +1,169 @@
 ﻿<template>
-  <div class="container">
-    <header class="site-header">
-      <h1>Kingshot Rewards — 자동 기프트 코드 수령</h1>
+  <div class="page">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">KS</span>
+          <span class="brand-name">Kingshot Rewards</span>
+        </a>
+        <a href="#codes-panel" class="topbar-link">Gift Codes</a>
+      </div>
     </header>
 
-    <section class="controls">
-      <div class="field">
-        <label for="playerId">플레이어 ID</label>
-        <input
-          id="playerId"
-          v-model="playerInput"
-          type="text"
-          placeholder="쉼표로 구분하여 여러 플레이어 ID 입력 (예: 12345678, 23456789)"
-          @keyup.enter="registerPlayer"
-        />
-      </div>
+    <main class="main">
+      <section class="hero">
+        <h1 class="hero-title">Kingshot Rewards <span class="hero-sub">— 자동 기프트 코드 수령</span></h1>
+        <p class="hero-lead">플레이어 ID를 한 번만 등록하면, 새 기프트 코드가 나올 때마다 자동으로 수령합니다.</p>
+      </section>
 
-      <div class="field">
-        <label for="serverId">왕국 번호</label>
-        <input
-          id="serverId"
-          v-model="serverInput"
-          type="text"
-          placeholder="예: 120 (위 플레이어 ID 전체에 동일하게 적용됩니다)"
-          @keyup.enter="registerPlayer"
-        />
-      </div>
+      <section class="card register" aria-labelledby="register-title">
+        <h2 id="register-title" class="card-title">자동 수령 등록</h2>
+        <div class="register-fields">
+          <div class="field field-player">
+            <label for="playerId">플레이어 ID</label>
+            <input
+              id="playerId"
+              v-model="playerInput"
+              type="text"
+              placeholder="쉼표로 구분하여 여러 플레이어 ID 입력 (예: 12345678, 23456789)"
+              @keyup.enter="registerPlayer"
+            />
+          </div>
 
-      <div class="buttons">
-        <button
-          id="startBtn"
-          class="btn-primary"
-          :disabled="isRegistering"
-          @click="registerPlayer"
-        >
-          {{ isRegistering ? '등록 중...' : '자동 수령 등록' }}
-        </button>
-      </div>
+          <div class="field field-server">
+            <label for="serverId">왕국 번호</label>
+            <input
+              id="serverId"
+              v-model="serverInput"
+              type="text"
+              inputmode="numeric"
+              placeholder="예: 120 (위 플레이어 ID 전체에 동일하게 적용됩니다)"
+              @keyup.enter="registerPlayer"
+            />
+          </div>
 
-      <div id="status" v-if="statusMessage" :class="['status', statusType]">{{ statusMessage }}</div>
-    </section>
-
-    <section class="info">
-      <h2>About</h2>
-      <p><strong>기능:</strong> Kingshot 기프트 코드를 자동으로 감지하여 등록된 플레이어 ID로 즉시 수령합니다.</p>
-      <p><strong>등록 방법:</strong> 플레이어 ID를 입력 후 등록 버튼을 누르세요. 이후 사이트를 닫아도 계속 자동 수령됩니다.</p>
-      <p><strong>플레이어 ID 확인:</strong> 게임 실행 → 프로필 → 정보 탭에서 이름 아래 표시됩니다.</p>
-      <p><strong>왕국 번호:</strong> 한 번에 입력한 왕국 번호는 위에 입력한 모든 플레이어 ID에 동일하게 적용됩니다. 왕국이 다른 플레이어는 나눠서 등록해 주세요.</p>
-      <p class="notice-text"><strong>안내:</strong> 닉네임/아바타는 외부 공개 정보를 바탕으로 표시되어, 반영이 늦거나 표시되지 않을 수 있습니다.</p>
-      <p class="notice-text"><strong>이민하신 경우:</strong> 이민(왕국 이동)을 하신 경우, 같은 플레이어 ID와 새 왕국 번호로 다시 등록하시면 왕국 정보가 자동으로 갱신됩니다.</p>
-      <div class="disclaimer" role="note" aria-label="Disclaimer">
-        <!-- Use Material Symbols glyph via CSS pseudo-element (no inline text to select) -->
-        <span class="disclaimer-icon material-symbols-outlined" aria-hidden="true"></span>
-        <div class="disclaimer-content">
-          <div class="disclaimer-title"><strong>Disclaimer</strong></div>
-          <p>Kingshot 서버의 요청 제한을 준수하기 위해 모든 등록 및 수령은 큐 기반으로 처리됩니다.</p>
-          <ul>
-            <li>초기 등록 및 즉시 수령은 몇 분 정도 소요될 수 있습니다.</li>
-            <li>등록 인원이 많을 경우 새 코드 수령이 지연될 수 있습니다.</li>
-            <li>지연이 과도해질 경우 개선 로직이 적용될 예정입니다.</li>
-          </ul>
+          <button
+            id="startBtn"
+            class="register-btn"
+            :disabled="isRegistering"
+            @click="registerPlayer"
+          >
+            <span v-if="isRegistering" class="spinner" aria-hidden="true"></span>
+            {{ isRegistering ? '등록 중...' : '자동 수령 등록' }}
+          </button>
         </div>
-      </div>
-    </section>
 
-    <section class="info">
-      <h2>Contact</h2>
-      <p>피드백 또는 플레이어 ID 삭제 요청은 <a href="mailto:dev.swyun@gmail.com">dev.swyun@gmail.com</a>으로 연락 주세요.</p>
-    </section>
+        <div id="status" v-if="statusMessage" :class="['status', statusType]" role="status">{{ statusMessage }}</div>
+      </section>
 
-    <section class="live">
-      <div class="panel">
-        <h3>Gift Codes</h3>
-        <div id="codes" :class="['codes-grid', { empty: displayedCodes.length === 0 }]">
-          <template v-if="displayedCodes.length > 0">
-            <div v-for="code in displayedCodes" :key="code.code" :class="['code-tile', { expired: code.validation_status === 'expired' }]">
-              <div class="code-tile-badge">
+      <section class="live">
+        <div id="codes-panel" class="card panel">
+          <div class="panel-head">
+            <h2 class="card-title">Gift Codes</h2>
+            <span class="count-pill">{{ displayedCodes.length }}</span>
+          </div>
+          <div id="codes" :class="['codes-grid', { 'is-empty': displayedCodes.length === 0 }]">
+            <template v-if="displayedCodes.length > 0">
+              <div v-for="code in displayedCodes" :key="code.code" :class="['code-tile', { expired: code.validation_status === 'expired' }]">
                 <span class="code-tile-code">{{ code.code }}</span>
+                <span :class="['code-tile-status', code.validation_status === 'expired' ? 'expired' : 'active']">
+                  {{ code.validation_status === 'expired' ? '만료됨' : '사용 가능' }}
+                </span>
               </div>
-              <div :class="['code-tile-status', code.validation_status === 'expired' ? 'expired' : 'active']">
-                {{ code.validation_status === 'expired' ? '만료됨' : '사용 가능' }}
-              </div>
-            </div>
-          </template>
-          <template v-else>
-            <div class="empty-message">등록된 코드가 없습니다.</div>
-          </template>
+            </template>
+            <template v-else>
+              <div class="empty-message">등록된 코드가 없습니다.</div>
+            </template>
+          </div>
         </div>
-      </div>
 
-      <div class="panel">
-        <h3>최근 수령 내역</h3>
-        <div id="redemptions" :class="['redemptions-grid', { empty: redemptions.length === 0 }]">
-          <template v-if="redemptions.length > 0">
-            <div
-              v-for="(redemption, index) in redemptions"
-              :key="index"
-              class="redemption-tile"
-            >
-              <img
-                :src="redemption.avatar_url || '/images/default-avatar.png'"
-                :alt="`${redemption.nickname || 'Player'} avatar`"
-                class="redemption-avatar"
-                @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
-              />
+        <div class="card panel">
+          <div class="panel-head">
+            <h2 class="card-title">최근 수령 내역</h2>
+            <span class="live-badge"><span class="live-dot" aria-hidden="true"></span>LIVE</span>
+          </div>
+          <div id="redemptions" :class="['redemptions-list', { 'is-empty': redemptions.length === 0 }]">
+            <template v-if="redemptions.length > 0">
+              <div
+                v-for="(redemption, index) in redemptions"
+                :key="index"
+                class="redemption-row"
+              >
+                <img
+                  :src="redemption.avatar_url || '/images/default-avatar.png'"
+                  :alt="`${redemption.nickname || 'Player'} avatar`"
+                  class="redemption-avatar"
+                  @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
+                />
 
-              <div class="redemption-info">
-                <div class="redemption-player">
-                  <span class="redemption-nickname">{{ redemption.nickname || 'Player' }}</span>
-                  <span v-if="redemption.kingdom" class="redemption-kingdom">(#{{ redemption.kingdom }})</span>
-                </div>
-                <div class="redemption-details">
-                  <span class="redemption-code">{{ redemption.code }}</span>
-                  <span class="redemption-separator">•</span>
+                <div class="redemption-info">
+                  <div class="redemption-player">
+                    <span class="redemption-nickname">{{ redemption.nickname || 'Player' }}</span>
+                    <span v-if="redemption.kingdom" class="redemption-kingdom">(#{{ redemption.kingdom }})</span>
+                  </div>
                   <span class="redemption-time">{{ formatTimeKST(redemption.redeemed_at) }} KST</span>
                 </div>
+                <span class="redemption-code">{{ redemption.code }}</span>
               </div>
-            </div>
-          </template>
-          <template v-else>
-            <div class="empty-message">아직 수령 기록이 없습니다.</div>
-          </template>
+            </template>
+            <template v-else>
+              <div class="empty-message">아직 수령 기록이 없습니다.</div>
+            </template>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <footer>
+      <section class="card info">
+        <h2 class="card-title">About</h2>
+        <dl class="info-list">
+          <div class="info-item">
+            <dt>기능</dt>
+            <dd>Kingshot 기프트 코드를 자동으로 감지하여 등록된 플레이어 ID로 즉시 수령합니다.</dd>
+          </div>
+          <div class="info-item">
+            <dt>등록 방법</dt>
+            <dd>플레이어 ID를 입력 후 등록 버튼을 누르세요. 이후 사이트를 닫아도 계속 자동 수령됩니다.</dd>
+          </div>
+          <div class="info-item">
+            <dt>플레이어 ID 확인</dt>
+            <dd>게임 실행 → 프로필 → 정보 탭에서 이름 아래 표시됩니다.</dd>
+          </div>
+          <div class="info-item">
+            <dt>왕국 번호</dt>
+            <dd>한 번에 입력한 왕국 번호는 위에 입력한 모든 플레이어 ID에 동일하게 적용됩니다. 왕국이 다른 플레이어는 나눠서 등록해 주세요.</dd>
+          </div>
+        </dl>
+
+        <div class="notices">
+          <p class="notice-text"><strong>안내:</strong> 닉네임/아바타는 외부 공개 정보를 바탕으로 표시되어, 반영이 늦거나 표시되지 않을 수 있습니다.</p>
+          <p class="notice-text"><strong>이민하신 경우:</strong> 이민(왕국 이동)을 하신 경우, 같은 플레이어 ID와 새 왕국 번호로 다시 등록하시면 왕국 정보가 자동으로 갱신됩니다.</p>
+          <p class="notice-text"><strong>장기 미접속 시:</strong> 오랫동안(90일 이상) 게임에 접속하지 않은 플레이어는 자동으로 감지되어 수령이 중단(비활성화)됩니다. 다시 등록하시면 바로 재활성화됩니다.</p>
+        </div>
+
+        <div class="disclaimer" role="note" aria-label="Disclaimer">
+          <svg class="disclaimer-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 16v-4M12 8h.01" />
+          </svg>
+          <div class="disclaimer-content">
+            <div class="disclaimer-title"><strong>Disclaimer</strong></div>
+            <p>Kingshot 서버의 요청 제한을 준수하기 위해 모든 등록 및 수령은 큐 기반으로 처리됩니다.</p>
+            <ul>
+              <li>초기 등록 및 즉시 수령은 몇 분 정도 소요될 수 있습니다.</li>
+              <li>등록 인원이 많을 경우 새 코드 수령이 지연될 수 있습니다.</li>
+              <li>지연이 과도해질 경우 개선 로직이 적용될 예정입니다.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="card info contact">
+        <h2 class="card-title">Contact</h2>
+        <p>피드백 또는 플레이어 ID 삭제 요청은 <a href="mailto:dev.swyun@gmail.com">dev.swyun@gmail.com</a>으로 연락 주세요.</p>
+      </section>
+    </main>
+
+    <footer class="footer">
       <small>Made by player <strong>adaja</strong> (Kingdom 847). Automatic redemption logic adapted from <a href="https://github.com/justncodes" target="_blank" rel="noopener noreferrer">justncodes</a>.</small>
     </footer>
   </div>
@@ -228,12 +266,6 @@ useHead({
   ],
 
   link: [
-    { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-    { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-
-    { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=info' },
-    { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=info' },
-
     { rel: 'canonical', href: 'https://ks-rewards.com/' }
   ],
 
@@ -481,338 +513,437 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Light-only theme for Kingshot Rewards frontend */
-:root {
-  /* Medieval-inspired palette (light) */
-  --primary-dark: #8B6F47; /* Leather Brown */
-  --primary-medium: #A0826D; /* Wood Brown */
-  --primary-gold: #D4A574; /* Royal Gold */
-  --primary-light: #F5E6D3; /* Parchment Cream */
-
-  /* parchment-only backdrop (no dark brown top) */
-  --bg: linear-gradient(135deg, #F3ECE0 0%, #E9DFC8 100%);
-  --card-bg: rgba(255,255,255,0.98);
-  --panel-bg: #FFF8EF;
-
-  --text: #5C4A35;
-  --muted-text: #8B7355;
-  --accent: var(--primary-gold);
-  --border: rgba(92,74,53,0.08);
-
-  --success: #6B8E23;
-  --danger: #E06A6A;
-
-  --shadow-sm: 0 2px 6px rgba(0,0,0,0.06);
-  --shadow-md: 0 6px 18px rgba(0,0,0,0.09);
-}
-
-/* Base styles */
-* {
-  box-sizing: border-box;
-}
-
-.container {
-  max-width: 980px;
-  margin: 0 auto;
-  padding: 20px;
+.page {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
 }
 
-.site-header {
+/* Top bar */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: saturate(180%) blur(10px);
+  -webkit-backdrop-filter: saturate(180%) blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
-  padding: 12px;
-  border-radius: 10px;
-  background: linear-gradient(90deg, #6b472c 0%, #7b5a36 60%);
-  border: 1px solid rgba(92,74,53,0.08);
-  box-shadow: var(--shadow-md);
+  max-width: 1080px;
+  height: 60px;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
-.site-header h1 {
-  font-family: 'Cinzel', serif;
-  font-weight: 700;
-  font-size: 20px;
-  margin: 0;
-  color: var(--primary-light);
-  letter-spacing: 0.2px;
-  text-shadow: 0 2px 6px rgba(0,0,0,0.20);
-}
-
-.controls {
-  background: var(--card-bg);
-  padding: 14px;
-  border-radius: 10px;
-  box-shadow: var(--shadow-sm);
-  margin-bottom: 16px;
-  border: 1px solid var(--border);
-}
-
-.field {
-  margin-bottom: 12px;
-}
-
-label {
-  display: block;
-  font-weight: 700;
-  margin-bottom: 6px;
-  color: var(--muted-text);
-}
-
-input[type=text] {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(0,0,0,0.06);
-  background: transparent;
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   color: var(--text);
-  font-size: 14px;
+  text-decoration: none;
 }
 
-input[type=text]:focus {
-  outline: none;
-  box-shadow: 0 0 0 6px rgba(212,165,116,0.06);
-  border-color: rgba(212,165,116,0.24);
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
 }
 
-.buttons {
-  display: flex;
-  gap: 8px;
-}
-
-.btn-primary {
-  background: linear-gradient(180deg, #7FD45C 0%, #4CAF50 50%, #2E7D32 100%);
-  color: #ffffff;
-  padding: 6px 12px;
-  border: 2px solid #29491a;
-  border-radius: 10px;
-  font-size: 13px;
+.brand-name {
+  font-size: 1rem;
   font-weight: 700;
-  text-shadow: 0 1px 1px rgba(0,0,0,0.35);
+  letter-spacing: -0.01em;
+}
+
+.topbar-link {
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  color: var(--text-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.topbar-link:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* Layout */
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.hero {
+  padding: 48px 0 12px;
+}
+
+.hero-title {
+  margin: 0;
+  font-size: clamp(1.75rem, 1.2rem + 2.4vw, 2.625rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  word-break: keep-all;
+}
+
+.hero-sub {
+  color: var(--text-3);
+  font-weight: 700;
+}
+
+.hero-lead {
+  max-width: 560px;
+  margin: 14px 0 0;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--text-2);
+  word-break: keep-all;
+}
+
+.card {
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xs);
+}
+
+.card-title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+/* Registration form */
+.register {
+  box-shadow: var(--shadow-sm);
+}
+
+.register .card-title {
+  margin-bottom: 16px;
+}
+
+.register-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.field input {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9375rem;
+  box-shadow: var(--shadow-xs);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field input::placeholder {
+  color: var(--text-4);
+}
+
+.field input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--ring);
+}
+
+.register-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 22px;
+  border: none;
+  border-radius: 10px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
-  box-shadow: 0 3px 0 #1B4D20, 0 5px 8px rgba(0, 0, 0, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.10);
-  position: relative;
-  transition: none;
+  box-shadow: var(--shadow-sm);
+  transition: background-color 0.15s ease;
 }
 
-.btn-primary:hover,
-.btn-primary:active {
-  transform: none !important;
-  box-shadow: 0 3px 0 #1B4D20, 0 5px 8px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.10) !important;
-  background: linear-gradient(180deg, #7FD45C 0%, #4CAF50 50%, #2E7D32 100%) !important;
+.register-btn:hover:not(:disabled) {
+  background: var(--primary-hover);
 }
 
-.btn-primary:focus-visible {
-  outline: 4px solid rgba(212,165,116,0.30);
-  outline-offset: 4px;
-}
-
-.btn-primary:disabled {
-  opacity: 0.5;
+.register-btn:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
-  filter: grayscale(0.05);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .status {
-  margin-top: 10px;
-  color: var(--muted-text);
-  font-size: 13px;
-}
-
-.info {
-  background: var(--panel-bg);
-  padding: 14px;
-  border-radius: 10px;
-  margin-bottom: 16px;
+  margin-top: 16px;
+  padding: 12px 14px;
   border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
-.info h2 {
-  margin-top: 0;
-  color: var(--text);
+.status.success {
+  background: var(--success-soft);
+  border-color: #bbf7d0;
+  color: var(--success-text);
 }
 
-.info p {
-  margin: 8px 0;
-  color: var(--text);
+.status.error {
+  background: var(--danger-soft);
+  border-color: #fecaca;
+  color: var(--danger-text);
 }
 
-.notice-text {
-  color: var(--danger);
-}
-
-.info a {
-  color: var(--primary-dark);
-  text-decoration: none;
-  border-bottom: 1px solid rgba(139, 111, 71, 0.2);
-  transition: border-color 0.2s ease;
-}
-
-.info a:hover {
-  text-decoration: none;
-  border-bottom-color: var(--primary-dark);
-}
-
+/* Live panels */
 .live {
   display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
 }
 
 .panel {
-  background: var(--card-bg);
-  padding: 12px;
-  border-radius: 10px;
-  min-height: 140px;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
-.panel h3 {
-  margin-top: 0;
-  color: var(--text);
+#codes-panel {
+  scroll-margin-top: 80px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.count-pill {
+  min-width: 24px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-3);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--success-text);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.live-dot {
   position: relative;
-  padding-bottom: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
 }
 
-.panel h3:after {
+.live-dot::after {
   content: '';
   position: absolute;
-  left: 0;
-  bottom: 0;
-  height: 3px;
-  width: 48px;
-  background: linear-gradient(90deg, var(--accent), rgba(0,0,0,0));
-  border-radius: 2px;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--success);
+  animation: pulse 2s ease-out infinite;
 }
 
-
-/* Gift Codes Grid */
-.codes-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 12px;
-  padding: 8px;
-  max-height: 360px;
-  overflow: auto;
+@keyframes pulse {
+  from { transform: scale(1); opacity: 0.6; }
+  to { transform: scale(2.6); opacity: 0; }
 }
 
-.codes-grid.empty {
-  display: block;
-  padding: 20px;
-  text-align: center;
+@media (prefers-reduced-motion: reduce) {
+  .live-dot::after,
+  .spinner {
+    animation: none;
+  }
 }
 
 .empty-message {
-  color: var(--muted-text);
-  font-style: italic;
+  padding: 32px 16px;
   text-align: center;
-  padding: 20px;
+  color: var(--text-3);
+  font-size: 0.875rem;
+}
+
+/* Gift codes */
+.codes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  align-content: start;
+  gap: 10px;
+  max-height: 440px;
+  overflow-y: auto;
+}
+
+.codes-grid.is-empty,
+.redemptions-list.is-empty {
+  display: block;
 }
 
 .code-tile {
-  background: linear-gradient(135deg, rgba(212,165,116,0.1) 0%, rgba(212,165,116,0.05) 100%);
-  border: 2px solid rgba(212,165,116,0.3);
-  border-radius: 12px;
-  padding: 16px 12px;
-  text-align: center;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-
-.code-tile.expired {
-  background: linear-gradient(135deg, rgba(160,160,160,0.1) 0%, rgba(160,160,160,0.05) 100%);
-  border: 2px solid rgba(160,160,160,0.3);
-  opacity: 0.7;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .code-tile:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(212,165,116,0.2);
-  border-color: var(--accent);
-}
-
-.code-tile.expired:hover {
-  box-shadow: 0 4px 12px rgba(160,160,160,0.2);
-  border-color: rgba(160,160,160,0.5);
-}
-
-.code-tile-badge {
-  margin-bottom: 8px;
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
 }
 
 .code-tile-code {
-  font-family: monospace;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--primary-dark);
-  letter-spacing: 0.5px;
-  display: block;
-  padding: 8px;
-  background: rgba(255,255,255,0.6);
-  border-radius: 8px;
-  word-break: break-all;
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow-wrap: anywhere;
 }
 
 .code-tile-status {
-  font-size: 11px;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: #4CAF50;
-  letter-spacing: 1px;
-  margin-bottom: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.code-tile-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.code-tile-status.active {
+  color: var(--success-text);
 }
 
 .code-tile-status.expired {
-  color: #E06A6A;
+  color: var(--text-4);
 }
 
-
-/* Redemptions Grid */
-.redemptions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
-  padding: 8px;
-  max-height: 360px;
-  overflow: auto;
+.code-tile.expired {
+  background: var(--surface-2);
+  border-color: transparent;
 }
 
-.redemptions-grid.empty {
-  display: block;
-  padding: 20px;
-  text-align: center;
+.code-tile.expired .code-tile-code {
+  color: var(--text-4);
+  text-decoration: line-through;
 }
 
-.redemption-tile {
-  background: linear-gradient(135deg, rgba(107,142,35,0.12) 0%, rgba(107,142,35,0.06) 100%);
-  border: 2px solid rgba(107,142,35,0.25);
-  border-radius: 12px;
-  padding: 10px;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+.code-tile.expired:hover {
+  box-shadow: none;
+}
+
+/* Recent redemptions */
+.redemptions-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 440px;
+  margin: 0 -8px;
+  overflow-y: auto;
+}
+
+.redemption-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  padding: 10px 8px;
+  border-radius: 10px;
 }
 
-.redemption-tile:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(107,142,35,0.25);
-  border-color: rgba(107,142,35,0.4);
+.redemption-row + .redemption-row {
+  border-top: 1px solid var(--border);
+}
+
+.redemption-row:hover {
+  background: #f9fafb;
 }
 
 .redemption-avatar {
-  width: 40px;
-  height: 40px;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   object-fit: cover;
-  flex-shrink: 0;
-  border: 2px solid rgba(107,142,35,0.3);
+  background: var(--surface-2);
+  box-shadow: 0 0 0 1px var(--border);
 }
 
 .redemption-info {
@@ -820,337 +951,266 @@ input[type=text]:focus {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .redemption-player {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 4px;
-  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .redemption-nickname {
-  font-weight: 600;
-  color: var(--primary-dark);
-  font-size: 13px;
-  white-space: nowrap;
   overflow: hidden;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .redemption-kingdom {
-  color: var(--muted-text);
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.redemption-details {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-}
-
-.redemption-code {
-  font-family: monospace;
-  font-size: 12px;
-  font-weight: 700;
-  color: #4CAF50;
-  letter-spacing: 0.5px;
-  background: rgba(255,255,255,0.7);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.redemption-separator {
-  color: var(--muted-text);
-  opacity: 0.5;
-  font-size: 10px;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: var(--text-3);
 }
 
 .redemption-time {
-  color: var(--muted-text);
-  font-size: 10px;
+  font-size: 0.75rem;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.redemption-code {
+  flex-shrink: 0;
+  max-width: 45%;
+  overflow: hidden;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--success-soft);
+  color: var(--success-text);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-
-footer {
-  margin-top: 12px;
-  padding: 0 12px;
-  color: var(--muted-text);
-  font-size: 13px;
-  text-align: left;
+/* About / Contact */
+.info .card-title {
+  margin-bottom: 16px;
 }
 
-footer a {
-  color: var(--primary-dark);
-  text-decoration: none;
-  border-bottom: 1px solid rgba(139, 111, 71, 0.2);
-  transition: border-color 0.2s ease;
+.info-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
 }
 
-footer a:hover {
-  text-decoration: none;
-  border-bottom-color: var(--primary-dark);
+.info-item {
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  background: #f9fafb;
+  border: 1px solid var(--border);
 }
 
-/* Responsive */
-@media (max-width: 900px) {
-  .live {
-    grid-template-columns: 1fr;
-  }
+.info-item dt {
+  margin-bottom: 4px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
-@media (max-width: 768px) {
-  .container {
-    padding: 12px;
-  }
-
-  .site-header h1 {
-    font-size: 16px;
-    text-align: center;
-  }
-
-  .controls {
-    padding: 12px;
-  }
-
-  .field label {
-    font-size: 13px;
-  }
-
-  input[type=text] {
-    font-size: 16px; /* Prevents zoom on iOS */
-  }
-
-  .btn-primary {
-    width: 100%;
-    padding: 10px 12px;
-    font-size: 14px;
-  }
-
-  .info {
-    padding: 12px;
-  }
-
-  .info h2 {
-    font-size: 18px;
-  }
-
-  .info p {
-    font-size: 14px;
-  }
-
-  .panel {
-    padding: 10px;
-  }
-
-  .panel h3 {
-    font-size: 16px;
-  }
-
-  .codes-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 10px;
-    max-height: 300px;
-  }
-
-  .code-tile {
-    padding: 12px 10px;
-  }
-
-  .code-tile-code {
-    font-size: 14px;
-  }
-
-  .redemptions-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 10px;
-    max-height: 300px;
-  }
-
-  .redemption-tile {
-    padding: 8px;
-    gap: 8px;
-  }
-
-  .redemption-avatar {
-    width: 36px;
-    height: 36px;
-  }
-
-  .redemption-nickname {
-    font-size: 12px;
-  }
-
-  .redemption-code {
-    font-size: 11px;
-    padding: 2px 5px;
-  }
-
-
-  footer {
-    font-size: 12px;
-    text-align: center;
-    padding: 12px;
-  }
+.info-item dd {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--text-2);
+  word-break: keep-all;
 }
 
-@media (max-width: 480px) {
-  .container {
-    padding: 8px;
-  }
+.notices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
 
-  .site-header {
-    padding: 10px;
-    margin-bottom: 12px;
-  }
-
-  .site-header h1 {
-    font-size: 14px;
-    line-height: 1.4;
-  }
-
-  .controls,
-  .info,
-  .panel {
-    margin-bottom: 12px;
-  }
-
-  .codes-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 8px;
-    max-height: 250px;
-    padding: 6px;
-  }
-
-  .code-tile {
-    padding: 10px 8px;
-  }
-
-  .code-tile-code {
-    font-size: 13px;
-    padding: 6px;
-  }
-
-  .redemptions-grid {
-    grid-template-columns: 1fr;
-    gap: 8px;
-    max-height: 250px;
-    padding: 6px;
-  }
-
-  .redemption-tile {
-    padding: 8px;
-    gap: 8px;
-  }
-
-  .redemption-avatar {
-    width: 32px;
-    height: 32px;
-    font-size: 16px;
-  }
-
-  .redemption-nickname {
-    font-size: 11px;
-  }
-
-  .redemption-kingdom {
-    font-size: 10px;
-  }
-
-  .redemption-code {
-    font-size: 10px;
-    padding: 2px 4px;
-  }
-
-  .redemption-time {
-    font-size: 9px;
-  }
+.notice-text {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  background: var(--warning-soft);
+  color: #92400e;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  word-break: keep-all;
 }
 
 .disclaimer {
   display: flex;
-  gap: 12px;
   align-items: flex-start;
-  background: linear-gradient(180deg, rgba(212,165,116,0.15), rgba(245,230,211,0.25));
-  border: 1px solid rgba(212,165,116,0.25);
-  border-left: 4px solid var(--primary-gold);
-  padding: 12px 14px;
-  border-radius: 8px;
-  color: var(--text);
-  box-shadow: var(--shadow-sm);
-}
-
-.material-symbols-outlined {
-  font-family: 'Material Symbols Outlined', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  /* Use the axes the variable-font request exposes: adjust these values to tune appearance */
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
 }
 
 .disclaimer-icon {
-  /* visual sizing & layout only; font family and axes come from .material-symbols-outlined */
-  font-size: 28px; /* visible glyph size */
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 36px;
-  color: var(--primary-dark);
-  opacity: 0.95;
-  margin-top: 2px;
-  /* Prevent the icon text from being selected/copyable (avoids partial selections like "in") */
-  -webkit-user-select: none; /* Safari */
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-  /* Disable iOS tap-and-hold menu for the icon */
-  -webkit-touch-callout: none;
-  /* Prevent pointer events so selection/dragging won't start from the icon */
-  pointer-events: none;
-}
-
-/* Render the icon glyph via CSS pseudo-element so there's no real text node to select */
-.disclaimer-icon::before {
-  /* Use the 'info' icon codepoint so there's no selectable word fragments; codepoint: e88e */
-  content: "\e88e";
-  display: inline-block;
-  /* inherit the font and variation settings from the parent class */
-  font-family: inherit;
-  font-variation-settings: inherit;
-  font-size: inherit;
-  line-height: inherit;
-  /* ensure the pseudo-element cannot be selected or copied */
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  fill: none;
+  stroke: var(--text-3);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .disclaimer-content {
-  font-size: 14px;
-  color: var(--text);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--text-2);
+  word-break: keep-all;
 }
 
 .disclaimer-title {
-  margin-bottom: 6px;
-  color: var(--primary-dark);
+  margin-bottom: 4px;
+  color: var(--text);
 }
 
 .disclaimer-content p {
-  margin: 0 0 8px 0;
-  color: var(--muted-text);
+  margin: 0 0 6px;
 }
 
 .disclaimer-content ul {
   margin: 0;
   padding-left: 18px;
-  color: var(--muted-text);
+  color: var(--text-3);
 }
 
-.disclaimer-content li {
-  margin-bottom: 6px;
+.disclaimer-content li + li {
+  margin-top: 2px;
+}
+
+.contact p {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--text-2);
+  word-break: keep-all;
+}
+
+.info a,
+.footer a {
+  color: var(--primary-text);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--primary-soft-2);
+  text-underline-offset: 3px;
+}
+
+.info a:hover,
+.footer a:hover {
+  text-decoration-color: currentColor;
+}
+
+/* Footer */
+.footer {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 32px 20px 40px;
+  color: var(--text-3);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .live {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .register-fields {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .field-player {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar-inner {
+    height: 56px;
+    padding: 0 16px;
+  }
+
+  .main {
+    gap: 16px;
+    padding: 0 16px;
+  }
+
+  .hero {
+    padding: 28px 0 4px;
+  }
+
+  .hero-sub {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.6em;
+  }
+
+  .hero-lead {
+    font-size: 0.9375rem;
+  }
+
+  .card {
+    padding: 18px 16px;
+    border-radius: var(--radius-lg);
+  }
+
+  .register-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 16px keeps iOS from zooming into focused inputs */
+  .field input {
+    font-size: 16px;
+  }
+
+  .register-btn {
+    width: 100%;
+    height: 48px;
+  }
+
+  .codes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    max-height: 360px;
+  }
+
+  .code-tile {
+    padding: 10px 12px;
+  }
+
+  .redemptions-list {
+    max-height: 400px;
+  }
+
+  .info-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .footer {
+    padding: 24px 16px 32px;
+    text-align: center;
+  }
 }
 </style>
