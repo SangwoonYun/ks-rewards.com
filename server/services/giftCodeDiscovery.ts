@@ -6,34 +6,50 @@ import { config } from '../utils/config';
 
 interface GiftCodeInfo {
   code: string;
-  date: string;
+  date?: string;   // publish date; absent for codes listed without one
 }
 
 /**
  * Parse gift code line from API response
- * @param line - Line in format "CODE DD.MM.YYYY"
- * @returns Parsed code and date or null if invalid
+ * @param line - Line in format "CODE DD.MM.YYYY", or just "CODE" for codes without a date
+ * @returns Parsed code (and date when present) or null if invalid
  */
 function parseGiftCodeLine(line: string): GiftCodeInfo | null {
   const parts = line.trim().split(/\s+/);
-  if (parts.length !== 2) {
+  if (parts.length < 1 || parts.length > 2) {
     return null;
   }
 
   const [code, dateStr] = parts;
 
   // Validate code format (alphanumeric only)
-  if (!/^[a-zA-Z0-9]+$/.test(code)) {
+  if (!code || !/^[a-zA-Z0-9]+$/.test(code)) {
     return null;
   }
 
-  // Parse date (DD.MM.YYYY)
+  // Some codes have no date (permanent, or expiring at an unannounced time).
+  // The date is only the publish date - whether a code still works is decided by redeeming it.
+  const date = dateStr ? parseCodeDate(dateStr) : null;
+  if (dateStr && !date) {
+    logger.warn(`Gift code ${code} has an unreadable date "${dateStr}", treating it as undated`);
+  }
+
+  return {
+    code: cleanGiftCode(code),
+    ...(date ? { date } : {})
+  };
+}
+
+/**
+ * Parse a DD.MM.YYYY date to an ISO string, or null if unreadable
+ */
+function parseCodeDate(dateStr: string): string | null {
   const dateParts = dateStr.split('.');
   if (dateParts.length !== 3) {
     return null;
   }
 
-  const [day, month, year] = dateParts.map(p => parseInt(p, 10));
+  const [day = NaN, month = NaN, year = NaN] = dateParts.map(p => parseInt(p, 10));
   if (isNaN(day) || isNaN(month) || isNaN(year)) {
     return null;
   }
@@ -44,10 +60,7 @@ function parseGiftCodeLine(line: string): GiftCodeInfo | null {
     return null;
   }
 
-  return {
-    code: cleanGiftCode(code),
-    date: date.toISOString()
-  };
+  return date.toISOString();
 }
 
 /**

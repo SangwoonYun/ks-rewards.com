@@ -1,6 +1,6 @@
 import { queue, redemptions, users } from '../../../../utils/db';
-import { queueUnredeemedCodesForUser } from '../../../../services/redemptionService';
-import { redeemGiftCode } from '../../../../services/kingshotApi';
+import { queueUnredeemedCodesForUser, keepForUserInfoRetry } from '../../../../services/redemptionService';
+import { redeemGiftCode, normalizeStatus, SUCCESS_STATUSES } from '../../../../services/kingshotApi';
 import { logger } from '../../../../utils/logger';
 
 export default defineEventHandler(async (event) => {
@@ -37,18 +37,21 @@ export default defineEventHandler(async (event) => {
         queue.updateStatus(item.id, 'processing', undefined);
 
         const result = await redeemGiftCode(fid, user.kingdom as string, item.code);
-        const normalizedStatus = result.status?.toString().trim().replace(/[.!?]+$/, '').toUpperCase() || 'UNKNOWN';
+        const normalizedStatus = normalizeStatus(result.status);
 
         redemptions.create(fid, item.code, normalizedStatus);
 
-        if (['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'].includes(normalizedStatus)) {
+        if (SUCCESS_STATUSES.includes(normalizedStatus)) {
           redeemedCount++;
           logger.info(`Admin apply: redeemed ${item.code} for ${fid}: ${normalizedStatus}`);
         } else {
           logger.warn(`Admin apply: failed ${item.code} for ${fid}: ${normalizedStatus}`);
         }
 
-        queue.delete(item.id);
+        // Remove from queue, unless a USER_INFO_ERROR (possibly temporary) still has retries left
+        if (!(normalizedStatus === 'USER_INFO_ERROR' && keepForUserInfoRetry(item, item.attempts + 1, result.message))) {
+          queue.delete(item.id);
+        }
 
         // Delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1500));

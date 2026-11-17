@@ -60,8 +60,7 @@
               <tr v-for="r in data.recentRedemptions" :key="r.id">
                 <td>{{ r.fid }}</td>
                 <td class="avatar-cell">
-                  <img v-if="r.avatar_url" :src="r.avatar_url" :alt="r.nickname || r.fid" class="avatar" referrerpolicy="no-referrer" />
-                  <div v-else class="avatar avatar-placeholder">{{ (r.nickname || r.fid).charAt(0).toUpperCase() }}</div>
+                  <img :src="r.avatar_url || '/images/default-avatar.png'" :alt="r.nickname || r.fid" class="avatar" referrerpolicy="no-referrer" />
                 </td>
                 <td>{{ r.nickname || '-' }}</td>
                 <td><code>{{ r.code }}</code></td>
@@ -233,16 +232,6 @@ onUnmounted(() => clearInterval(interval));
   border-radius: 50%;
   object-fit: cover;
   display: block;
-}
-
-.avatar-placeholder {
-  background: rgba(212, 165, 116, 0.3);
-  color: #6b472c;
-  font-size: 0.75rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .empty {

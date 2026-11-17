@@ -1,14 +1,37 @@
-import { autoRedeemValidatedCodes, processRedemptionQueue } from '../../../services/redemptionService';
+import {
+  autoRedeemValidatedCodes,
+  processRedemptionQueue,
+  processRedemptionsForUsers,
+  queueUnredeemedCodesForUser
+} from '../../../services/redemptionService';
+import { filterUsers, hasUserFilters } from '../../../utils/userFilters';
 import { logger } from '../../../utils/logger';
 
-export default defineEventHandler(async () => {
+/**
+ * Apply the validated codes to the active users matching the user grid's filters (body), or to every
+ * active user when no filter is set
+ */
+export default defineEventHandler(async (event) => {
+  const filters = (await readBody(event).catch(() => null)) ?? {};
+  const filtered = hasUserFilters(filters);
+
   try {
-    // Queue validated codes for all active users
-    const queuedCount = await autoRedeemValidatedCodes();
+    let queuedCount = 0;
+    let targets: string[] = [];
+    if (filtered) {
+      targets = filterUsers(filters).filter(u => u.active === 1).map(u => u.fid);
+      for (const fid of targets) {
+        queuedCount += await queueUnredeemedCodesForUser(fid, 5);
+      }
+    } else {
+      // Queue validated codes for all active users
+      queuedCount = await autoRedeemValidatedCodes();
+    }
 
     if (queuedCount === 0) {
       return {
         success: true,
+        targetCount: filtered ? targets.length : null,
         queuedCount: 0,
         processed: 0,
         successCount: 0,
@@ -17,13 +40,14 @@ export default defineEventHandler(async () => {
       };
     }
 
-    // Process the queue
-    const result = await processRedemptionQueue(queuedCount);
+    // Process the queue (only the targets' items when filtered)
+    const result = filtered ? await processRedemptionsForUsers(targets) : await processRedemptionQueue(queuedCount);
 
-    logger.info(`Admin apply-all: queued ${queuedCount}, processed ${result.processed}, success ${result.success}, failed ${result.failed}`);
+    logger.info(`Admin apply-all${filtered ? ` (${targets.length} filtered users)` : ''}: queued ${queuedCount}, processed ${result.processed}, success ${result.success}, failed ${result.failed}`);
 
     return {
       success: true,
+      targetCount: filtered ? targets.length : null,
       queuedCount,
       processed: result.processed,
       successCount: result.success,

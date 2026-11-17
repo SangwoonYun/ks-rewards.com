@@ -11,6 +11,7 @@ export interface User {
   kingdom: string | null;
   avatar_url: string | null;
   active: number;
+  kingdom_verified_at: string | null;   // last time the fid/kid pair was accepted by the API
   created_at: string;
   updated_at: string;
 }
@@ -31,6 +32,16 @@ export interface Redemption {
   nickname?: string | null;
   kingdom?: string | null;
   avatar_url?: string | null;
+}
+
+export interface RedemptionFailureRow {
+  fid: string;
+  nickname: string | null;
+  kingdom: string | null;
+  avatar_url: string | null;
+  code: string;
+  status: string;
+  redeemed_at: string;
 }
 
 export interface QueueItem {
@@ -106,9 +117,14 @@ export const users = {
     return stmt.all() as User[];
   },
 
+  // Deactivating also takes the user out of the priority queue
   updateActive: (fid: string, active: number) => {
     const stmt = db.prepare('UPDATE users SET active = ?, updated_at = CURRENT_TIMESTAMP WHERE fid = ?');
-    return stmt.run(active, fid);
+    return db.transaction(() => {
+      const result = stmt.run(active, fid);
+      if (active === 0) priorityUsers.remove(fid);
+      return result;
+    })();
   },
 
   updateNickname: (fid: string, nickname: string) => {
@@ -121,7 +137,17 @@ export const users = {
     return stmt.run(kingdom, fid);
   },
 
-  updateAvatar: (fid: string, avatar_url: string) => {
+  // Save a kingdom that the API just accepted for this fid
+  setVerifiedKingdom: (fid: string, kingdom: string) => {
+    const stmt = db.prepare(`
+      UPDATE users
+      SET kingdom = ?, kingdom_verified_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE fid = ?
+    `);
+    return stmt.run(kingdom, fid);
+  },
+
+  updateAvatar: (fid: string, avatar_url: string | null) => {
     const stmt = db.prepare('UPDATE users SET avatar_url = ?, updated_at = CURRENT_TIMESTAMP WHERE fid = ?');
     return stmt.run(avatar_url, fid);
   }
@@ -171,7 +197,9 @@ export const giftCodes = {
       INSERT OR IGNORE INTO gift_codes (code, validation_status, source, date_discovered)
       VALUES (?, ?, ?, ?)
     `);
-    return stmt.run(code, status, source, date || new Date().toISOString());
+    // Store in SQLite's UTC format ('YYYY-MM-DD HH:MM:SS') like CURRENT_TIMESTAMP; reads append 'Z'
+    const discovered = new Date(date || Date.now()).toISOString().replace('T', ' ').slice(0, 19);
+    return stmt.run(code, status, source, discovered);
   },
 
   delete: (code: string) => {
@@ -230,6 +258,39 @@ export const redemptions = {
     return stmt.get(fid, code) as Redemption | undefined;
   },
 
+  // Final failures of active users: (fid, code) pairs whose latest attempt has a status outside
+  // settledStatuses (success, dead code, player not eligible) and that are no longer queued, i.e. retries
+  // are used up. Failures from before the kingdom was last verified are ignored: verifying a kingdom
+  // queues every unredeemed code again, so those failures are already being retried or superseded.
+  // Only codes that are still valid count: a failure on a code that expired since can never be retried
+  // (a retry only queues valid codes), so it would keep the user listed forever.
+  findFinalFailures: (settledStatuses: string[]): RedemptionFailureRow[] => {
+    const placeholders = settledStatuses.map(() => '?').join(', ');
+    const stmt = db.prepare(`
+      WITH latest AS (
+        SELECT r.fid, r.code, r.status, r.redeemed_at
+        FROM redemptions r
+        WHERE r.id = (
+          SELECT MAX(r2.id) FROM redemptions r2
+          WHERE r2.fid = r.fid AND r2.code = r.code
+        )
+      )
+      SELECT u.fid, u.nickname, u.kingdom, u.avatar_url, l.code, l.status, (l.redeemed_at || 'Z') AS redeemed_at
+      FROM latest l
+      JOIN users u ON u.fid = l.fid
+      JOIN gift_codes g ON g.code = l.code AND g.validation_status = 'validated'
+      WHERE l.status NOT IN (${placeholders})
+        AND u.active = 1
+        AND (u.kingdom_verified_at IS NULL OR l.redeemed_at > u.kingdom_verified_at)
+        AND NOT EXISTS (
+          SELECT 1 FROM redemption_queue q
+          WHERE q.fid = l.fid AND q.code = l.code AND q.status IN ('pending', 'processing')
+        )
+      ORDER BY l.redeemed_at DESC
+    `);
+    return stmt.all(...settledStatuses) as RedemptionFailureRow[];
+  },
+
   create: (fid: string, code: string, status: string) => {
     const stmt = db.prepare(`
       INSERT INTO redemptions (fid, code, status)
@@ -249,7 +310,11 @@ export const queue = {
         status = CASE
           WHEN redemption_queue.status = 'processing' THEN redemption_queue.status
           ELSE 'pending'
-        END
+        END,
+        -- A failed item re-entering the queue gets a fresh retry budget;
+        -- an item still pending/processing keeps counting
+        attempts = CASE WHEN redemption_queue.status = 'failed' THEN 0 ELSE redemption_queue.attempts END,
+        error_message = CASE WHEN redemption_queue.status = 'failed' THEN NULL ELSE redemption_queue.error_message END
     `);
     return stmt.run(fid, code, priority);
   },
@@ -271,16 +336,28 @@ export const queue = {
           WHERE r.fid = u.fid AND r.code = g.code
             AND r.status IN (
               'SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE',
-              'TOO_SMALL_SPEND_MORE', 'TOO SMALL SPEND MORE',
-              'TOO_POOR_SPEND_MORE', 'TOO POOR SPEND MORE'
+              'STOVE_LV_ERROR', 'RECHARGE_MONEY_ERROR', 'RECHARGE_MONEY_VIP_ERROR'
             )
+        )
+        -- Latest result is USER_INFO_ERROR and the kingdom was not verified since: the user is in the
+        -- redemption failures list as a wrong kingdom (or still being retried). Fixing the kingdom redeems these right away.
+        AND NOT EXISTS (
+          SELECT 1 FROM redemptions r
+          WHERE r.fid = u.fid AND r.code = g.code
+            AND r.status = 'USER_INFO_ERROR'
+            AND r.id = (SELECT MAX(r2.id) FROM redemptions r2 WHERE r2.fid = r.fid AND r2.code = r.code)
+            AND (u.kingdom_verified_at IS NULL OR r.redeemed_at > u.kingdom_verified_at)
         )
       ON CONFLICT(fid, code) DO UPDATE SET
         priority = MAX(redemption_queue.priority, excluded.priority),
         status = CASE
           WHEN redemption_queue.status IN ('failed', 'pending') THEN 'pending'
           ELSE redemption_queue.status
-        END
+        END,
+        -- A failed item re-entering the queue gets a fresh retry budget;
+        -- an item still pending/processing keeps counting
+        attempts = CASE WHEN redemption_queue.status = 'failed' THEN 0 ELSE redemption_queue.attempts END,
+        error_message = CASE WHEN redemption_queue.status = 'failed' THEN NULL ELSE redemption_queue.error_message END
     `);
     return stmt.run(priority);
   },
@@ -310,12 +387,14 @@ export const queue = {
   updateStatus: (id: number, status: string, errorMessage?: string) => {
     const stmt = db.prepare(`
       UPDATE redemption_queue 
-      SET status = ?, error_message = ?, attempts = attempts + 1, updated_at = CURRENT_TIMESTAMP
+      SET status = ?, error_message = ?,
+        attempts = attempts + (CASE WHEN ? = 'processing' THEN 1 ELSE 0 END),
+        updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
-    return stmt.run(status, errorMessage || null, id);
+    // Only count an attempt when it starts (-> 'processing'), not again when its outcome is recorded
+    return stmt.run(status, errorMessage || null, status, id);
   },
-
 
   delete: (id: number) => {
     const stmt = db.prepare('DELETE FROM redemption_queue WHERE id = ?');
@@ -338,6 +417,16 @@ export const queue = {
       LIMIT ?
     `);
     return stmt.all(limit) as QueueItem[];
+  },
+
+  // Items left 'processing' by a restart are never picked up again; put them back (their attempt was already counted)
+  resetStuckProcessing: () => {
+    const stmt = db.prepare(`
+      UPDATE redemption_queue
+      SET status = 'pending', updated_at = CURRENT_TIMESTAMP
+      WHERE status = 'processing'
+    `);
+    return stmt.run().changes;
   },
 
   countPending: (): number => {
@@ -506,6 +595,32 @@ export function runMigrations() {
       logger.info('✅ Avatar URL column added to users table');
     }
 
+    // Migration: Add kingdom_verified_at column to users table if it doesn't exist
+    const hasKingdomVerifiedAt = usersColumns.some(col => col.name === 'kingdom_verified_at');
+
+    if (!hasKingdomVerifiedAt) {
+      logger.info('Adding kingdom_verified_at column to users table...');
+      db.exec(`ALTER TABLE users ADD COLUMN kingdom_verified_at DATETIME`);
+      logger.info('✅ kingdom_verified_at column added to users table');
+    }
+
+    // Migration: Normalize redemption statuses to underscores (e.g. 'SAME TYPE EXCHANGE' -> 'SAME_TYPE_EXCHANGE')
+    const normalizedStatuses = db.prepare(
+      "UPDATE redemptions SET status = REPLACE(status, ' ', '_') WHERE status LIKE '% %'"
+    ).run();
+    if (normalizedStatuses.changes > 0) {
+      logger.info(`✅ Normalized ${normalizedStatuses.changes} redemption status(es)`);
+    }
+
+    // Migration: Convert ISO gift code dates ('...T...Z') to SQLite format; reads append 'Z',
+    // which turned them into '...ZZ' (shown as "Invalid Date")
+    const normalizedDates = db.prepare(
+      "UPDATE gift_codes SET date_discovered = strftime('%Y-%m-%d %H:%M:%S', date_discovered) WHERE date_discovered LIKE '%T%'"
+    ).run();
+    if (normalizedDates.changes > 0) {
+      logger.info(`✅ Normalized ${normalizedDates.changes} gift code date(s)`);
+    }
+
     // Create redemption_queue table
     db.exec(`
       CREATE TABLE IF NOT EXISTS redemption_queue (
@@ -521,7 +636,6 @@ export function runMigrations() {
         UNIQUE(fid, code)
       )
     `);
-
     // Create settings table
     db.exec(`
       CREATE TABLE IF NOT EXISTS settings (

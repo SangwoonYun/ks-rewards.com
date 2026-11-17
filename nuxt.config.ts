@@ -23,6 +23,12 @@ export default defineNuxtConfig({
     }
   },
 
+  // Static images (e.g. the default avatar shown for every user without one): let browsers reuse
+  // them across page loads instead of revalidating each time
+  routeRules: {
+    '/images/**': { headers: { 'cache-control': 'public, max-age=604800' } }
+  },
+
   // Nitro configuration (server engine)
   nitro: {
     experimental: {
@@ -42,6 +48,7 @@ export default defineNuxtConfig({
     retryDelayMs: '2000',
     redeemDelayMs: '1000',
     minRequestIntervalMs: '3000',
+    searchRequestIntervalMs: '2000',
     discoveryIntervalMinutes: '15',
     redemptionIntervalMinutes: '2',
     backupIntervalHours: '6',
