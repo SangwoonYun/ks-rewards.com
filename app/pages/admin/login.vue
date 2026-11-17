@@ -1,6 +1,7 @@
 <template>
   <div class="login-wrapper">
     <div class="login-card">
+      <span class="brand-mark" aria-hidden="true">KS</span>
       <h1 class="login-title">KS Admin</h1>
       <p class="login-subtitle">Sign in to continue</p>
 
@@ -75,43 +76,59 @@ async function handleLogin() {
 
 <style scoped>
 .login-wrapper {
-  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #F3ECE0 0%, #E9DFC8 100%);
-  font-family: 'Cinzel', serif;
-  padding: 20px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 20px 16px;
+  background: var(--bg);
 }
 
 .login-card {
-  background: rgba(255, 255, 255, 0.98);
-  border-radius: 12px;
-  padding: 40px;
   width: 100%;
-  max-width: 400px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.09);
-  border: 1px solid rgba(92, 74, 53, 0.08);
+  max-width: 380px;
+  padding: 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-lg);
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 800;
 }
 
 .login-title {
-  text-align: center;
-  color: #6b472c;
-  font-size: 1.8rem;
   margin: 0 0 4px;
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
 }
 
 .login-subtitle {
-  text-align: center;
-  color: #8B7355;
-  font-size: 0.9rem;
-  margin: 0 0 32px;
+  margin: 0 0 28px;
+  font-size: 0.875rem;
+  color: var(--text-3);
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  text-align: left;
 }
 
 .form-group {
@@ -121,58 +138,68 @@ async function handleLogin() {
 }
 
 .form-group label {
-  font-size: 0.85rem;
-  color: #5C4A35;
-  font-weight: 700;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-2);
 }
 
 .form-group input {
-  padding: 12px 14px;
-  border: 1px solid rgba(92, 74, 53, 0.2);
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-family: inherit;
-  color: #5C4A35;
-  background: #FFF8EF;
-  transition: border-color 0.2s;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px;
+  box-shadow: var(--shadow-xs);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-group input::placeholder {
+  color: var(--text-4);
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #D4A574;
-  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
+  border-color: var(--primary);
+  box-shadow: var(--ring);
 }
 
 .login-error {
-  background: rgba(224, 106, 106, 0.1);
-  color: #E06A6A;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  border: 1px solid rgba(224, 106, 106, 0.2);
+  padding: 10px 12px;
+  background: var(--danger-soft);
+  border: 1px solid #fecaca;
+  border-radius: var(--radius);
+  color: var(--danger-text);
+  font-size: 0.875rem;
 }
 
 .login-btn {
-  padding: 14px;
-  background: linear-gradient(135deg, #6b472c, #7b5a36);
-  color: #F5E6D3;
+  height: 44px;
+  margin-top: 4px;
   border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-family: 'Cinzel', serif;
-  font-weight: 700;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  letter-spacing: 0.5px;
+  box-shadow: var(--shadow-xs);
+  transition: background-color 0.15s ease;
 }
 
 .login-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #7b5a36, #8B6F47);
-  box-shadow: 0 4px 12px rgba(107, 71, 44, 0.3);
+  background: var(--primary-hover);
 }
 
 .login-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 28px 20px;
+  }
 }
 </style>

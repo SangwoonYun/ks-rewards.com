@@ -1,37 +1,45 @@
 <template>
   <div class="admin-wrapper">
-    <aside class="admin-sidebar">
+    <header class="admin-topbar">
+      <button class="menu-btn" aria-label="Open menu" :aria-expanded="menuOpen" @click="menuOpen = true">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+      </button>
+      <span class="admin-brand"><span class="brand-mark">KS</span> Admin</span>
+    </header>
+
+    <div v-if="menuOpen" class="admin-backdrop" @click="menuOpen = false" />
+
+    <aside class="admin-sidebar" :class="{ open: menuOpen }">
       <div class="admin-logo">
-        <h2>KS Admin</h2>
+        <span class="admin-brand"><span class="brand-mark">KS</span> Admin</span>
+        <button class="menu-btn close-btn" aria-label="Close menu" @click="menuOpen = false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
       </div>
       <nav class="admin-nav">
-        <NuxtLink to="/admin" class="admin-nav-link" :class="{ active: route.path === '/admin' }">
-          <span class="nav-icon">&#9632;</span> Dashboard
-        </NuxtLink>
-        <NuxtLink to="/admin/codes" class="admin-nav-link" active-class="active">
-          <span class="nav-icon">&#9632;</span> Gift Codes
-        </NuxtLink>
-        <NuxtLink to="/admin/redemptions" class="admin-nav-link" active-class="active">
-          <span class="nav-icon">&#9632;</span> Redemptions
-        </NuxtLink>
-        <NuxtLink to="/admin/users" class="admin-nav-link" active-class="active">
-          <span class="nav-icon">&#9632;</span> Users
-        </NuxtLink>
-        <NuxtLink to="/admin/redemption-failures" class="admin-nav-link" active-class="active">
-          <span class="nav-icon">&#9632;</span> Redemption Failures
-        </NuxtLink>
-        <NuxtLink to="/admin/priority" class="admin-nav-link" active-class="active">
-          <span class="nav-icon">&#9632;</span> Priority Queue
+        <NuxtLink
+          v-for="item in NAV_ITEMS"
+          :key="item.to"
+          :to="item.to"
+          class="admin-nav-link"
+          :class="{ active: item.exact ? route.path === item.to : route.path.startsWith(item.to) }"
+        >
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path :d="item.icon" /></svg>
+          {{ item.label }}
         </NuxtLink>
       </nav>
       <div class="admin-sidebar-footer">
-        <NuxtLink to="/" class="admin-nav-link back-link">
-          &larr; Back to Site
+        <NuxtLink to="/" class="admin-nav-link">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+          Back to Site
         </NuxtLink>
-        <button class="admin-logout-btn" @click="logout">          Logout
+        <button class="admin-nav-link admin-logout-btn" @click="logout">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+          Logout
         </button>
       </div>
     </aside>
+
     <main class="admin-main">
       <slot />
     </main>
@@ -39,129 +47,245 @@
 </template>
 
 <script setup lang="ts">
+import '~/assets/css/admin.css';
+
 const route = useRoute();
 const { logout } = useAdmin();
 
-useHead({
-  bodyAttrs: { style: 'padding: 0' },
-});
+// Icon paths are 24x24 stroke outlines
+const NAV_ITEMS = [
+  { to: '/admin', label: 'Dashboard', exact: true, icon: 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z' },
+  { to: '/admin/codes', label: 'Gift Codes', exact: false, icon: 'M20 12v9H4v-9M2 7h20v5H2zM12 21V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z' },
+  { to: '/admin/redemptions', label: 'Redemptions', exact: false, icon: 'M22 12h-4l-3 9L9 3l-3 9H2' },
+  { to: '/admin/users', label: 'Users', exact: false, icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
+  { to: '/admin/redemption-failures', label: 'Redemption Failures', exact: false, icon: 'M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z' },
+  { to: '/admin/priority', label: 'Priority Queue', exact: false, icon: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z' },
+];
+
+// The mobile drawer closes after navigating
+const menuOpen = ref(false);
+watch(() => route.path, () => { menuOpen.value = false; });
 </script>
 
 <style scoped>
 .admin-wrapper {
   display: flex;
   height: 100vh;
-  background: linear-gradient(135deg, #F3ECE0 0%, #E9DFC8 100%);
-  font-family: 'Cinzel', serif;
+  height: 100dvh;
   overflow: hidden;
+  background: var(--bg);
 }
 
+/* Sidebar */
 .admin-sidebar {
-  width: 250px;
-  background: linear-gradient(180deg, #6b472c 0%, #7b5a36 100%);
-  color: #F5E6D3;
-  display: flex;
-  flex-direction: column;
   position: fixed;
   top: 0;
-  left: 0;
   bottom: 0;
+  left: 0;
   z-index: 100;
-  box-shadow: 4px 0 12px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
 }
 
 .admin-logo {
-  padding: 24px 20px;
-  border-bottom: 1px solid rgba(245, 230, 211, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  padding: 0 16px 0 20px;
+  border-bottom: 1px solid var(--border);
 }
 
-.admin-logo h2 {
-  margin: 0;
-  font-size: 1.4rem;
-  color: #D4A574;
-  letter-spacing: 1px;
+.admin-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .admin-nav {
   flex: 1;
-  padding: 16px 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding: 12px;
+  overflow-y: auto;
 }
 
 .admin-nav-link {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 20px;
-  color: rgba(245, 230, 211, 0.75);
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: left;
   text-decoration: none;
-  font-size: 0.9rem;
-  transition: all 0.2s ease;
-  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .admin-nav-link:hover {
-  background: rgba(245, 230, 211, 0.08);
-  color: #F5E6D3;
+  background: var(--surface-2);
+  color: var(--text);
 }
 
 .admin-nav-link.active {
-  background: rgba(245, 230, 211, 0.12);
-  color: #D4A574;
-  border-left-color: #D4A574;
+  background: var(--primary-soft);
+  color: var(--primary-text);
+  font-weight: 600;
 }
 
 .nav-icon {
-  font-size: 0.5rem;
-  opacity: 0.6;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .admin-sidebar-footer {
-  padding: 16px 0;
-  border-top: 1px solid rgba(245, 230, 211, 0.15);
-}
-
-.back-link {
-  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  border-top: 1px solid var(--border);
 }
 
 .admin-logout-btn {
-  display: block;
-  width: calc(100% - 40px);
-  margin: 8px 20px 0;
-  padding: 10px;
-  background: rgba(224, 106, 106, 0.2);
-  color: #E06A6A;
-  border: 1px solid rgba(224, 106, 106, 0.3);
-  border-radius: 6px;
-  cursor: pointer;
-  font-family: 'Cinzel', serif;
-  font-size: 0.85rem;
-  transition: all 0.2s ease;
+  color: var(--danger-text);
 }
 
 .admin-logout-btn:hover {
-  background: rgba(224, 106, 106, 0.35);
+  background: var(--danger-soft);
+  color: var(--danger-text);
 }
 
+/* Main */
 .admin-main {
   flex: 1;
-  margin-left: 250px;
-  padding: 32px;
   display: flex;
   flex-direction: column;
+  min-width: 0;
   min-height: 0;
+  margin-left: 240px;
+  padding: 28px 32px;
+  overflow-y: auto;
 }
 
-@media (max-width: 768px) {
-  .admin-sidebar {
-    width: 200px;
+/* Mobile top bar and drawer (hidden on desktop) */
+.admin-topbar,
+.menu-btn.close-btn,
+.admin-backdrop {
+  display: none;
+}
+
+.menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.menu-btn:hover {
+  background: var(--surface-2);
+}
+
+.menu-btn svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+@media (max-width: 1024px) {
+  .admin-wrapper {
+    flex-direction: column;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
   }
+
+  .admin-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 56px;
+    padding: 0 12px 0 8px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: saturate(180%) blur(8px);
+    -webkit-backdrop-filter: saturate(180%) blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .admin-sidebar {
+    width: min(280px, 85vw);
+    box-shadow: var(--shadow-md);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+
+  .admin-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .menu-btn.close-btn {
+    display: inline-flex;
+  }
+
+  .admin-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: rgba(17, 24, 39, 0.4);
+  }
+
   .admin-main {
-    margin-left: 200px;
-    padding: 20px;
+    margin-left: 0;
+    padding: 20px 16px 32px;
+    overflow: visible;
   }
 }
 </style>

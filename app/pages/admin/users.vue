@@ -61,18 +61,18 @@
             <th>Actions</th>
           </tr>
           <tr class="filter-row">
-            <th><input v-model="filters.fid" type="text" inputmode="numeric" class="filter-input filter-fid" placeholder="Contains" @input="debouncedFetch" /></th>
+            <th data-label="FID"><input v-model="filters.fid" type="text" inputmode="numeric" class="filter-input filter-fid" placeholder="Contains" @input="debouncedFetch" /></th>
             <th></th>
-            <th><input v-model="filters.nickname" type="text" class="filter-input filter-nickname" placeholder="Contains" @input="debouncedFetch" /></th>
-            <th><input v-model="filters.kingdom" type="text" inputmode="numeric" class="filter-input filter-kingdom" placeholder="Exact" @input="debouncedFetch" /></th>
-            <th>
+            <th data-label="Nickname"><input v-model="filters.nickname" type="text" class="filter-input filter-nickname" placeholder="Contains" @input="debouncedFetch" /></th>
+            <th data-label="Kingdom"><input v-model="filters.kingdom" type="text" inputmode="numeric" class="filter-input filter-kingdom" placeholder="Exact" @input="debouncedFetch" /></th>
+            <th data-label="Status">
               <select v-model="filters.status" class="filter-input filter-status" @change="fetchUsers">
                 <option value="">All</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>
             </th>
-            <th>
+            <th data-label="Registered">
               <ClientOnly>
                 <VueDatePicker
                   v-model="dateRange"
@@ -92,7 +92,7 @@
         </thead>
         <tbody>
           <tr v-for="user in users" :key="user.fid">
-            <td>{{ user.fid }}</td>
+            <td data-label="FID">{{ user.fid }}</td>
             <td class="avatar-cell">
               <img
                 :src="user.avatar_url || '/images/default-avatar.png'"
@@ -101,14 +101,14 @@
                 referrerpolicy="no-referrer"
               />
             </td>
-            <td>{{ user.nickname || '-' }}</td>
-            <td>{{ user.kingdom || '-' }}</td>
-            <td>
+            <td data-label="Nickname">{{ user.nickname || '-' }}</td>
+            <td data-label="Kingdom">{{ user.kingdom || '-' }}</td>
+            <td data-label="Status">
               <span class="badge" :class="user.active ? 'badge-success' : 'badge-danger'">
                 {{ user.active ? 'Active' : 'Inactive' }}
               </span>
             </td>
-            <td>{{ formatDate(user.created_at) }}</td>
+            <td data-label="Registered">{{ formatDate(user.created_at) }}</td>
             <td class="actions-cell">
               <button
                 class="action-btn"
@@ -550,29 +550,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.admin-page {
-  font-family: 'Cinzel', serif;
-  color: #5C4A35;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
-.page-title {
-  font-size: 1.6rem;
-  color: #6b472c;
-  margin: 0 0 24px;
-}
-
-.toolbar {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
 .sort-btn {
   display: inline-flex;
   align-items: center;
@@ -581,15 +558,13 @@ onUnmounted(() => {
   border: none;
   background: none;
   font: inherit;
-  text-transform: inherit;
-  letter-spacing: inherit;
   color: inherit;
   cursor: pointer;
 }
 
 .sort-btn:hover,
 .sort-btn.active {
-  color: #5C4A35;
+  color: var(--text);
 }
 
 .sort-icon {
@@ -599,84 +574,7 @@ onUnmounted(() => {
 
 .sort-btn.active .sort-icon {
   opacity: 1;
-}
-
-.filter-row th {
-  padding: 6px 8px 10px;
-  text-transform: none;
-  letter-spacing: normal;
-}
-
-.filter-input {
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  padding: 6px 8px;
-  border: 1px solid rgba(92, 74, 53, 0.2);
-  border-radius: 6px;
-  font-family: system-ui, sans-serif;
-  font-size: 0.8rem;
-  color: #5C4A35;
-  background: #fff;
-}
-
-.filter-input:focus {
-  outline: none;
-  border-color: #D4A574;
-  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
-}
-
-.filter-fid {
-  max-width: 90px;
-}
-
-.filter-nickname {
-  max-width: 110px;
-}
-
-.filter-kingdom {
-  max-width: 60px;
-}
-
-.filter-status {
-  max-width: 90px;
-}
-
-.filter-daterange {
-  width: 165px;
-}
-
-.info-bar {
-  font-size: 0.8rem;
-  color: #8B7355;
-  margin-bottom: 12px;
-}
-
-.table-wrapper {
-  background: rgba(255, 255, 255, 0.98);
-  border-radius: 10px;
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-  border: 1px solid rgba(92, 74, 53, 0.08);
-}
-
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
-
-.admin-table th {
-  background: #FFF8EF;
-  padding: 12px 16px;
-  text-align: left;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: #8B7355;
-  border-bottom: 1px solid rgba(92, 74, 53, 0.08);
+  color: var(--primary);
 }
 
 /* Both header rows (titles and filters) stay on top while scrolling */
@@ -686,189 +584,68 @@ onUnmounted(() => {
   z-index: 1;
 }
 
-.admin-table td {
-  padding: 10px 16px;
-  border-bottom: 1px solid rgba(92, 74, 53, 0.05);
+.admin-table th {
+  position: static;
 }
 
-.admin-table tbody tr:hover {
-  background: rgba(245, 230, 211, 0.3);
+.filter-row th {
+  padding: 8px 6px 10px;
+  font-weight: 400;
 }
 
-.empty {
-  text-align: center;
-  color: #8B7355;
-  padding: 24px !important;
+.filter-row th:first-child {
+  padding-left: 14px;
 }
 
-.loading {
-  text-align: center;
-  padding: 20px;
-  color: #8B7355;
+.filter-input {
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 0.8125rem;
+  box-shadow: none;
 }
 
-.badge {
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+.filter-fid {
+  max-width: 100px;
 }
 
-.badge-success {
-  background: rgba(107, 142, 35, 0.12);
-  color: #6B8E23;
+.filter-nickname {
+  max-width: 130px;
 }
 
-.badge-danger {
-  background: rgba(224, 106, 106, 0.12);
-  color: #E06A6A;
+.filter-kingdom {
+  max-width: 70px;
 }
 
-.actions-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+.filter-status {
+  max-width: 100px;
+  padding-right: 28px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
 }
 
-.action-btn {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 6px;
-  font-family: inherit;
-  font-size: 0.75rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-deactivate {
-  background: rgba(224, 106, 106, 0.12);
-  color: #E06A6A;
-}
-
-.btn-deactivate:hover:not(:disabled) {
-  background: rgba(224, 106, 106, 0.25);
-}
-
-.btn-activate {
-  background: rgba(107, 142, 35, 0.12);
-  color: #6B8E23;
-}
-
-.btn-activate:hover:not(:disabled) {
-  background: rgba(107, 142, 35, 0.25);
-}
-
-.btn-apply {
-  background: rgba(70, 130, 180, 0.12);
-  color: #4682B4;
-}
-
-.btn-apply:hover:not(:disabled) {
-  background: rgba(70, 130, 180, 0.25);
-}
-
-.btn-priority-add {
-  background: rgba(138, 43, 226, 0.12);
-  color: #8A2BE2;
-}
-
-.btn-priority-add:hover:not(:disabled) {
-  background: rgba(138, 43, 226, 0.25);
-}
-
-.btn-priority-remove {
-  background: rgba(138, 43, 226, 0.25);
-  color: #8A2BE2;
-}
-
-.btn-priority-remove:hover:not(:disabled) {
-  background: rgba(138, 43, 226, 0.12);
-}
-
-.btn-apply-all {
-  background: rgba(70, 130, 180, 0.15);
-  color: #4682B4;
-  padding: 10px 18px;
-  font-size: 0.85rem;
-}
-
-.btn-apply-all:hover:not(:disabled) {
-  background: rgba(70, 130, 180, 0.3);
-}
-
-.btn-refresh {
-  background: rgba(184, 134, 11, 0.12);
-  color: #B8860B;
-}
-
-.btn-refresh:hover:not(:disabled) {
-  background: rgba(184, 134, 11, 0.25);
-}
-
-.btn-refresh-all {
-  background: rgba(184, 134, 11, 0.15);
-  color: #B8860B;
-  padding: 10px 18px;
-  font-size: 0.85rem;
-}
-
-.btn-refresh-all:hover:not(:disabled) {
-  background: rgba(184, 134, 11, 0.3);
+.filter-daterange {
+  width: 170px;
 }
 
 .apply-result {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 600;
-}
-
-.text-success {
-  color: #6B8E23;
-}
-
-.text-error {
-  color: #E06A6A;
-}
-
-.result-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.result-success {
-  background: rgba(107, 142, 35, 0.12);
-  color: #6B8E23;
-}
-
-.result-error {
-  background: rgba(224, 106, 106, 0.12);
-  color: #E06A6A;
 }
 
 .refresh-report {
-  margin-bottom: 16px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  background: rgba(212, 165, 116, 0.12);
-  font-size: 0.8rem;
   max-height: 240px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
   overflow-y: auto;
+  background: var(--warning-soft);
+  border: 1px solid #fde68a;
+  border-radius: var(--radius);
+  color: var(--text-2);
+  font-size: 0.8125rem;
 }
 
 .report-group + .report-group {
@@ -880,66 +657,113 @@ onUnmounted(() => {
   padding-left: 18px;
 }
 
-.result-info {
-  background: rgba(184, 134, 11, 0.12);
-  color: #B8860B;
-}
+@media (max-width: 720px) {
+  .toolbar .action-btn {
+    flex: 1 1 100%;
+  }
 
-.dismiss-btn {
-  background: none;
-  border: none;
-  font-size: 1.2rem;
-  cursor: pointer;
-  color: inherit;
-  padding: 0 4px;
-  line-height: 1;
-}
+  /* Header rows become sort chips and a filter form above the cards */
+  .admin-table thead {
+    position: static;
+    display: block;
+    margin-bottom: 12px;
+  }
 
-.sentinel-cell {
-  padding: 0 !important;
-}
+  .admin-table thead tr {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
 
-.sentinel {
-  height: 1px;
-}
+  .admin-table thead th {
+    display: block;
+    padding: 0;
+    background: transparent;
+    border: none;
+  }
 
-.avatar-cell {
-  padding: 6px 8px !important;
-  width: 36px;
-}
+  .admin-table thead th:not(:has(*)) {
+    display: none;
+  }
 
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-  display: block;
+  .sort-btn {
+    height: 32px;
+    padding: 0 12px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    color: var(--text-2);
+    font-size: 0.8125rem;
+  }
+
+  .sort-btn.active {
+    background: var(--primary-soft);
+    border-color: #bfdbfe;
+    color: var(--primary-text);
+  }
+
+  .filter-row {
+    margin-top: 6px;
+  }
+
+  .filter-row th,
+  .filter-row th:first-child {
+    flex: 1 1 calc(50% - 3px);
+    min-width: 0;
+    padding: 0;
+  }
+
+  .filter-row th::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    color: var(--text-3);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .filter-input,
+  .filter-fid,
+  .filter-nickname,
+  .filter-kingdom,
+  .filter-status,
+  .filter-daterange {
+    width: 100%;
+    max-width: none;
+    height: 40px;
+    font-size: 16px;
+  }
 }
 </style>
 
 <style>
-/* Date range picker in the users filter row, in the admin palette (the menu is teleported, so not scoped) */
+/* Date range picker in the users filter row (the menu is teleported, so not scoped) */
 .dp--theme-light {
-  --dp-font-family: system-ui, sans-serif;
-  --dp-font-size: 0.8rem;
-  --dp-text-color: #5C4A35;
-  --dp-primary-color: #D4A574;
+  --dp-font-family: var(--font-sans);
+  --dp-font-size: 0.8125rem;
+  --dp-text-color: var(--text);
+  --dp-primary-color: var(--primary);
   --dp-primary-text-color: #fff;
-  --dp-hover-color: #F5E6D3;
-  --dp-border-color: rgba(92, 74, 53, 0.2);
-  --dp-border-color-hover: #D4A574;
-  --dp-border-color-focus: #D4A574;
-  --dp-range-between-dates-background-color: #F5E6D3;
-  --dp-range-between-dates-text-color: #5C4A35;
-  --dp-range-between-border-color: #F5E6D3;
-  --dp-border-radius: 6px;
-  --dp-input-padding: 5px 24px 5px 26px;
-  --dp-input-icon-padding: 26px;
+  --dp-hover-color: var(--surface-2);
+  --dp-border-color: var(--border-strong);
+  --dp-border-color-hover: var(--text-4);
+  --dp-border-color-focus: var(--primary);
+  --dp-range-between-dates-background-color: var(--primary-soft);
+  --dp-range-between-dates-text-color: var(--primary-text);
+  --dp-range-between-border-color: var(--primary-soft);
+  --dp-border-radius: 8px;
+  --dp-input-padding: 6px 24px 6px 28px;
+  --dp-input-icon-padding: 28px;
 }
 
 .filter-daterange .dp--input {
   font-weight: normal;
-  text-transform: none;
-  letter-spacing: normal;
+}
+
+@media (max-width: 720px) {
+  .filter-daterange .dp--input {
+    height: 40px;
+    font-size: 16px;
+  }
 }
 </style>

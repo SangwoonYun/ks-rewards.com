@@ -57,15 +57,15 @@
           </thead>
           <tbody>
             <tr v-for="r in historyList" :key="r.id">
-              <td>{{ r.id }}</td>
-              <td>{{ r.fid }}</td>
+              <td data-label="ID">{{ r.id }}</td>
+              <td data-label="FID">{{ r.fid }}</td>
               <td class="avatar-cell">
                 <img :src="r.avatar_url || '/images/default-avatar.png'" :alt="r.nickname || r.fid" class="avatar" referrerpolicy="no-referrer" />
               </td>
-              <td>{{ r.nickname || '-' }}</td>
-              <td><code>{{ r.code }}</code></td>
-              <td><span class="badge" :class="redemptionStatusClass(r.status)">{{ r.status }}</span></td>
-              <td>{{ formatDate(r.redeemed_at) }}</td>
+              <td data-label="Nickname">{{ r.nickname || '-' }}</td>
+              <td data-label="Code"><code>{{ r.code }}</code></td>
+              <td data-label="Status"><span class="badge" :class="redemptionStatusClass(r.status)">{{ r.status }}</span></td>
+              <td data-label="Time">{{ formatDate(r.redeemed_at) }}</td>
             </tr>
             <tr v-if="historyList.length === 0 && !loadingHistory">
               <td colspan="7" class="empty">No redemptions found</td>
@@ -104,7 +104,7 @@
         <table class="admin-table">
           <thead>
             <tr>
-              <th><input type="checkbox" @change="toggleAll" :checked="allSelected" /></th>
+              <th class="check-cell"><input type="checkbox" @change="toggleAll" :checked="allSelected" /></th>
               <th>ID</th>
               <th>FID</th>
               <th></th>
@@ -118,7 +118,7 @@
           </thead>
           <tbody>
             <tr v-for="item in queueList" :key="item.id">
-              <td>
+              <td class="check-cell" data-label="Select">
                 <input
                   type="checkbox"
                   :checked="selectedIds.includes(item.id)"
@@ -126,17 +126,17 @@
                   @change="toggleSelect(item.id)"
                 />
               </td>
-              <td>{{ item.id }}</td>
-              <td>{{ item.fid }}</td>
+              <td data-label="ID">{{ item.id }}</td>
+              <td data-label="FID">{{ item.fid }}</td>
               <td class="avatar-cell">
                 <img :src="item.avatar_url || '/images/default-avatar.png'" :alt="item.nickname || item.fid" class="avatar" referrerpolicy="no-referrer" />
               </td>
-              <td>{{ item.nickname || '-' }}</td>
-              <td><code>{{ item.code }}</code></td>
-              <td><span class="badge" :class="queueStatusClass(item.status)">{{ item.status }}</span></td>
-              <td>{{ item.attempts }}</td>
-              <td class="error-cell">{{ item.error_message || '-' }}</td>
-              <td>{{ formatDate(item.created_at) }}</td>
+              <td data-label="Nickname">{{ item.nickname || '-' }}</td>
+              <td data-label="Code"><code>{{ item.code }}</code></td>
+              <td data-label="Status"><span class="badge" :class="queueStatusClass(item.status)">{{ item.status }}</span></td>
+              <td data-label="Attempts">{{ item.attempts }}</td>
+              <td class="error-cell" data-label="Error">{{ item.error_message || '-' }}</td>
+              <td data-label="Created">{{ formatDate(item.created_at) }}</td>
             </tr>
             <tr v-if="queueList.length === 0 && !loadingQueue">
               <td colspan="10" class="empty">Queue is empty</td>
@@ -375,257 +375,13 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.admin-page {
-  font-family: 'Cinzel', serif;
-  color: #5C4A35;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
+.check-cell {
+  width: 40px;
 }
 
-.page-title {
-  font-size: 1.6rem;
-  color: #6b472c;
-  margin: 0 0 24px;
+@media (max-width: 720px) {
+  .toolbar .search-input {
+    flex-basis: calc(50% - 4px);
+  }
 }
-
-.tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 20px;
-  border-bottom: 2px solid rgba(92, 74, 53, 0.08);
-  padding-bottom: 0;
-}
-
-.tab-btn {
-  padding: 10px 20px;
-  border: none;
-  background: transparent;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #8B7355;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.tab-btn:hover {
-  color: #6b472c;
-}
-
-.tab-btn.active {
-  color: #6b472c;
-  border-bottom-color: #D4A574;
-}
-
-.tab-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 9px;
-  background: #E06A6A;
-  color: #fff;
-  font-size: 0.65rem;
-  margin-left: 6px;
-}
-
-.toolbar {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.search-input {
-  flex: 1;
-  min-width: 150px;
-  padding: 10px 14px;
-  border: 1px solid rgba(92, 74, 53, 0.2);
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.9rem;
-  color: #5C4A35;
-  background: #FFF8EF;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #D4A574;
-  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
-}
-
-.info-text {
-  font-size: 0.85rem;
-  color: #8B7355;
-}
-
-.toolbar-btn {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.toolbar-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #6b472c, #7b5a36);
-  color: #F5E6D3;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #7b5a36, #8B6F47);
-}
-
-.message {
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  margin-bottom: 16px;
-}
-
-.message-success {
-  background: rgba(107, 142, 35, 0.1);
-  color: #6B8E23;
-  border: 1px solid rgba(107, 142, 35, 0.2);
-}
-
-.info-bar {
-  font-size: 0.8rem;
-  color: #8B7355;
-  margin-bottom: 12px;
-}
-
-.tab-content {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
-.table-wrapper {
-  background: rgba(255, 255, 255, 0.98);
-  border-radius: 10px;
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-  border: 1px solid rgba(92, 74, 53, 0.08);
-}
-
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
-
-.admin-table th {
-  background: #FFF8EF;
-  padding: 12px 16px;
-  text-align: left;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: #8B7355;
-  border-bottom: 1px solid rgba(92, 74, 53, 0.08);
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-.sentinel-cell {
-  padding: 0 !important;
-}
-
-.sentinel {
-  height: 1px;
-}
-
-.avatar-cell {
-  padding: 6px 8px !important;
-  width: 36px;
-}
-
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-  display: block;
-}
-
-.admin-table td {
-  padding: 10px 16px;
-  border-bottom: 1px solid rgba(92, 74, 53, 0.05);
-}
-
-.admin-table tbody tr:hover {
-  background: rgba(245, 230, 211, 0.3);
-}
-
-.admin-table code {
-  background: rgba(107, 71, 44, 0.08);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.85rem;
-}
-
-.admin-table input[type="checkbox"] {
-  cursor: pointer;
-  width: 16px;
-  height: 16px;
-}
-
-.error-cell {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.8rem;
-  color: #8B7355;
-}
-
-.empty {
-  text-align: center;
-  color: #8B7355;
-  padding: 24px !important;
-}
-
-.loading {
-  text-align: center;
-  padding: 20px;
-  color: #8B7355;
-}
-
-.badge {
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.badge-success { background: rgba(107, 142, 35, 0.12); color: #6B8E23; }
-.badge-warning { background: rgba(212, 165, 116, 0.2); color: #A0826D; }
-.badge-danger { background: rgba(224, 106, 106, 0.12); color: #E06A6A; }
-.badge-info { background: rgba(70, 130, 180, 0.12); color: #4682B4; }
-.badge-muted { background: rgba(139, 115, 85, 0.1); color: #8B7355; }
 </style>
