@@ -107,7 +107,7 @@
 </template>
 
 <script setup lang="ts">
-import type { GiftCode } from '~/server/utils/db';
+import type { GiftCode } from '~~/server/utils/db';
 
 definePageMeta({
   layout: 'admin',
@@ -235,7 +235,8 @@ async function revalidateCode(code: string) {
       : `Code "${code}": still ${res.currentStatus}`;
     messageType.value = res.currentStatus === 'validated' ? 'message-success' : 'message-error';
     const idx = codes.value.findIndex(c => c.code === code);
-    if (idx !== -1) codes.value[idx] = { ...codes.value[idx], validation_status: res.currentStatus };
+    const existing = codes.value[idx];
+    if (existing) codes.value[idx] = { ...existing, validation_status: res.currentStatus };
     const statsRes: any = await $fetch('/api/admin/codes', { params: { limit: '1', offset: '0' } });
     if (statsRes.stats) stats.value = statsRes.stats;
   } catch (e: any) {
@@ -313,7 +314,7 @@ watch(sentinelRef, (el) => {
   if (observer) observer.disconnect();
   if (!el || !tableWrapperRef.value) return;
   observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting) fetchMoreCodes();
+    if (entries[0]?.isIntersecting) fetchMoreCodes();
   }, { root: tableWrapperRef.value, threshold: 0 });
   observer.observe(el);
 });

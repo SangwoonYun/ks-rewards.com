@@ -1,7 +1,14 @@
-﻿import { users, queue } from '../../utils/db';
-import { redeemGiftCode } from '../../services/kingshotApi';
-import { queueUnredeemedCodesForUser } from '../../services/redemptionService';
+﻿import { users } from '../../utils/db';
+import { verifyPlayer } from '../../services/kingshotApi';
+import { redeemNowForUser } from '../../services/redemptionService';
+import { refreshProfile } from '../../services/playerLookup';
 import { logger } from '../../utils/logger';
+
+const VERIFY_ERRORS = {
+  WRONG_KINGDOM: '왕국 번호가 플레이어 ID와 일치하지 않습니다. 왕국 번호를 확인해 주세요.',
+  NO_SUCH_PLAYER: '존재하지 않는 플레이어 ID입니다.',
+  UNVERIFIED: '플레이어 정보를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.'
+} as const;
 
 export default defineEventHandler(async (event) => {
   try {
@@ -18,7 +25,7 @@ export default defineEventHandler(async (event) => {
     if (!kid) {
       return {
         success: false,
-        error: 'Server number (kid) is required'
+        error: 'Kingdom number (kid) is required'
       };
     }
 
@@ -33,86 +40,78 @@ export default defineEventHandler(async (event) => {
     if (!/^\d+$/.test(String(kid))) {
       return {
         success: false,
-        error: 'Server number must be numeric'
+        error: 'Kingdom number must be numeric'
       };
     }
 
-    // Check if user already exists
     const existingUser = await users.findByFid(fid);
-    if (existingUser) {
-      // Update the server/kingdom if it has changed
-      if (String(kid) !== existingUser.kingdom) {
-        await users.updateKingdom(fid, String(kid));
-        logger.info(`✅ Updated kingdom for ${fid}: ${existingUser.kingdom} -> ${kid}`);
-      }
 
+    // Already registered and active with the same, already verified kingdom: nothing to verify.
+    // A deactivated user registering again goes through verification and is reactivated below.
+    if (existingUser && existingUser.active === 1 && String(kid) === existingUser.kingdom && existingUser.kingdom_verified_at) {
       return {
         success: true,
         message: 'User already registered',
+        user: existingUser,
+        redeemedCount: 0,
+        alreadyRegistered: true,
+        kidUpdated: false
+      };
+    }
+
+    // New user, kingdom change, or a kingdom never verified: verify the fid/kid pair before saving it
+    const verification = await verifyPlayer(fid, String(kid));
+    if (!verification.ok) {
+      logger.warn(`❌ Rejected registration for ${fid} (kid ${kid}): ${verification.status}`);
+      return {
+        success: false,
+        error: VERIFY_ERRORS[verification.reason],
+        reason: verification.reason
+      };
+    }
+
+    if (existingUser) {
+      const kidUpdated = String(kid) !== existingUser.kingdom;
+      const reactivated = existingUser.active !== 1;
+      await users.setVerifiedKingdom(fid, String(kid));
+      // The user asked for redemptions again, so a deactivated account (by an admin or the lookup) comes back
+      if (reactivated) {
+        users.updateActive(fid, 1);
+        logger.info(`✅ Reactivated ${fid} on registration`);
+      }
+      void refreshProfile(fid, false);
+      logger.info(kidUpdated
+        ? `✅ Updated kingdom for ${fid}: ${existingUser.kingdom} -> ${kid}`
+        : `✅ Verified kingdom for ${fid}: ${kid}`);
+
+      // Retry codes that failed with the old (or unverified) kingdom
+      const redeemedCount = await redeemNowForUser(fid, String(kid));
+
+      return {
+        success: true,
+        message: reactivated ? 'User reactivated' : kidUpdated ? 'Kingdom updated' : 'User already registered',
         user: {
           ...existingUser,
-          kingdom: String(kid)
+          kingdom: String(kid),
+          active: 1
         },
-        redeemedCount: 0,
-        alreadyRegistered: true
+        redeemedCount,
+        alreadyRegistered: true,
+        kidUpdated,
+        reactivated
       };
     }
 
     // Create new user
     await users.create(fid, null, 1);
-    await users.updateKingdom(fid, String(kid));
+    await users.setVerifiedKingdom(fid, String(kid));
+    // Nickname and avatar in the background, so registration does not wait on the lookup site
+    void refreshProfile(fid, false);
     const user = await users.findByFid(fid);
 
-    // Queue unredeemed codes for this user
-    const queuedCount = await queueUnredeemedCodesForUser(fid, 10); // High priority for new users
+    logger.info(`✅ User registered: ${fid} (kid ${kid})`);
 
-    logger.info(`✅ User registered: ${fid} (kid ${kid}), ${queuedCount} codes queued`);
-
-    // Immediately process redemptions for this new user
-    let redeemedCount = 0;
-    if (queuedCount > 0) {
-      logger.info(`🚀 Starting immediate redemption for new user ${fid}`);
-
-      try {
-        // Get pending items for this user
-        const userItems = queue.getPendingByFid(fid, 100);
-
-        for (const item of userItems) {
-          try {
-            // Mark as processing
-            await queue.updateStatus(item.id, 'processing', undefined);
-
-            // Perform the redemption
-            const result = await redeemGiftCode(fid, String(kid), item.code);
-            const normalizedStatus = result.status?.toString().trim().replace(/[.!?]+$/, '').toUpperCase() || 'UNKNOWN';
-
-            // Save redemption result
-            const { redemptions } = await import('../../utils/db');
-            await redemptions.create(fid, item.code, normalizedStatus);
-
-            if (['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'].includes(normalizedStatus)) {
-              redeemedCount++;
-              logger.info(`✅ Immediately redeemed ${item.code} for ${fid}: ${normalizedStatus}`);
-            } else {
-              logger.warn(`⚠️ Redemption failed for ${item.code}: ${normalizedStatus}`);
-            }
-
-            // Remove from queue
-            await queue.delete(item.id);
-
-            // Delay to avoid rate limiting (note: additional rate limiting happens in kingshotApi.ts)
-            await new Promise(resolve => setTimeout(resolve, 1500));
-          } catch (error) {
-            logger.error(`Error redeeming ${item.code} for ${fid}:`, error);
-            await queue.updateStatus(item.id, 'failed', 'Redemption error');
-          }
-        }
-
-        logger.info(`🎉 Immediate redemption complete for ${fid}: ${redeemedCount}/${userItems.length} successful`);
-      } catch (error) {
-        logger.error(`Error in immediate redemption for ${fid}:`, error);
-      }
-    }
+    const redeemedCount = await redeemNowForUser(fid, String(kid));
 
     return {
       success: true,

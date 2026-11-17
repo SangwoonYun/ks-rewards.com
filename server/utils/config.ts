@@ -29,6 +29,7 @@ export function getConfig() {
       maxRetries: parseInt(String(rc.maxRetries), 10),
       retryDelayMs: parseInt(String(rc.retryDelayMs), 10),
       minRequestIntervalMs: parseInt(String(rc.minRequestIntervalMs), 10),
+      searchRequestIntervalMs: parseInt(String(rc.searchRequestIntervalMs), 10),
       redeemDelayMs: parseInt(String(rc.redeemDelayMs), 10),
     },
 

@@ -17,12 +17,12 @@
       </div>
 
       <div class="field">
-        <label for="serverId">서버 번호</label>
+        <label for="serverId">왕국 번호</label>
         <input
           id="serverId"
           v-model="serverInput"
           type="text"
-          placeholder="예: 120"
+          placeholder="예: 120 (위 플레이어 ID 전체에 동일하게 적용됩니다)"
           @keyup.enter="registerPlayer"
         />
       </div>
@@ -46,6 +46,9 @@
       <p><strong>기능:</strong> Kingshot 기프트 코드를 자동으로 감지하여 등록된 플레이어 ID로 즉시 수령합니다.</p>
       <p><strong>등록 방법:</strong> 플레이어 ID를 입력 후 등록 버튼을 누르세요. 이후 사이트를 닫아도 계속 자동 수령됩니다.</p>
       <p><strong>플레이어 ID 확인:</strong> 게임 실행 → 프로필 → 정보 탭에서 이름 아래 표시됩니다.</p>
+      <p><strong>왕국 번호:</strong> 한 번에 입력한 왕국 번호는 위에 입력한 모든 플레이어 ID에 동일하게 적용됩니다. 왕국이 다른 플레이어는 나눠서 등록해 주세요.</p>
+      <p class="notice-text"><strong>안내:</strong> 닉네임/아바타는 외부 공개 정보를 바탕으로 표시되어, 반영이 늦거나 표시되지 않을 수 있습니다.</p>
+      <p class="notice-text"><strong>이민하신 경우:</strong> 이민(왕국 이동)을 하신 경우, 같은 플레이어 ID와 새 왕국 번호로 다시 등록하시면 왕국 정보가 자동으로 갱신됩니다.</p>
       <div class="disclaimer" role="note" aria-label="Disclaimer">
         <!-- Use Material Symbols glyph via CSS pseudo-element (no inline text to select) -->
         <span class="disclaimer-icon material-symbols-outlined" aria-hidden="true"></span>
@@ -96,13 +99,11 @@
               class="redemption-tile"
             >
               <img
-                v-if="redemption.avatar_url"
-                :src="redemption.avatar_url"
+                :src="redemption.avatar_url || '/images/default-avatar.png'"
                 :alt="`${redemption.nickname || 'Player'} avatar`"
                 class="redemption-avatar"
                 @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
               />
-              <div v-else class="redemption-avatar-placeholder">👤</div>
 
               <div class="redemption-info">
                 <div class="redemption-player">
@@ -174,6 +175,8 @@ interface RegisterResponse {
   success: boolean;
   redeemedCount?: number;
   alreadyRegistered?: boolean;
+  kidUpdated?: boolean;
+  reactivated?: boolean;
   error?: string;
 }
 
@@ -369,7 +372,7 @@ async function registerPlayer() {
 
   const kid = serverInput.value.trim();
   if (!kid || !/^\d+$/.test(kid)) {
-    statusMessage.value = '서버 번호를 숫자로 입력해 주세요.';
+    statusMessage.value = '왕국 번호를 숫자로 입력해 주세요.';
     statusType.value = 'error';
     return;
   }
@@ -392,7 +395,20 @@ async function registerPlayer() {
 
         if (response.success) {
           if (response.alreadyRegistered) {
-            results.push(`${fid}: 이미 등록됨`);
+            if (response.reactivated) {
+              const head = response.kidUpdated ? '재활성화됨(왕국 번호 갱신)' : '재활성화됨';
+              results.push(response.redeemedCount
+                ? `${fid}: ${head}, 코드 ${response.redeemedCount}개 수령 성공`
+                : `${fid}: ${head}`);
+            } else if (response.kidUpdated) {
+              results.push(response.redeemedCount
+                ? `${fid}: 왕국 번호 갱신됨, 코드 ${response.redeemedCount}개 수령 성공`
+                : `${fid}: 왕국 번호 갱신됨`);
+            } else {
+              results.push(response.redeemedCount
+                ? `${fid}: 이미 등록됨, 코드 ${response.redeemedCount}개 수령 성공`
+                : `${fid}: 이미 등록됨`);
+            }
           } else if (response.redeemedCount) {
             results.push(`${fid}: 등록 완료, 코드 ${response.redeemedCount}개 수령 성공`);
           } else {
@@ -427,7 +443,7 @@ async function registerPlayer() {
       statusMessage.value = results.length > 0 ? `${summary}: [${results.join(', ')}]` : summary;
     } else {
       statusType.value = 'error';
-      if (!statusMessage.value) statusMessage.value = '등록에 실패했습니다.';
+      statusMessage.value = results.length > 0 ? `등록 실패: [${results.join(', ')}]` : '등록에 실패했습니다.';
     }
   } catch (error: any) {
     statusMessage.value = `등록 처리 중 오류: ${error.message || String(error)}`;
@@ -625,6 +641,10 @@ input[type=text]:focus {
   color: var(--text);
 }
 
+.notice-text {
+  color: var(--danger);
+}
+
 .info a {
   color: var(--primary-dark);
   text-decoration: none;
@@ -795,19 +815,6 @@ input[type=text]:focus {
   border: 2px solid rgba(107,142,35,0.3);
 }
 
-.redemption-avatar-placeholder {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(107,142,35,0.15);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  flex-shrink: 0;
-  border: 2px solid rgba(107,142,35,0.3);
-}
-
 .redemption-info {
   flex: 1;
   min-width: 0;
@@ -969,8 +976,7 @@ footer a:hover {
     gap: 8px;
   }
 
-  .redemption-avatar,
-  .redemption-avatar-placeholder {
+  .redemption-avatar {
     width: 36px;
     height: 36px;
   }
@@ -1041,8 +1047,7 @@ footer a:hover {
     gap: 8px;
   }
 
-  .redemption-avatar,
-  .redemption-avatar-placeholder {
+  .redemption-avatar {
     width: 32px;
     height: 32px;
     font-size: 16px;

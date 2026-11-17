@@ -66,8 +66,9 @@ Key environment variables:
 
 - **Retry Configuration**:
   - `MAX_RETRIES`: Maximum API retry attempts (default: 5)
-  - `RETRY_DELAY_MS`: Delay between retries (default: 2000)
+  - `RETRY_DELAY_MS`: Delay between retries (default: 1000)
   - `MIN_REQUEST_INTERVAL_MS`: Minimum time between API requests (default: 3000)
+  - `SEARCH_REQUEST_INTERVAL_MS`: Base interval between kingdom-search requests, separate from the above; +1s per rate-limit signal, -1s after 5 quiet minutes (30 minutes to step back down to an interval that got an HTTP 429) (default: 2000)
 
 - **Database**:
   - `DB_PATH`: Database file path (default: `./data/ks-rewards.db`)

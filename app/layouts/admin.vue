@@ -17,6 +17,9 @@
         <NuxtLink to="/admin/users" class="admin-nav-link" active-class="active">
           <span class="nav-icon">&#9632;</span> Users
         </NuxtLink>
+        <NuxtLink to="/admin/redemption-failures" class="admin-nav-link" active-class="active">
+          <span class="nav-icon">&#9632;</span> Redemption Failures
+        </NuxtLink>
         <NuxtLink to="/admin/priority" class="admin-nav-link" active-class="active">
           <span class="nav-icon">&#9632;</span> Priority Queue
         </NuxtLink>

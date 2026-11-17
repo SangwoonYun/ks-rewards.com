@@ -3,25 +3,40 @@
     <h1 class="page-title">User Management</h1>
 
     <div class="toolbar">
-      <input
-        v-model="search"
-        type="text"
-        class="search-input"
-        placeholder="Search by FID or nickname..."
-        @input="debouncedFetch"
-      />
-      <select v-model="statusFilter" class="filter-select" @change="fetchUsers">
-        <option value="">All</option>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-      </select>
       <button
         class="action-btn btn-apply-all"
         :disabled="applyingAll"
         @click="applyAllCodes"
       >
-        {{ applyingAll ? 'Applying...' : 'Apply All Codes' }}
+        {{ applyingAll ? 'Applying...' : hasFilters ? `Apply Codes (${totalUsers} filtered)` : 'Apply All Codes' }}
       </button>
+      <button
+        class="action-btn btn-refresh-all"
+        :disabled="bulkRefresh?.running"
+        @click="startBulkRefresh"
+      >
+        {{ bulkRefresh?.running ? 'Refreshing...' : hasFilters ? `Refresh Profiles (${totalUsers} filtered)` : 'Refresh All Profiles' }}
+      </button>
+    </div>
+
+    <div v-if="bulkRefresh?.running" class="result-banner result-info">
+      Refreshing profiles: {{ bulkRefresh.done }} / {{ bulkRefresh.total }}
+      ({{ bulkRefresh.updated }} updated, {{ bulkRefresh.kingdomUpdated }} kingdom changes, {{ bulkRefresh.deactivated }} deactivated, {{ bulkRefresh.notFound }} not found, {{ bulkRefresh.failed }} failed)
+      <button class="dismiss-btn" title="Cancel" @click="cancelBulkRefresh">&times;</button>
+    </div>
+    <div v-else-if="bulkRefreshResult" class="result-banner" :class="bulkRefreshResult.success ? 'result-success' : 'result-error'">
+      {{ bulkRefreshResult.message }}
+      <button class="dismiss-btn" @click="bulkRefreshResult = null">&times;</button>
+    </div>
+    <div v-if="!bulkRefresh?.running && bulkRefreshResult?.issues.length" class="refresh-report">
+      <div v-for="group in issueGroups" :key="group.reason" class="report-group">
+        <strong>{{ group.label }} ({{ group.items.length }})</strong>
+        <ul>
+          <li v-for="i in group.items" :key="i.fid">
+            {{ i.fid }} · {{ i.nickname || '-' }} · K{{ i.kingdom || '?' }}<template v-if="i.reason === 'kingdom_rejected'"> → K{{ i.detail }} rejected</template><template v-else-if="i.detail"> · {{ i.detail }}</template>
+          </li>
+        </ul>
+      </div>
     </div>
 
     <div v-if="applyAllResult" class="result-banner" :class="applyAllResult.success ? 'result-success' : 'result-error'">
@@ -37,13 +52,42 @@
       <table class="admin-table">
         <thead>
           <tr>
-            <th>FID</th>
-            <th></th>
-            <th>Nickname</th>
-            <th>Kingdom</th>
-            <th>Status</th>
-            <th>Registered</th>
+            <th v-for="col in SORT_COLUMNS" :key="col.key">
+              <button v-if="col.sort" class="sort-btn" :class="{ active: sort.key === col.sort }" @click="toggleSort(col.sort)">
+                {{ col.label }}
+                <span class="sort-icon">{{ sort.key === col.sort ? (sort.order === 'asc' ? '▲' : '▼') : '⇅' }}</span>
+              </button>
+            </th>
             <th>Actions</th>
+          </tr>
+          <tr class="filter-row">
+            <th><input v-model="filters.fid" type="text" inputmode="numeric" class="filter-input filter-fid" placeholder="Contains" @input="debouncedFetch" /></th>
+            <th></th>
+            <th><input v-model="filters.nickname" type="text" class="filter-input filter-nickname" placeholder="Contains" @input="debouncedFetch" /></th>
+            <th><input v-model="filters.kingdom" type="text" inputmode="numeric" class="filter-input filter-kingdom" placeholder="Exact" @input="debouncedFetch" /></th>
+            <th>
+              <select v-model="filters.status" class="filter-input filter-status" @change="fetchUsers">
+                <option value="">All</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </th>
+            <th>
+              <ClientOnly>
+                <VueDatePicker
+                  v-model="dateRange"
+                  :range="{ partialRange: false }"
+                  auto-apply
+                  model-type="yyyy-MM-dd"
+                  :formats="{ input: 'yy.MM.dd' }"
+                  :time-config="{ enableTimePicker: false }"
+                  :teleport="true"
+                  placeholder="Date range"
+                  class="filter-daterange"
+                />
+              </ClientOnly>
+            </th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -51,13 +95,11 @@
             <td>{{ user.fid }}</td>
             <td class="avatar-cell">
               <img
-                v-if="user.avatar_url"
-                :src="user.avatar_url"
+                :src="user.avatar_url || '/images/default-avatar.png'"
                 :alt="user.nickname || user.fid"
                 class="avatar"
                 referrerpolicy="no-referrer"
               />
-              <div v-else class="avatar avatar-placeholder">{{ (user.nickname || user.fid).charAt(0).toUpperCase() }}</div>
             </td>
             <td>{{ user.nickname || '-' }}</td>
             <td>{{ user.kingdom || '-' }}</td>
@@ -93,8 +135,15 @@
               >
                 {{ togglingPriority === user.fid ? '...' : (isPriorityUser(user.fid) ? 'Remove Priority' : 'Add Priority') }}
               </button>
-              <span v-if="applyResults[user.fid]" class="apply-result" :class="applyResults[user.fid].success ? 'text-success' : 'text-error'">
-                {{ applyResults[user.fid].message }}
+              <button
+                class="action-btn btn-refresh"
+                :disabled="refreshing === user.fid"
+                @click="refreshProfile(user)"
+              >
+                {{ refreshing === user.fid ? 'Refreshing...' : 'Refresh Profile' }}
+              </button>
+              <span v-if="applyResults[user.fid]" class="apply-result" :class="applyResults[user.fid]?.success ? 'text-success' : 'text-error'">
+                {{ applyResults[user.fid]?.message }}
               </span>
             </td>
           </tr>
@@ -114,7 +163,9 @@
 </template>
 
 <script setup lang="ts">
-import type { User } from '~/server/utils/db';
+import { VueDatePicker } from '@vuepic/vue-datepicker';
+import '@vuepic/vue-datepicker/dist/main.css';
+import type { User } from '~~/server/utils/db';
 
 definePageMeta({
   layout: 'admin',
@@ -123,8 +174,43 @@ definePageMeta({
 
 const PAGE_SIZE = 50;
 
-const search = ref('');
-const statusFilter = ref('');
+const filters = reactive({ fid: '', nickname: '', kingdom: '', status: '', from: '', to: '' });
+
+// Registered filter as one range picker (yyyy-MM-dd local days). The picker emits the start date alone
+// on the first click, so the filter only changes once both ends are picked, or when cleared.
+const dateRange = ref<string[] | null>(null);
+watch(dateRange, (value) => {
+  const [from, to] = value ?? [];
+  if (value && !(from && to)) return;
+  filters.from = from ?? '';
+  filters.to = to ?? '';
+  fetchUsers();
+});
+
+// Column headers before Actions; sort is the server's sort key (none for the avatar column)
+const SORT_COLUMNS = [
+  { key: 'fid', label: 'FID', sort: 'fid' },
+  { key: 'avatar', label: '', sort: null },
+  { key: 'nickname', label: 'Nickname', sort: 'nickname' },
+  { key: 'kingdom', label: 'Kingdom', sort: 'kingdom' },
+  { key: 'status', label: 'Status', sort: 'active' },
+  { key: 'registered', label: 'Registered', sort: 'created_at' },
+] as const;
+type SortKey = NonNullable<(typeof SORT_COLUMNS)[number]['sort']>;
+// Each click on a column: ascending -> descending -> back to the default order (newest first, key null)
+const sort = reactive<{ key: SortKey | null; order: 'asc' | 'desc' }>({ key: null, order: 'asc' });
+
+function toggleSort(key: SortKey) {
+  if (sort.key !== key) {
+    sort.key = key;
+    sort.order = 'asc';
+  } else if (sort.order === 'asc') {
+    sort.order = 'desc';
+  } else {
+    sort.key = null;
+  }
+  fetchUsers();
+}
 const users = ref<User[]>([]);
 const loading = ref(true);
 const totalUsers = ref(0);
@@ -139,9 +225,140 @@ const applyingAll = ref(false);
 const applyAllResult = ref<{ success: boolean; message: string } | null>(null);
 const priorityFids = ref<Set<string>>(new Set());
 const togglingPriority = ref<string | null>(null);
+const refreshing = ref<string | null>(null);
+
+interface BulkRefreshStatus {
+  running: boolean;
+  total: number;
+  done: number;
+  updated: number;
+  notFound: number;
+  failed: number;
+  kingdomUpdated: number;
+  deactivated: number;
+  issues: RefreshIssue[];
+  stoppedReason: string | null;
+  startedAt: number | null;
+  finishedAt: number | null;
+}
+interface RefreshIssue {
+  fid: string;
+  nickname: string | null;
+  kingdom: string | null;
+  reason: 'deactivated' | 'not_found' | 'failed' | 'kingdom_rejected';
+  detail: string | null;
+}
+const bulkRefresh = ref<BulkRefreshStatus | null>(null);
+const bulkRefreshResult = ref<{ success: boolean; message: string; issues: RefreshIssue[] } | null>(null);
+
+// Report of the users that did not refresh cleanly, grouped by reason
+const ISSUE_LABELS: Record<RefreshIssue['reason'], string> = {
+  deactivated: 'Deactivated (inactive 90 days / last login unknown / no coordinates)',
+  not_found: 'Not found on lookup site',
+  kingdom_rejected: 'Lookup kingdom rejected by API',
+  failed: 'Lookup failed',
+};
+const issueGroups = computed(() => {
+  const issues = bulkRefreshResult.value?.issues ?? [];
+  return (Object.keys(ISSUE_LABELS) as RefreshIssue['reason'][])
+    .map(reason => ({ reason, label: ISSUE_LABELS[reason], items: issues.filter(i => i.reason === reason) }))
+    .filter(g => g.items.length > 0);
+});
+let bulkPollTimer: ReturnType<typeof setTimeout> | null = null;
+
+function showResult(fid: string, success: boolean, message: string) {
+  applyResults.value[fid] = { success, message };
+  setTimeout(() => {
+    delete applyResults.value[fid];
+  }, 5000);
+}
+
+async function refreshProfile(user: User) {
+  refreshing.value = user.fid;
+  delete applyResults.value[user.fid];
+  try {
+    const res = await $fetch(`/api/admin/users/${user.fid}/refresh-profile`, { method: 'POST' }) as any;
+    if (res.user) {
+      user.nickname = res.user.nickname;
+      user.avatar_url = res.user.avatar_url;
+      user.kingdom = res.user.kingdom;
+      user.active = res.user.active;
+    }
+    const messages: Record<string, string> = {
+      updated: 'Profile updated',
+      not_found: 'Not found on lookup site',
+      failed: 'Lookup failed',
+    };
+    let message = messages[res.result] ?? res.result;
+    if (res.kingdom?.status === 'updated') message += `, kingdom ${res.kingdom.from} → ${res.kingdom.to}`;
+    if (res.kingdom?.status === 'rejected') message += `, kingdom ${res.kingdom.to} rejected by API`;
+    if (res.deactivated) {
+      message += res.result === 'not_found' ? ', deactivated' : ', deactivated (inactive 90 days / last login unknown / no coordinates)';
+      dropPriority(user.fid);
+    }
+    showResult(user.fid, res.success, message);
+  } catch (e) {
+    showResult(user.fid, false, 'Failed to refresh profile');
+  } finally {
+    refreshing.value = null;
+  }
+}
+
+async function pollBulkRefresh() {
+  try {
+    const wasRunning = bulkRefresh.value?.running;
+    bulkRefresh.value = await $fetch<BulkRefreshStatus>('/api/admin/users/refresh-profiles/status');
+    const s = bulkRefresh.value;
+    if (s.running) {
+      bulkPollTimer = setTimeout(pollBulkRefresh, 2000);
+    } else if (wasRunning) {
+      bulkRefreshResult.value = {
+        success: !s.stoppedReason || s.stoppedReason === 'Cancelled',
+        message: `Profiles refreshed: ${s.updated} updated (${s.kingdomUpdated} kingdom changes, ${s.deactivated} deactivated), ${s.notFound} not found, ${s.failed} failed` +
+          (s.stoppedReason ? ` (${s.stoppedReason})` : ''),
+        issues: s.issues,
+      };
+      fetchUsers();
+      fetchPriorityUsers();
+    }
+  } catch (e) {
+    console.error('Failed to fetch profile refresh status:', e);
+  }
+}
+
+async function startBulkRefresh() {
+  const targets = hasFilters.value ? `the ${totalUsers.value} user(s) matching the filters` : 'every user';
+  if (!confirm(`Refresh the nickname, avatar and kingdom of ${targets} from mightpulse.com? Users not found (even by live search), inactive for 90 days, with an unknown last login or without coordinates are deactivated. This runs in the background (about 1.5s per user, up to ~15s more for users that need a live search).`)) return;
+  bulkRefreshResult.value = null;
+  try {
+    bulkRefresh.value = await $fetch<BulkRefreshStatus>('/api/admin/users/refresh-profiles/start', { method: 'POST', body: filterParams() });
+    if (bulkRefresh.value.total === 0) {
+      bulkRefreshResult.value = { success: true, message: 'No users match the filters', issues: [] };
+      return;
+    }
+    bulkPollTimer = setTimeout(pollBulkRefresh, 2000);
+  } catch (e: any) {
+    bulkRefreshResult.value = { success: false, message: e?.data?.message || 'Failed to start profile refresh', issues: [] };
+  }
+}
+
+async function cancelBulkRefresh() {
+  try {
+    await $fetch('/api/admin/users/refresh-profiles/cancel', { method: 'POST' });
+  } catch (e) {
+    console.error('Failed to cancel profile refresh:', e);
+  }
+}
 
 function isPriorityUser(fid: string) {
   return priorityFids.value.has(fid);
+}
+
+// The server takes deactivated users out of the priority queue
+function dropPriority(fid: string) {
+  if (!priorityFids.value.has(fid)) return;
+  priorityFids.value.delete(fid);
+  priorityFids.value = new Set(priorityFids.value);
 }
 
 async function fetchPriorityUsers() {
@@ -185,14 +402,31 @@ function debouncedFetch() {
   debounceTimer = setTimeout(fetchUsers, 300);
 }
 
+// Column filters as query params (also the targets of Apply Codes / Refresh Profiles);
+// the date range is in local days, sent as instants (to is exclusive)
+function filterParams() {
+  const params: Record<string, string> = {};
+  for (const key of ['fid', 'nickname', 'kingdom', 'status'] as const) {
+    if (filters[key].trim()) params[key] = filters[key].trim();
+  }
+  if (filters.from) params.from = new Date(`${filters.from}T00:00`).toISOString();
+  if (filters.to) {
+    const end = new Date(`${filters.to}T00:00`);
+    end.setDate(end.getDate() + 1);
+    params.to = end.toISOString();
+  }
+  return params;
+}
+
+const sortParams = (): Record<string, string> => (sort.key ? { sort: sort.key, order: sort.order } : {});
+const hasFilters = computed(() => Object.keys(filterParams()).length > 0);
+
 async function fetchUsers() {
   loading.value = true;
   offset.value = 0;
   users.value = [];
   try {
-    const params: Record<string, string> = { limit: String(PAGE_SIZE), offset: '0' };
-    if (search.value.trim()) params.search = search.value.trim();
-    if (statusFilter.value) params.status = statusFilter.value;
+    const params = { limit: String(PAGE_SIZE), offset: '0', ...sortParams(), ...filterParams() };
 
     const res = await $fetch('/api/admin/users', { params }) as any;
     users.value = res.users;
@@ -210,9 +444,7 @@ async function fetchMoreUsers() {
   if (loading.value || !hasMore.value) return;
   loading.value = true;
   try {
-    const params: Record<string, string> = { limit: String(PAGE_SIZE), offset: String(offset.value) };
-    if (search.value.trim()) params.search = search.value.trim();
-    if (statusFilter.value) params.status = statusFilter.value;
+    const params = { limit: String(PAGE_SIZE), offset: String(offset.value), ...sortParams(), ...filterParams() };
 
     const res = await $fetch('/api/admin/users', { params }) as any;
     users.value.push(...res.users);
@@ -231,6 +463,7 @@ async function toggleUser(user: User) {
   try {
     await $fetch(`/api/admin/users/${user.fid}/toggle`, { method: 'POST' });
     user.active = user.active === 1 ? 0 : 1;
+    if (!user.active) dropPriority(user.fid);
   } catch (e) {
     console.error('Failed to toggle user:', e);
   } finally {
@@ -264,17 +497,19 @@ async function applyCodes(user: User) {
 }
 
 async function applyAllCodes() {
-  if (!confirm('Apply all validated gift codes to all active users? This may take a while.')) return;
+  const targets = hasFilters.value ? `the active users among the ${totalUsers.value} matching the filters` : 'all active users';
+  if (!confirm(`Apply all validated gift codes to ${targets}? This may take a while.`)) return;
 
   applyingAll.value = true;
   applyAllResult.value = null;
   try {
-    const res = await $fetch('/api/admin/users/apply-all', { method: 'POST' }) as any;
+    const res = await $fetch('/api/admin/users/apply-all', { method: 'POST', body: filterParams() }) as any;
+    const scope = res.targetCount === null ? '' : `${res.targetCount} filtered active user(s): `;
     applyAllResult.value = {
       success: res.success,
-      message: res.queuedCount === 0
+      message: scope + (res.queuedCount === 0
         ? 'No unredeemed codes to apply'
-        : `Queued ${res.queuedCount}, processed ${res.processed} (${res.successCount} success, ${res.failedCount} failed)`,
+        : `Queued ${res.queuedCount}, processed ${res.processed} (${res.successCount} success, ${res.failedCount} failed)`),
     };
   } catch (e: any) {
     applyAllResult.value = {
@@ -296,7 +531,7 @@ watch(sentinelRef, (el) => {
   if (observer) observer.disconnect();
   if (!el || !tableWrapperRef.value) return;
   observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting) fetchMoreUsers();
+    if (entries[0]?.isIntersecting) fetchMoreUsers();
   }, { root: tableWrapperRef.value, threshold: 0 });
   observer.observe(el);
 });
@@ -304,10 +539,13 @@ watch(sentinelRef, (el) => {
 onMounted(() => {
   fetchUsers();
   fetchPriorityUsers();
+  // Picks up a refresh that is already running (e.g. after a page reload)
+  pollBulkRefresh();
 });
 
 onUnmounted(() => {
   observer?.disconnect();
+  if (bulkPollTimer) clearTimeout(bulkPollTimer);
 });
 </script>
 
@@ -335,33 +573,77 @@ onUnmounted(() => {
   align-items: center;
 }
 
-.search-input {
-  flex: 1;
-  min-width: 200px;
-  padding: 10px 14px;
-  border: 1px solid rgba(92, 74, 53, 0.2);
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.9rem;
-  color: #5C4A35;
-  background: #FFF8EF;
+.sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  cursor: pointer;
 }
 
-.search-input:focus {
+.sort-btn:hover,
+.sort-btn.active {
+  color: #5C4A35;
+}
+
+.sort-icon {
+  font-size: 0.7rem;
+  opacity: 0.5;
+}
+
+.sort-btn.active .sort-icon {
+  opacity: 1;
+}
+
+.filter-row th {
+  padding: 6px 8px 10px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.filter-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid rgba(92, 74, 53, 0.2);
+  border-radius: 6px;
+  font-family: system-ui, sans-serif;
+  font-size: 0.8rem;
+  color: #5C4A35;
+  background: #fff;
+}
+
+.filter-input:focus {
   outline: none;
   border-color: #D4A574;
   box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
 }
 
-.filter-select {
-  padding: 10px 14px;
-  border: 1px solid rgba(92, 74, 53, 0.2);
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.9rem;
-  color: #5C4A35;
-  background: #FFF8EF;
-  cursor: pointer;
+.filter-fid {
+  max-width: 90px;
+}
+
+.filter-nickname {
+  max-width: 110px;
+}
+
+.filter-kingdom {
+  max-width: 60px;
+}
+
+.filter-status {
+  max-width: 90px;
+}
+
+.filter-daterange {
+  width: 165px;
 }
 
 .info-bar {
@@ -395,6 +677,10 @@ onUnmounted(() => {
   letter-spacing: 1px;
   color: #8B7355;
   border-bottom: 1px solid rgba(92, 74, 53, 0.08);
+}
+
+/* Both header rows (titles and filters) stay on top while scrolling */
+.admin-table thead {
   position: sticky;
   top: 0;
   z-index: 1;
@@ -521,6 +807,26 @@ onUnmounted(() => {
   background: rgba(70, 130, 180, 0.3);
 }
 
+.btn-refresh {
+  background: rgba(184, 134, 11, 0.12);
+  color: #B8860B;
+}
+
+.btn-refresh:hover:not(:disabled) {
+  background: rgba(184, 134, 11, 0.25);
+}
+
+.btn-refresh-all {
+  background: rgba(184, 134, 11, 0.15);
+  color: #B8860B;
+  padding: 10px 18px;
+  font-size: 0.85rem;
+}
+
+.btn-refresh-all:hover:not(:disabled) {
+  background: rgba(184, 134, 11, 0.3);
+}
+
 .apply-result {
   font-size: 0.7rem;
   font-weight: 600;
@@ -555,6 +861,30 @@ onUnmounted(() => {
   color: #E06A6A;
 }
 
+.refresh-report {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: rgba(212, 165, 116, 0.12);
+  font-size: 0.8rem;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.report-group + .report-group {
+  margin-top: 10px;
+}
+
+.report-group ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.result-info {
+  background: rgba(184, 134, 11, 0.12);
+  color: #B8860B;
+}
+
 .dismiss-btn {
   background: none;
   border: none;
@@ -585,14 +915,31 @@ onUnmounted(() => {
   object-fit: cover;
   display: block;
 }
+</style>
 
-.avatar-placeholder {
-  background: rgba(212, 165, 116, 0.3);
-  color: #6b472c;
-  font-size: 0.75rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+<style>
+/* Date range picker in the users filter row, in the admin palette (the menu is teleported, so not scoped) */
+.dp--theme-light {
+  --dp-font-family: system-ui, sans-serif;
+  --dp-font-size: 0.8rem;
+  --dp-text-color: #5C4A35;
+  --dp-primary-color: #D4A574;
+  --dp-primary-text-color: #fff;
+  --dp-hover-color: #F5E6D3;
+  --dp-border-color: rgba(92, 74, 53, 0.2);
+  --dp-border-color-hover: #D4A574;
+  --dp-border-color-focus: #D4A574;
+  --dp-range-between-dates-background-color: #F5E6D3;
+  --dp-range-between-dates-text-color: #5C4A35;
+  --dp-range-between-border-color: #F5E6D3;
+  --dp-border-radius: 6px;
+  --dp-input-padding: 5px 24px 5px 26px;
+  --dp-input-icon-padding: 26px;
+}
+
+.filter-daterange .dp--input {
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: normal;
 }
 </style>

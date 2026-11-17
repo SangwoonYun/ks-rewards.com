@@ -60,8 +60,7 @@
               <td>{{ r.id }}</td>
               <td>{{ r.fid }}</td>
               <td class="avatar-cell">
-                <img v-if="r.avatar_url" :src="r.avatar_url" :alt="r.nickname || r.fid" class="avatar" referrerpolicy="no-referrer" />
-                <div v-else class="avatar avatar-placeholder">{{ (r.nickname || r.fid).charAt(0).toUpperCase() }}</div>
+                <img :src="r.avatar_url || '/images/default-avatar.png'" :alt="r.nickname || r.fid" class="avatar" referrerpolicy="no-referrer" />
               </td>
               <td>{{ r.nickname || '-' }}</td>
               <td><code>{{ r.code }}</code></td>
@@ -130,8 +129,7 @@
               <td>{{ item.id }}</td>
               <td>{{ item.fid }}</td>
               <td class="avatar-cell">
-                <img v-if="item.avatar_url" :src="item.avatar_url" :alt="item.nickname || item.fid" class="avatar" referrerpolicy="no-referrer" />
-                <div v-else class="avatar avatar-placeholder">{{ (item.nickname || item.fid).charAt(0).toUpperCase() }}</div>
+                <img :src="item.avatar_url || '/images/default-avatar.png'" :alt="item.nickname || item.fid" class="avatar" referrerpolicy="no-referrer" />
               </td>
               <td>{{ item.nickname || '-' }}</td>
               <td><code>{{ item.code }}</code></td>
@@ -157,7 +155,7 @@
 </template>
 
 <script setup lang="ts">
-import type { QueueItem, Redemption } from '~/server/utils/db';
+import type { QueueItem, Redemption } from '~~/server/utils/db';
 
 definePageMeta({
   layout: 'admin',
@@ -351,7 +349,7 @@ watch(historySentinelRef, (el) => {
   if (historyObserver) historyObserver.disconnect();
   if (!el || !historyWrapperRef.value) return;
   historyObserver = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting) fetchMoreHistory();
+    if (entries[0]?.isIntersecting) fetchMoreHistory();
   }, { root: historyWrapperRef.value, threshold: 0 });
   historyObserver.observe(el);
 });
@@ -360,7 +358,7 @@ watch(queueSentinelRef, (el) => {
   if (queueObserver) queueObserver.disconnect();
   if (!el || !queueWrapperRef.value) return;
   queueObserver = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting) fetchMoreQueue();
+    if (entries[0]?.isIntersecting) fetchMoreQueue();
   }, { root: queueWrapperRef.value, threshold: 0 });
   queueObserver.observe(el);
 });
@@ -570,16 +568,6 @@ onUnmounted(() => {
   border-radius: 50%;
   object-fit: cover;
   display: block;
-}
-
-.avatar-placeholder {
-  background: rgba(212, 165, 116, 0.3);
-  color: #6b472c;
-  font-size: 0.75rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .admin-table td {

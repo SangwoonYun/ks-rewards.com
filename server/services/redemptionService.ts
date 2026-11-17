@@ -1,7 +1,36 @@
 ﻿import { queue, redemptions, users, giftCodes, priorityUsers, type User, type GiftCode, type Redemption, type QueueItem } from '../utils/db';
-import { redeemGiftCode } from './kingshotApi';
+import {
+  redeemGiftCode,
+  normalizeStatus,
+  SUCCESS_STATUSES,
+  CODE_EXPIRED_STATUSES,
+  CODE_INVALID_STATUSES,
+  PLAYER_INELIGIBLE_STATUSES,
+  PLAYER_ERROR_STATUSES,
+  RETRYABLE_STATUSES
+} from './kingshotApi';
 import { logger } from '../utils/logger';
 import { config } from '../utils/config';
+
+// Max test users to try when validating a code (a test user may have a wrong kid, be rate limited, etc.)
+const MAX_VALIDATION_USERS = 3;
+
+// Max redemption attempts per queue item for retryable statuses (TIMEOUT_RETRY, TOO_FREQUENT, USER_INFO_ERROR)
+const MAX_QUEUE_ATTEMPTS = 3;
+
+/**
+ * USER_INFO_ERROR can be temporary, so it gets the same retry budget as other retryable statuses
+ * before the user counts as a kingdom mismatch: the item stays pending and the next queue run retries it.
+ * `attempts` must already include the attempt that just failed.
+ * Returns true if the item was kept for a retry.
+ */
+export function keepForUserInfoRetry(item: { id: number; fid: string; code: string }, attempts: number, message: string): boolean {
+  if (attempts >= MAX_QUEUE_ATTEMPTS) return false;
+
+  queue.updateStatus(item.id, 'pending', message);
+  logger.warn(`⏳ USER_INFO_ERROR for ${item.fid} / ${item.code} (attempt ${attempts}/${MAX_QUEUE_ATTEMPTS}), will retry`);
+  return true;
+}
 
 interface RedemptionQueueItem {
   id: number;
@@ -16,11 +45,15 @@ interface RedemptionQueueItem {
  */
 export async function validateGiftCode(code: string) {
   try {
-    // Use a random active user (with a known server/kingdom) as the test player
+    // Use random active users (with a known server/kingdom) as test players
     const activeUsers: User[] = users.findActive().filter(u => u.kingdom);
-    const testUser = activeUsers[Math.floor(Math.random() * activeUsers.length)];
+    const testUsers = activeUsers
+      .map(u => ({ u, r: Math.random() }))
+      .sort((a, b) => a.r - b.r)
+      .map(({ u }) => u)
+      .slice(0, MAX_VALIDATION_USERS);
 
-    if (!testUser) {
+    if (testUsers.length === 0) {
       logger.warn('No active user with a known server available for validation');
       return {
         valid: null,
@@ -29,23 +62,34 @@ export async function validateGiftCode(code: string) {
       };
     }
 
-    logger.info(`Using active user ${testUser.fid} (kid ${testUser.kingdom}) for validation`);
+    let result = { success: false, status: 'UNKNOWN', message: '' };
+    let normalizedStatus = 'UNKNOWN';
 
-    // Now try to redeem the code
-    const result = await redeemGiftCode(testUser.fid, testUser.kingdom as string, code);
+    for (const testUser of testUsers) {
+      logger.info(`Using active user ${testUser.fid} (kid ${testUser.kingdom}) for validation`);
 
-    // Map validation statuses - keep consistent across all functions
-    const validationStatuses = {
-      success: ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE', 'SAME TYPE EXCHANGE'],
-      valid: ['TOO_SMALL_SPEND_MORE', 'TOO_POOR_SPEND_MORE', 'TOO SMALL SPEND MORE', 'TOO POOR SPEND MORE'],
-      expired: ['TIME_ERROR', 'TIME ERROR', 'USAGE_LIMIT', 'USAGE LIMIT'],
-      invalid: ['CDK_NOT_FOUND', 'CDK NOT FOUND']
-    };
+      result = await redeemGiftCode(testUser.fid, testUser.kingdom as string, code);
+      normalizedStatus = normalizeStatus(result.status);
 
-    // Normalize the status by trimming, removing trailing punctuation, and converting to uppercase
-    const normalizedStatus = result.status?.toString().trim().replace(/[.!?]+$/, '').toUpperCase() || 'UNKNOWN';
+      // Problem with this test user, not the code: try another user
+      if (PLAYER_ERROR_STATUSES.includes(normalizedStatus) || RETRYABLE_STATUSES.includes(normalizedStatus)) {
+        logger.warn(`⚠️ Test user ${testUser.fid} could not validate ${code} - status: ${normalizedStatus}`);
+        continue;
+      }
+      break;
+    }
 
-    if (validationStatuses.success.includes(normalizedStatus)) {
+    if (PLAYER_ERROR_STATUSES.includes(normalizedStatus) || RETRYABLE_STATUSES.includes(normalizedStatus)) {
+      logger.warn(`⚠️ Gift code ${code} validation inconclusive after ${testUsers.length} test user(s) - status: ${normalizedStatus}`);
+      return {
+        valid: null,
+        status: normalizedStatus,
+        message: result.message,
+        details: 'No test user could validate the code, status unchanged'
+      };
+    }
+
+    if (SUCCESS_STATUSES.includes(normalizedStatus)) {
       // Code is valid and was successfully redeemed
       giftCodes.updateValidation(code, 'validated');
       logger.info(`✅ Gift code ${code} validated successfully - status: ${normalizedStatus}`);
@@ -55,7 +99,7 @@ export async function validateGiftCode(code: string) {
         message: result.message,
         details: 'Successfully redeemed'
       };
-    } else if (validationStatuses.valid.includes(normalizedStatus)) {
+    } else if (PLAYER_INELIGIBLE_STATUSES.includes(normalizedStatus)) {
       // Code is valid but has redemption restrictions
       giftCodes.updateValidation(code, 'validated');
       logger.info(`✅ Gift code ${code} is valid but has restrictions - status: ${normalizedStatus}`);
@@ -65,8 +109,8 @@ export async function validateGiftCode(code: string) {
         message: result.message,
         details: 'Valid but has restrictions'
       };
-    } else if (validationStatuses.expired.includes(normalizedStatus)) {
-      // Code has expired (TIME_ERROR or USAGE_LIMIT)
+    } else if (CODE_EXPIRED_STATUSES.includes(normalizedStatus)) {
+      // Code has expired (TIME_ERROR) or hit its claim limit (USED)
       giftCodes.updateValidation(code, 'expired');
       logger.warn(`⏱️ Gift code ${code} has expired - status: ${normalizedStatus}`);
 
@@ -84,7 +128,7 @@ export async function validateGiftCode(code: string) {
         message: result.message,
         details: 'Code expired'
       };
-    } else if (validationStatuses.invalid.includes(normalizedStatus)) {
+    } else if (CODE_INVALID_STATUSES.includes(normalizedStatus)) {
       // Code is invalid (CDK_NOT_FOUND)
       giftCodes.markInvalid(code);
       logger.warn(`❌ Gift code ${code} marked invalid - status: ${normalizedStatus}`);
@@ -105,7 +149,7 @@ export async function validateGiftCode(code: string) {
       };
     } else {
       // Transient errors (network/server-side) — do not change the code's status
-      const transientStatuses = ['TIMEOUT_RETRY', 'NOT_LOGIN', 'INVALID_RESPONSE', 'ERROR', 'UNKNOWN', 'LOGIN_FAILED'];
+      const transientStatuses = ['NOT_LOGIN', 'SIGN_ERROR', 'INVALID_RESPONSE', 'ERROR', 'UNKNOWN'];
       if (transientStatuses.includes(normalizedStatus)) {
         logger.warn(`⚠️ Gift code ${code} validation skipped due to transient error - status: ${normalizedStatus}`);
         return {
@@ -156,7 +200,7 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
 
     // Check if already redeemed successfully
     const existingRedemption: Redemption | undefined = redemptions.findByFidAndCode(fid, code);
-    if (existingRedemption && ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'].includes(existingRedemption.status)) {
+    if (existingRedemption && SUCCESS_STATUSES.includes(existingRedemption.status)) {
       logger.info(`FID ${fid} already redeemed code ${code} successfully`);
       queue.delete(id);
       return {
@@ -180,20 +224,19 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
     // Perform the redemption
     const result = await redeemGiftCode(fid, user.kingdom, code);
 
-    // Normalize status for comparison (remove trailing punctuation)
-    const normalizedStatus = result.status?.toString().trim().replace(/[.!?]+$/, '').toUpperCase() || 'UNKNOWN';
+    const normalizedStatus = normalizeStatus(result.status);
 
     // Save redemption result
     redemptions.create(fid, code, normalizedStatus);
 
     // Update the gift code validation status if this reveals new information
-    if (['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE', 'SAME TYPE EXCHANGE'].includes(normalizedStatus)) {
+    if (SUCCESS_STATUSES.includes(normalizedStatus) || PLAYER_INELIGIBLE_STATUSES.includes(normalizedStatus)) {
       const giftCode: GiftCode | undefined = giftCodes.findByCode(code);
       if (giftCode && giftCode.validation_status === 'pending') {
         giftCodes.updateValidation(code, 'validated');
       }
-    } else if (['TIME_ERROR', 'TIME ERROR', 'USAGE_LIMIT', 'USAGE LIMIT'].includes(normalizedStatus)) {
-      // Mark as expired (not invalid) for TIME_ERROR and USAGE_LIMIT
+    } else if (CODE_EXPIRED_STATUSES.includes(normalizedStatus)) {
+      // Mark as expired (not invalid) for TIME_ERROR and USED
       const giftCode: GiftCode | undefined = giftCodes.findByCode(code);
       if (giftCode && giftCode.validation_status === 'validated') {
         giftCodes.updateValidation(code, 'expired');
@@ -209,7 +252,7 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
       } catch (err) {
         logger.error(`Error removing queued redemptions for expired code ${code}:`, err);
       }
-    } else if (['CDK_NOT_FOUND', 'CDK NOT FOUND'].includes(normalizedStatus)) {
+    } else if (CODE_INVALID_STATUSES.includes(normalizedStatus)) {
       giftCodes.markInvalid(code);
 
       // Remove any queued redemption attempts for this invalid code
@@ -222,15 +265,22 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
     }
 
     // Update queue status
-    const successStatuses = ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE', 'SAME TYPE EXCHANGE'];
-    const permanentFailureStatuses = ['TIME_ERROR', 'TIME ERROR', 'CDK_NOT_FOUND', 'CDK NOT FOUND', 'USAGE_LIMIT', 'USAGE LIMIT'];
+    const doneStatuses = [
+      ...SUCCESS_STATUSES,
+      ...CODE_EXPIRED_STATUSES,
+      ...CODE_INVALID_STATUSES,
+      ...PLAYER_INELIGIBLE_STATUSES
+    ];
 
-    if (successStatuses.includes(normalizedStatus) || permanentFailureStatuses.includes(normalizedStatus)) {
-      // Complete (success) or permanently failed (invalid code)
+    if (doneStatuses.includes(normalizedStatus)) {
+      // Complete (success) or permanently failed (dead code / player not eligible)
       queue.delete(id);
-    } else if (normalizedStatus === 'TIMEOUT_RETRY' && queueItem.attempts < 3) {
+    } else if (RETRYABLE_STATUSES.includes(normalizedStatus) && queueItem.attempts + 1 < MAX_QUEUE_ATTEMPTS) {
+      // queueItem.attempts was read before this attempt was counted
       // Retry later
       queue.updateStatus(id, 'pending', result.message);
+    } else if (normalizedStatus === 'USER_INFO_ERROR' && keepForUserInfoRetry(queueItem, queueItem.attempts + 1, result.message)) {
+      // Kept for a retry; only a USER_INFO_ERROR on the last attempt counts as a kingdom mismatch
     } else {
       // Failed permanently
       queue.updateStatus(id, 'failed', result.message);
@@ -335,6 +385,27 @@ export async function processRedemptionQueue(batchSize: number = 100, validatePe
 }
 
 /**
+ * Process the pending queue items of the given users only (an admin apply for a filtered set of users)
+ */
+export async function processRedemptionsForUsers(fids: string[]) {
+  let processed = 0;
+  let successCount = 0;
+  let failedCount = 0;
+  for (const fid of fids) {
+    for (const item of queue.getPendingByFid(fid, 100)) {
+      queue.updateStatus(item.id, 'processing', undefined);
+      const result = await processRedemption(item);
+      processed++;
+      if (result.success) successCount++;
+      else failedCount++;
+      // Delay between redemptions to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, config.retry.redeemDelayMs));
+    }
+  }
+  return { processed, success: successCount, failed: failedCount };
+}
+
+/**
  * Queue redemptions for all active users for a specific gift code
  */
 export async function queueRedemptionsForCode(code: string, priority: number = 0, activeUsers?: User[]) {
@@ -344,11 +415,7 @@ export async function queueRedemptionsForCode(code: string, priority: number = 0
     let queuedCount = 0;
 
     // Skip users who already succeeded or permanently failed
-    const skipStatuses = [
-      'SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE',
-      'TOO_SMALL_SPEND_MORE', 'TOO SMALL SPEND MORE',
-      'TOO_POOR_SPEND_MORE', 'TOO POOR SPEND MORE'
-    ];
+    const skipStatuses = [...SUCCESS_STATUSES, ...PLAYER_INELIGIBLE_STATUSES];
 
     // Priority users get their configured priority (if higher than default)
     const priorityFids = new Set(priorityUsers.getAllFids());
@@ -382,13 +449,13 @@ export async function queueUnredeemedCodesForUser(fid: string, priority: number 
     const validCodes: GiftCode[] = giftCodes.findValid();
     let queuedCount = 0;
 
-    // Define success statuses consistently
-    const successStatuses = ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE'];
+    // Skip users who already succeeded or permanently failed
+    const skipStatuses = [...SUCCESS_STATUSES, ...PLAYER_INELIGIBLE_STATUSES];
 
     for (const giftCode of validCodes) {
       // Check if already redeemed
       const existing: Redemption | undefined = redemptions.findByFidAndCode(fid, giftCode.code);
-      if (existing && successStatuses.includes(existing.status)) {
+      if (existing && skipStatuses.includes(existing.status)) {
         continue;
       }
 
@@ -402,6 +469,59 @@ export async function queueUnredeemedCodesForUser(fid: string, priority: number 
     logger.error(`Error queuing codes for user ${fid}:`, error);
     throw error;
   }
+}
+
+/**
+ * Queue unredeemed codes for a user and redeem them right away (new user / kingdom change)
+ */
+export async function redeemNowForUser(fid: string, kid: string): Promise<number> {
+  const queuedCount = await queueUnredeemedCodesForUser(fid, 10); // High priority for new/updated users
+  if (queuedCount === 0) return 0;
+
+  logger.info(`🚀 Starting immediate redemption for ${fid}`);
+  let redeemedCount = 0;
+
+  try {
+    const userItems = queue.getPendingByFid(fid, 100);
+
+    for (const item of userItems) {
+      try {
+        // Mark as processing
+        queue.updateStatus(item.id, 'processing', undefined);
+
+        // Perform the redemption
+        const result = await redeemGiftCode(fid, kid, item.code);
+        const normalizedStatus = normalizeStatus(result.status);
+
+        // Save redemption result
+        redemptions.create(fid, item.code, normalizedStatus);
+
+        if (SUCCESS_STATUSES.includes(normalizedStatus)) {
+          redeemedCount++;
+          logger.info(`✅ Immediately redeemed ${item.code} for ${fid}: ${normalizedStatus}`);
+        } else {
+          logger.warn(`⚠️ Redemption failed for ${item.code}: ${normalizedStatus}`);
+        }
+
+        // Remove from queue, unless a USER_INFO_ERROR (possibly temporary) still has retries left
+        if (!(normalizedStatus === 'USER_INFO_ERROR' && keepForUserInfoRetry(item, item.attempts + 1, result.message))) {
+          queue.delete(item.id);
+        }
+
+        // Delay to avoid rate limiting (note: additional rate limiting happens in kingshotApi.ts)
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      } catch (error) {
+        logger.error(`Error redeeming ${item.code} for ${fid}:`, error);
+        queue.updateStatus(item.id, 'failed', 'Redemption error');
+      }
+    }
+
+    logger.info(`🎉 Immediate redemption complete for ${fid}: ${redeemedCount}/${userItems.length} successful`);
+  } catch (error) {
+    logger.error(`Error in immediate redemption for ${fid}:`, error);
+  }
+
+  return redeemedCount;
 }
 
 /**
@@ -427,18 +547,10 @@ export async function validatePendingCodes() {
       try {
         const validationResult = await validateGiftCode(code.code);
 
-        // Map validation statuses
-        const validationStatuses = {
-          success: ['SUCCESS', 'RECEIVED', 'SAME_TYPE_EXCHANGE', 'SAME TYPE EXCHANGE'],
-          valid: ['TOO_SMALL_SPEND_MORE', 'TOO_POOR_SPEND_MORE', 'TOO SMALL SPEND MORE', 'TOO POOR SPEND MORE'],
-          expired: ['TIME_ERROR', 'TIME ERROR', 'USAGE_LIMIT', 'USAGE LIMIT'],
-          invalid: ['CDK_NOT_FOUND', 'CDK NOT FOUND']
-        };
-
-        if (validationStatuses.success.includes(validationResult.status) || validationStatuses.valid.includes(validationResult.status)) {
+        if (validationResult.valid === true) {
           validCount++;
           logger.info(`✅ Gift code ${code.code} validated successfully with status: ${validationResult.status}`);
-        } else if (validationStatuses.invalid.includes(validationResult.status)) {
+        } else if (validationResult.valid === false) {
           invalidCount++;
           logger.warn(`❌ Gift code ${code.code} is invalid with status: ${validationResult.status}`);
         } else {
