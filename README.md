@@ -1,132 +1,135 @@
 # Kingshot Rewards
 
-Kingshot 기프트 코드를 자동으로 수집·검증하고, 등록된 플레이어 계정에 대신 수령해 주는 서비스입니다.
-Nuxt 4(Nitro) 단일 서버와 SQLite로 동작하며, 공개 등록 페이지와 관리자 콘솔을 함께 제공합니다.
+**English** | [한국어](README.ko.md)
 
-## 주요 기능
+A service that automatically discovers and validates Kingshot gift codes and redeems them on behalf of registered player accounts.
+It runs as a single Nuxt 4 (Nitro) server backed by SQLite and provides both a public registration page and an admin console.
 
-**공개 페이지 (`/`)**
-- 플레이어 ID + 왕국 번호로 자동 수령 등록 (여러 명 한 번에 등록 가능)
-  - 등록 전에 Kingshot API로 ID/왕국 조합을 확인하고, 맞지 않으면 등록하지 않습니다.
-  - 등록되면 받을 수 있는 코드가 우선순위 높게 큐에 들어가고 백그라운드에서 바로 수령됩니다.
-- 사용 가능한/만료된 기프트 코드 목록, 최근 수령 내역, 등록자 수
+## Features
 
-**관리자 콘솔 (`/admin`)**
+**Public page (`/`)**
+- Register for auto-redemption with a player ID + kingdom number (multiple players at once)
+  - The ID/kingdom pair is checked against the Kingshot API before registering; mismatches are rejected.
+  - Once registered, the codes the player can still claim are queued with high priority and redeemed in the background right away.
+- Lists of active and expired gift codes, recent redemptions, and the number of registered players
 
-| 메뉴 | 내용 |
+**Admin console (`/admin`)**
+
+| Menu | Description |
 |---|---|
-| Dashboard | 유저·코드·큐 통계, 최근 수령 내역 |
-| Gift Codes | 코드 목록, 수동 추가/삭제, 동기화, pending 코드 검증, invalid 코드 재검증 |
-| Redemptions | 수령 이력, 큐 현황(재시도·삭제), 프로필 일괄 갱신 |
-| Users | 유저 검색·필터·정렬, 활성/비활성, 왕국 변경, 코드 적용, 프로필 갱신 |
-| Redemption Failures | 재시도가 끝난 실패 유저 목록(왕국 불일치/계정 없음/기타), 이적한 왕국 자동 탐색 |
-| Priority Queue | 우선 처리 유저 지정과 우선순위 조정 |
+| Dashboard | User / code / queue stats, recent redemptions |
+| Gift Codes | Code list, manual add/delete, sync, validate pending codes, revalidate invalid codes |
+| Redemptions | Redemption history, queue status (retry/remove), bulk profile refresh |
+| Users | Search, filter and sort users; activate/deactivate, change kingdom, apply codes, refresh profiles |
+| Redemption Failures | Users whose retries are exhausted (kingdom mismatch / account not found / other), automatic search for a player's new kingdom |
+| Priority Queue | Mark users for priority processing and adjust their priority |
 
-## 동작 방식
+## How it works
 
 ```
-[외부 코드 API] ──(발견 주기)──▶ gift_codes: pending
-                                   │  실제 유저(최대 3명)로 사용해 보고 판정
-                                   ▼
-                     validated / expired / invalid
-                                   │  활성 유저 × validated 코드 중 아직 필요한 조합
-                                   ▼
-                     redemption_queue (우선순위 순)
-                                   │  단일 worker가 한 건씩 원자적으로 가져가 처리
-                                   ▼
-                     redemptions (모든 사용 결과 기록)
+[External code API] ──(discovery cycle)──▶ gift_codes: pending
+                                            │  try the code with real users (up to 3) and decide
+                                            ▼
+                              validated / expired / invalid
+                                            │  active users × validated codes still needed
+                                            ▼
+                              redemption_queue (by priority)
+                                            │  a single worker claims items atomically, one at a time
+                                            ▼
+                              redemptions (every attempt is recorded)
 ```
 
-- **발견 주기** (`NUXT_DISCOVERY_INTERVAL_MINUTES`): 코드 동기화 → pending 코드 검증(이전에 판정이 안 된 코드 포함) → validated 코드 만료 재확인(하루 1회) → 필요한 조합을 큐에 추가 → worker 시작.
-- **큐 worker**: 프로세스 안에 하나만 돌며 `pending` 항목을 우선순위 순으로 한 건씩 가져갑니다(`UPDATE … RETURNING`으로 원자적 선점). 등록·관리자 작업으로 새 항목이 들어오면 바로 깨어나고, 주기(`NUXT_REDEMPTION_INTERVAL_MINUTES`)마다 한 번씩도 깨어납니다.
-- **결과 처리**: 모든 수령은 `server/services/redemptionExecutor.ts` 한 곳을 거칩니다.
+- **Discovery cycle** (`NUXT_DISCOVERY_INTERVAL_MINUTES`): sync codes → validate pending codes (including ones left undecided earlier) → re-check validated codes for expiry (once a day) → queue the needed pairs → start the worker.
+- **Queue worker**: exactly one runs in the process, claiming `pending` items one at a time in priority order (atomically, via `UPDATE … RETURNING`). It wakes up immediately when registration or an admin action adds items, and also on every interval (`NUXT_REDEMPTION_INTERVAL_MINUTES`).
+- **Result handling**: every redemption goes through `server/services/redemptionExecutor.ts`.
 
-  | 결과 | 큐 항목 | 코드 상태 |
+  | Result | Queue item | Code status |
   |---|---|---|
-  | 성공 / 이미 받음 / 조건 미달 | 삭제 | pending이면 validated |
-  | 만료(`TIME_ERROR`, `USED`) / 없는 코드 | 해당 코드의 큐 전체 삭제 | expired / invalid |
-  | `TOO_FREQUENT`, `TIMEOUT_RETRY`, `USER_INFO_ERROR` | 최대 3회까지 다음 실행에서 재시도, 이후 failed | 변화 없음 |
-  | 그 외 실패 | failed | 변화 없음 |
+  | Success / already claimed / not eligible | Removed | pending → validated |
+  | Expired (`TIME_ERROR`, `USED`) / code not found | All queue items for the code removed | expired / invalid |
+  | `TOO_FREQUENT`, `TIMEOUT_RETRY`, `USER_INFO_ERROR` | Retried on the next run, up to 3 attempts, then failed | Unchanged |
+  | Other failures | failed | Unchanged |
 
-- **왕국 불일치**: 마지막 결과가 `USER_INFO_ERROR`이고 그 뒤로 왕국이 확인되지 않은 조합은 자동으로 다시 큐에 넣지 않습니다. 왕국이 확인되면(등록, 관리자 변경, 왕국 탐색, 프로필 조회) 다시 큐에 들어갑니다.
-- **요청 제한**: Kingshot API 요청은 전역 rate limiter(`NUXT_MIN_REQUEST_INTERVAL_MS`)로 직렬화됩니다. HTTP 429를 받으면 `Retry-After` 동안 모든 요청이 멈춥니다. 왕국 탐색은 별도 limiter(`NUXT_SEARCH_REQUEST_INTERVAL_MS`, 신호에 따라 자동 조절)를 쓰고, 동시 요청은 보내지 않습니다.
-- **프로필 조회**: 닉네임·아바타·왕국을 mightpulse.com에서 가져옵니다(비공식 API). 90일 미접속 등 비활성 플레이어는 일괄 갱신 시 비활성화됩니다.
-- **백업**: SQLite online backup API로 `backups/`에 주기적으로 스냅샷을 만들고 30일 지난 파일은 지웁니다.
+- **Kingdom mismatch**: a pair whose latest result is `USER_INFO_ERROR` and whose kingdom has not been verified since is not re-queued automatically. Once the kingdom is verified (registration, admin change, kingdom search, profile lookup) it is queued again.
+- **Rate limiting**: Kingshot API requests are serialized by a global rate limiter (`NUXT_MIN_REQUEST_INTERVAL_MS`). On HTTP 429, all requests pause for the `Retry-After` period. Kingdom search uses its own limiter (`NUXT_SEARCH_REQUEST_INTERVAL_MS`, adjusted automatically based on rate-limit signals) and never sends concurrent requests.
+- **Profile lookup**: nickname, avatar and kingdom come from mightpulse.com (unofficial API). Inactive players (e.g. not logged in for 90 days) are deactivated during a bulk refresh.
+- **Backups**: periodic snapshots into `backups/` using the SQLite online backup API; files older than 30 days are deleted.
 
-## 디렉터리 구조
+## Project structure
 
 ```
-app/                    프론트엔드 (Nuxt)
-  pages/                공개 페이지, admin/* 관리자 페이지
+app/                    Frontend (Nuxt)
+  pages/                Public page, admin/* pages
   composables/          usePaginatedList, usePolling, useFlash, useSelection, useDebounceFn, useAdmin …
   components/           UserAvatar, ResultBanner, BrandMark
-  middleware/           admin.global.ts (관리자 세션 확인)
-  plugins/              api.client.ts (관리자 API 401 → 로그인 페이지)
-  utils/                format(날짜), badges(상태 배지 클래스)
+  middleware/           admin.global.ts (admin session check)
+  plugins/              api.client.ts (admin API 401 → login page)
+  utils/                format (dates), badges (status badge classes)
 server/
-  api/                  HTTP 핸들러 (얇게 유지: 입력 검증 → 서비스 호출)
-  clients/              외부 API: kingshot(수령/검증), rateLimiter, giftCodeSource, mightpulse, kingdomTracker
-  db/                   SQLite 연결, 버전 관리 마이그레이션, 테이블별 쿼리 모듈
-  domain/               redemptionStatus: 상태 분류의 단일 기준
+  api/                  HTTP handlers (kept thin: validate input → call a service)
+  clients/              External APIs: kingshot (redeem/verify), rateLimiter, giftCodeSource, mightpulse, kingdomTracker
+  db/                   SQLite connection, versioned migrations, per-table query modules
+  domain/               redemptionStatus: single source of truth for status classification
   services/             redemptionExecutor, queueWorker, codeValidation, giftCodeDiscovery,
-                        scheduler, jobs(중복 실행 방지), kingdomSearch, playerLookup, backupService
-  middleware/           /api/admin/** 인증
-  plugins/init.ts       기동: 설정 점검 → 마이그레이션 → 스케줄러
-test/                   vitest (메모리 SQLite)
+                        scheduler, jobs (prevents duplicate runs), kingdomSearch, playerLookup, backupService
+  middleware/           Auth for /api/admin/**
+  plugins/init.ts       Startup: config check → migrations → scheduler
+test/                   vitest (in-memory SQLite)
 ```
 
-## 설정
+## Configuration
 
-설정은 Nuxt runtimeConfig로 읽으므로 **`NUXT_` 접두사가 붙은 환경 변수만** 반영됩니다. 기본값은 [nuxt.config.ts](nuxt.config.ts), 전체 목록은 [.env.example](.env.example)에 있습니다.
+Configuration is read through Nuxt runtimeConfig, so **only environment variables prefixed with `NUXT_`** take effect. Defaults are in [nuxt.config.ts](nuxt.config.ts); the full list is in [.env.example](.env.example).
 
-| 변수 | 기본값 | 설명 |
+| Variable | Default | Description |
 |---|---|---|
-| `NUXT_ADMIN_USERNAME` / `NUXT_ADMIN_PASSWORD` | `admin` / (없음) | 관리자 계정. 비밀번호가 비어 있으면 로그인 불가 |
-| `NUXT_ADMIN_JWT_SECRET` | (placeholder) | 관리자 세션 서명 키. 32자 이상 랜덤 문자열 |
-| `NUXT_DB_PATH` | `./data/ks-rewards.db` | SQLite 파일 경로 |
-| `NUXT_REDEMPTION_INTERVAL_MINUTES` | 2 | 큐 worker를 깨우는 주기 |
-| `NUXT_DISCOVERY_INTERVAL_MINUTES` | 15 | 코드 발견 주기 |
-| `NUXT_BACKUP_INTERVAL_HOURS` | 6 | 백업 주기 |
-| `NUXT_MIN_REQUEST_INTERVAL_MS` | 3000 | Kingshot API 요청 최소 간격 |
-| `NUXT_REDEEM_DELAY_MS` | 1000 | 수령/검증 사이 추가 대기 |
-| `NUXT_MAX_RETRIES` / `NUXT_RETRY_DELAY_MS` | 5 / 2000 | HTTP 요청 단위 재시도 횟수와 백오프 기준 |
-| `NUXT_SEARCH_REQUEST_INTERVAL_MS` | 2000 | 왕국 탐색 기본 간격 (rate-limit 신호마다 +1s, 조용하면 -1s) |
+| `NUXT_ADMIN_USERNAME` / `NUXT_ADMIN_PASSWORD` | `admin` / (none) | Admin account. Login is disabled if the password is empty |
+| `NUXT_ADMIN_JWT_SECRET` | (placeholder) | Signing key for admin sessions. Random string, 32+ characters |
+| `NUXT_DB_PATH` | `./data/ks-rewards.db` | SQLite file path |
+| `NUXT_REDEMPTION_INTERVAL_MINUTES` | 2 | How often the queue worker is woken up |
+| `NUXT_DISCOVERY_INTERVAL_MINUTES` | 15 | Code discovery interval |
+| `NUXT_BACKUP_INTERVAL_HOURS` | 6 | Backup interval |
+| `NUXT_MIN_REQUEST_INTERVAL_MS` | 3000 | Minimum interval between Kingshot API requests |
+| `NUXT_REDEEM_DELAY_MS` | 1000 | Extra delay between redemptions/validations |
+| `NUXT_MAX_RETRIES` / `NUXT_RETRY_DELAY_MS` | 5 / 2000 | Per-HTTP-request retry count and backoff base |
+| `NUXT_SEARCH_REQUEST_INTERVAL_MS` | 2000 | Base interval for kingdom search (+1s per rate-limit signal, −1s when quiet) |
 | `LOG_LEVEL` | `info` | `error` / `warn` / `info` / `debug` |
 
-기동 시 점검:
-- 숫자 설정이 양의 정수가 아니면 기동하지 않습니다.
-- `NODE_ENV=production`에서 JWT 시크릿이 placeholder이거나 32자 미만이면, 또는 비밀번호가 placeholder(`change-me` 등)이면 기동하지 않습니다.
+Startup checks:
+- The server refuses to start if a numeric setting is not a positive integer.
+- With `NODE_ENV=production`, the server refuses to start if the JWT secret is a placeholder or shorter than 32 characters, or if the password is a placeholder (`change-me`, etc.).
 
-## 개발
+## Development
 
-Node.js 26 LTS (24.11 이상도 동작), [Bun](https://bun.sh) 1.3 이상. Docker 이미지는 `node:26-alpine` + Bun 1.4.4로 빌드합니다.
+Node.js 26 LTS (24.11+ also works), [Bun](https://bun.sh) 1.3+. The Docker image is built with `node:26-alpine` + Bun 1.4.4.
 
 ```bash
 bun install
-cp .env.example .env      # 관리자 계정 등 입력
+cp .env.example .env      # fill in the admin account, etc.
 bun run dev               # http://localhost:3000
 
 bun run test              # vitest
 bun run typecheck         # vue-tsc
-bun run build             # .output/ 생성
+bun run build             # produces .output/
 ```
 
-개발 모드에서는 API 문서가 `/_scalar`, `/_openapi.json`에 열립니다(운영 빌드에서는 꺼짐).
+In development mode, API docs are served at `/_scalar` and `/_openapi.json` (disabled in production builds).
 
-## 배포 (Docker)
+## Deployment (Docker)
 
 ```bash
-cp .env.example .env.production   # NUXT_ADMIN_PASSWORD, NUXT_ADMIN_JWT_SECRET 필수
+cp .env.example .env.production   # NUXT_ADMIN_PASSWORD and NUXT_ADMIN_JWT_SECRET are required
 docker compose up -d --build
 docker compose logs -f
 ```
 
-- 포트: 호스트 `4127` → 컨테이너 `3000`
-- 볼륨: `./data`(DB), `./backups`(백업)
-- 비밀 값은 커밋되지 않는 `.env.production`에만 두고, 운영 튜닝 값은 [docker-compose.yml](docker-compose.yml)의 `environment`에 있습니다(이쪽이 우선합니다).
-- DB 스키마는 기동할 때 `PRAGMA user_version` 기준으로 자동 마이그레이션됩니다.
+- Port: host `4127` → container `3000`
+- Volumes: `./data` (DB), `./backups` (backups)
+- Keep secrets only in the uncommitted `.env.production`; production tuning values live under `environment` in [docker-compose.yml](docker-compose.yml) (these take precedence).
+- The DB schema is migrated automatically on startup based on `PRAGMA user_version`.
+- To pick up OS/Node security patches, periodically rebuild without cache: `docker compose build --pull --no-cache`.
 
-## 참고
+## Notes
 
-- Kingshot 수령 API, 코드 목록 API, mightpulse.com, kingshot.net 모두 비공식/외부 서비스이며 응답 형식이나 제한이 예고 없이 바뀔 수 있습니다.
-- 원본 프로젝트: [codeberg.org/ks-rewards/ks-rewards.com](https://codeberg.org/ks-rewards/ks-rewards.com) — 이 저장소는 이를 기반으로 기능과 구조를 크게 변경한 버전입니다.
+- The Kingshot redemption API, the code list API, mightpulse.com and kingshot.net are all unofficial/external services; their response formats and limits may change without notice.
+- Original project: [codeberg.org/ks-rewards/ks-rewards.com](https://codeberg.org/ks-rewards/ks-rewards.com) — this repository is based on it, with substantially changed features and structure.
