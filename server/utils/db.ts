@@ -118,6 +118,11 @@ export const users = {
     return stmt.all() as User[];
   },
 
+  counts: (): { total: number; active: number } => {
+    const stmt = db.prepare('SELECT COUNT(*) AS total, COALESCE(SUM(active = 1), 0) AS active FROM users');
+    return stmt.get() as { total: number; active: number };
+  },
+
   // Deactivating also takes the user out of the priority queue and drops their queued redemptions
   updateActive: (fid: string, active: number) => {
     const stmt = db.prepare('UPDATE users SET active = ?, updated_at = CURRENT_TIMESTAMP WHERE fid = ?');
@@ -157,10 +162,13 @@ export const users = {
   }
 };
 
+// 'deleted' is a soft delete: the row stays so redemption history (foreign key) and the code's identity survive
+// (sync can't re-add it), but it is hidden from listings and stats and its status is frozen
 export const giftCodes = {
   findAll: (limit?: number): GiftCode[] => {
     const sql = `
       SELECT *, (date_discovered || 'Z') AS date_discovered FROM gift_codes
+      WHERE validation_status != 'deleted'
       ORDER BY date_discovered DESC
       ${limit ? ' LIMIT ?' : ''}
     `;
@@ -187,12 +195,14 @@ export const giftCodes = {
         SUM(CASE WHEN validation_status = 'invalid' THEN 1 ELSE 0 END) as invalid,
         SUM(CASE WHEN validation_status = 'expired' THEN 1 ELSE 0 END) as expired
       FROM gift_codes
+      WHERE validation_status != 'deleted'
     `);
     return stmt.get() as { total: number; validated: number; pending: number; invalid: number; expired: number; };
   },
 
   updateStatus: (code: string, status: string) => {
-    const stmt = db.prepare('UPDATE gift_codes SET validation_status = ? WHERE code = ?');
+    // A redemption finishing after the delete must not bring the code back
+    const stmt = db.prepare("UPDATE gift_codes SET validation_status = ? WHERE code = ? AND validation_status != 'deleted'");
     return stmt.run(status, code);
   },
 
@@ -206,8 +216,15 @@ export const giftCodes = {
     return stmt.run(code, status, source, discovered);
   },
 
-  delete: (code: string) => {
-    const stmt = db.prepare('DELETE FROM gift_codes WHERE code = ?');
+  markDeleted: (code: string) => {
+    return db.transaction(() => {
+      db.prepare('DELETE FROM redemption_queue WHERE code = ?').run(code);
+      return db.prepare("UPDATE gift_codes SET validation_status = 'deleted' WHERE code = ?").run(code);
+    })();
+  },
+
+  restoreDeleted: (code: string) => {
+    const stmt = db.prepare("UPDATE gift_codes SET validation_status = 'pending' WHERE code = ? AND validation_status = 'deleted'");
     return stmt.run(code);
   },
 

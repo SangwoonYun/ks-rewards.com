@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
     const { status } = query;
 
     let codes: GiftCode[];
-    if (status && typeof status === 'string') {
+    if (status && typeof status === 'string' && status !== 'deleted') {
       codes = giftCodes.findByStatus(status);
     } else {
       codes = giftCodes.findAll(100); // Limit to last 100 codes by default
