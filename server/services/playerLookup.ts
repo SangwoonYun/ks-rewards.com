@@ -14,7 +14,7 @@ export interface PlayerProfile {
   kid: number | null;
   nickname: string | null;
   avatarUrl: string | null;   // null for the game's default avatars (served by mightpulse as relative paths)
-  inactive: boolean;          // not logged in for 90 days, last login unknown, or no city coordinates
+  inactive: boolean;          // not logged in for 90 days, or no city coordinates
 }
 
 async function searchPlayer(fid: string, live: boolean): Promise<any> {
@@ -44,8 +44,8 @@ export async function lookupPlayer(fid: string): Promise<PlayerProfile | undefin
     nickname: nickname || null,
     avatarUrl,
     // Fields missing from the response (format change) never count, only explicit values
+    // An unknown last login does not count: such players can still be active
     inactive: player.inactive_90d === true
-      || (typeof player.last_login === 'string' && /unknown/i.test(player.last_login))
       || (player.x === null && player.y === null)
   };
 }
@@ -68,7 +68,7 @@ export interface RefreshResult {
 
 /**
  * Save a kingdom from the lookup, after the official API accepts it (lookup data can be stale).
- * Codes that failed with the old kingdom are redeemed right away, as with an admin kingdom change.
+ * Codes that failed with the old kingdom are redeemed right away (active users only), as with an admin kingdom change.
  */
 async function applyLookupKingdom(fid: string, kid: number): Promise<RefreshResult['kingdom']> {
   const from = users.findByFid(fid)?.kingdom ?? null;
@@ -88,7 +88,7 @@ async function applyLookupKingdom(fid: string, kid: number): Promise<RefreshResu
 
 /**
  * Look the player up and save the nickname and avatar. Unless full is false (a user's own registration),
- * also deactivate the user when the player is not found or looks inactive (inactive for 90 days, last login unknown or
+ * also deactivate the user when the player is not found or looks inactive (inactive for 90 days or
  * no city coordinates), or else update the kingdom.
  * Never throws.
  */
@@ -108,13 +108,15 @@ export async function refreshProfile(fid: string, full = true): Promise<RefreshR
     saveProfile(fid, profile);
     if (!full) return { result: 'updated' };
 
+    let deactivated: true | undefined;
     if (profile.inactive && users.findByFid(fid)?.active === 1) {
       users.updateActive(fid, 0);
-      logger.info(`👤 Deactivated ${fid}: inactive according to the lookup (90 days / last login unknown / no coordinates)`);
-      return { result: 'updated', deactivated: true };
+      deactivated = true;
+      logger.info(`👤 Deactivated ${fid}: inactive according to the lookup (90 days / no coordinates)`);
     }
+    // The kingdom is kept up to date for inactive users too (no codes are redeemed for them)
     const kingdom = profile.kid ? await applyLookupKingdom(fid, profile.kid) : undefined;
-    return { result: 'updated', kingdom };
+    return { result: 'updated', kingdom, deactivated };
   } catch (error) {
     logger.warn(`Player lookup failed for ${fid}: ${getErrorMessage(error)}`);
     return { result: 'failed' };

@@ -253,7 +253,7 @@ const bulkRefreshResult = ref<{ success: boolean; message: string; issues: Refre
 
 // Report of the users that did not refresh cleanly, grouped by reason
 const ISSUE_LABELS: Record<RefreshIssue['reason'], string> = {
-  deactivated: 'Deactivated (inactive 90 days / last login unknown / no coordinates)',
+  deactivated: 'Deactivated (inactive 90 days / no coordinates)',
   not_found: 'Not found on lookup site',
   kingdom_rejected: 'Lookup kingdom rejected by API',
   failed: 'Lookup failed',
@@ -293,7 +293,7 @@ async function refreshProfile(user: User) {
     if (res.kingdom?.status === 'updated') message += `, kingdom ${res.kingdom.from} → ${res.kingdom.to}`;
     if (res.kingdom?.status === 'rejected') message += `, kingdom ${res.kingdom.to} rejected by API`;
     if (res.deactivated) {
-      message += res.result === 'not_found' ? ', deactivated' : ', deactivated (inactive 90 days / last login unknown / no coordinates)';
+      message += res.result === 'not_found' ? ', deactivated' : ', deactivated (inactive 90 days / no coordinates)';
       dropPriority(user.fid);
     }
     showResult(user.fid, res.success, message);
@@ -328,7 +328,7 @@ async function pollBulkRefresh() {
 
 async function startBulkRefresh() {
   const targets = hasFilters.value ? `the ${totalUsers.value} user(s) matching the filters` : 'every user';
-  if (!confirm(`Refresh the nickname, avatar and kingdom of ${targets} from mightpulse.com? Users not found (even by live search), inactive for 90 days, with an unknown last login or without coordinates are deactivated. This runs in the background (about 1.5s per user, up to ~15s more for users that need a live search).`)) return;
+  if (!confirm(`Refresh the nickname, avatar and kingdom of ${targets} from mightpulse.com? Users not found (even by live search), inactive for 90 days or without coordinates are deactivated. This runs in the background (about 1.5s per user, up to ~15s more for users that need a live search).`)) return;
   bulkRefreshResult.value = null;
   try {
     bulkRefresh.value = await $fetch<BulkRefreshStatus>('/api/admin/users/refresh-profiles/start', { method: 'POST', body: filterParams() });
