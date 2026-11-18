@@ -416,6 +416,10 @@ function searchLabel(u: UserSearch) {
   }
 }
 
+// Keep the sidebar badge in step with the list (fetches, and users dropped after an action)
+const { count: failureCount } = useFailureCount();
+watch(users, (list) => { failureCount.value = list.length; });
+
 async function fetchUsers() {
   loading.value = true;
   try {

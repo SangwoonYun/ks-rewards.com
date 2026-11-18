@@ -26,6 +26,11 @@
         >
           <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path :d="item.icon" /></svg>
           {{ item.label }}
+          <span
+            v-if="item.to === FAILURES_PATH && failureCount > 0"
+            class="nav-badge"
+            :aria-label="`${failureCount} users with failures`"
+          >{{ failureCount > 99 ? '99+' : failureCount }}</span>
         </NuxtLink>
       </nav>
       <div class="admin-sidebar-footer">
@@ -65,6 +70,14 @@ const NAV_ITEMS = [
 // The mobile drawer closes after navigating
 const menuOpen = ref(false);
 watch(() => route.path, () => { menuOpen.value = false; });
+
+// Failure count badge: refreshed in the background, apart from page loads (see useFailureCount);
+// the failures page also updates it from its own list
+const FAILURES_PATH = '/admin/redemption-failures';
+const { count: failureCount, startPolling } = useFailureCount();
+let stopPolling: (() => void) | null = null;
+onMounted(() => { stopPolling = startPolling(); });
+onBeforeUnmount(() => stopPolling?.());
 </script>
 
 <style scoped>
@@ -171,6 +184,23 @@ watch(() => route.path, () => { menuOpen.value = false; });
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: auto;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .admin-sidebar-footer {

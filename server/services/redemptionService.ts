@@ -211,6 +211,17 @@ async function processRedemption(queueItem: RedemptionQueueItem) {
     }
 
     const user = users.findByFid(fid);
+    // Deactivated after it was queued (or while this batch was running): never redeem for an inactive user
+    if (user && user.active !== 1) {
+      logger.info(`Skipping redemption for inactive FID ${fid}, code ${code}`);
+      queue.delete(id);
+      return {
+        success: false,
+        status: 'INACTIVE',
+        message: 'User is inactive'
+      };
+    }
+
     if (!user || !user.kingdom) {
       logger.error(`Cannot redeem for FID ${fid}: no server/kingdom on record`);
       queue.updateStatus(id, 'failed', 'No server/kingdom on record for this user');
@@ -446,6 +457,11 @@ export async function queueRedemptionsForCode(code: string, priority: number = 0
  */
 export async function queueUnredeemedCodesForUser(fid: string, priority: number = 1) {
   try {
+    if (users.findByFid(fid)?.active !== 1) {
+      logger.info(`Not queueing codes for inactive user ${fid}`);
+      return 0;
+    }
+
     const validCodes: GiftCode[] = giftCodes.findValid();
     let queuedCount = 0;
 

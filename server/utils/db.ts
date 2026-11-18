@@ -55,6 +55,7 @@ export interface QueueItem {
   created_at: string;
   updated_at: string;
   nickname?: string | null;
+  kingdom?: string | null;
   avatar_url?: string | null;
 }
 
@@ -117,12 +118,15 @@ export const users = {
     return stmt.all() as User[];
   },
 
-  // Deactivating also takes the user out of the priority queue
+  // Deactivating also takes the user out of the priority queue and drops their queued redemptions
   updateActive: (fid: string, active: number) => {
     const stmt = db.prepare('UPDATE users SET active = ?, updated_at = CURRENT_TIMESTAMP WHERE fid = ?');
     return db.transaction(() => {
       const result = stmt.run(active, fid);
-      if (active === 0) priorityUsers.remove(fid);
+      if (active === 0) {
+        priorityUsers.remove(fid);
+        queue.deleteByFid(fid);
+      }
       return result;
     })();
   },
@@ -407,10 +411,16 @@ export const queue = {
     return stmt.run(code);
   },
 
+  // Remove all queued entries for a user (used when the user is deactivated)
+  deleteByFid: (fid: string) => {
+    const stmt = db.prepare('DELETE FROM redemption_queue WHERE fid = ?');
+    return stmt.run(fid);
+  },
+
   getAll: (limit: number = 200): QueueItem[] => {
     const stmt = db.prepare(`
       SELECT rq.*, (rq.created_at || 'Z') AS created_at, (rq.updated_at || 'Z') AS updated_at,
-             u.nickname, u.avatar_url
+             u.nickname, u.kingdom, u.avatar_url
       FROM redemption_queue rq
       LEFT JOIN users u ON rq.fid = u.fid
       ORDER BY rq.updated_at DESC

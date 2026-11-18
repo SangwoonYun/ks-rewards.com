@@ -1,15 +1,5 @@
 import { redemptions } from '../../../utils/db';
-import {
-  SUCCESS_STATUSES,
-  CODE_EXPIRED_STATUSES,
-  CODE_INVALID_STATUSES,
-  PLAYER_INELIGIBLE_STATUSES
-} from '../../../services/kingshotApi';
-
-// Outcomes that are final and expected: not a failure to act on
-const SETTLED_STATUSES = [
-  ...SUCCESS_STATUSES, ...CODE_EXPIRED_STATUSES, ...CODE_INVALID_STATUSES, ...PLAYER_INELIGIBLE_STATUSES
-];
+import { SETTLED_STATUSES, setFailureCount } from '../../../utils/failureCount';
 
 // What to do about a user, from their worst failure
 export type FailureCategory = 'wrong_kingdom' | 'no_account' | 'other';
@@ -63,5 +53,7 @@ export default defineEventHandler(() => {
       : statuses.includes('ROLE_NOT_EXIST') ? 'no_account'
       : 'other';
   }
+  // Fresh anyway, so the sidebar badge gets it without running the query again
+  setFailureCount(users.length);
   return { success: true, users, total: users.length };
 });

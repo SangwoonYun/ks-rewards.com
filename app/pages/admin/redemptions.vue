@@ -88,10 +88,28 @@
         <button
           v-if="selectedIds.length > 0"
           class="toolbar-btn btn-primary"
-          :disabled="retrying"
+          :disabled="queueBusy || selectedRetryableIds.length === 0"
+          title="Only failed or processing items can be retried"
           @click="retrySelected"
         >
-          {{ retrying ? 'Retrying...' : `Retry Selected (${selectedIds.length})` }}
+          {{ retrying ? 'Retrying...' : `Retry Selected (${selectedRetryableIds.length})` }}
+        </button>
+        <button
+          v-if="selectedIds.length > 0"
+          class="toolbar-btn btn-secondary"
+          :disabled="queueBusy"
+          title="Refresh nickname, avatar and kingdom of the selected items' users (inactive / not found users are deactivated)"
+          @click="refreshSelectedProfiles"
+        >
+          {{ refreshing ? `Refreshing... (${refreshing.done}/${refreshing.total})` : `Refresh Profile (${selectedFids.length})` }}
+        </button>
+        <button
+          v-if="selectedIds.length > 0"
+          class="toolbar-btn btn-danger"
+          :disabled="queueBusy"
+          @click="removeSelected"
+        >
+          {{ removing ? 'Removing...' : `Remove Selected (${selectedIds.length})` }}
         </button>
       </div>
 
@@ -107,6 +125,7 @@
               <th class="check-cell"><input type="checkbox" @change="toggleAll" :checked="allSelected" /></th>
               <th>ID</th>
               <th>FID</th>
+              <th>Kingdom</th>
               <th></th>
               <th>Nickname</th>
               <th>Code</th>
@@ -122,12 +141,12 @@
                 <input
                   type="checkbox"
                   :checked="selectedIds.includes(item.id)"
-                  :disabled="!['failed', 'processing'].includes(item.status)"
                   @change="toggleSelect(item.id)"
                 />
               </td>
               <td data-label="ID">{{ item.id }}</td>
               <td data-label="FID">{{ item.fid }}</td>
+              <td data-label="Kingdom">{{ item.kingdom || '-' }}</td>
               <td class="avatar-cell">
                 <img :src="item.avatar_url || '/images/default-avatar.png'" :alt="item.nickname || item.fid" class="avatar" referrerpolicy="no-referrer" />
               </td>
@@ -139,10 +158,10 @@
               <td data-label="Created">{{ formatDate(item.created_at) }}</td>
             </tr>
             <tr v-if="queueList.length === 0 && !loadingQueue">
-              <td colspan="10" class="empty">Queue is empty</td>
+              <td colspan="11" class="empty">Queue is empty</td>
             </tr>
             <tr v-if="queueHasMore">
-              <td colspan="10" class="sentinel-cell">
+              <td colspan="11" class="sentinel-cell">
                 <div ref="queueSentinelRef" class="sentinel"></div>
               </td>
             </tr>
@@ -163,6 +182,8 @@ definePageMeta({
 });
 
 const PAGE_SIZE = 50;
+// Pause between users in a bulk profile refresh (same pace as the redemption failures page)
+const REFRESH_INTERVAL_MS = 1500;
 
 const activeTab = ref<'history' | 'queue'>('history');
 
@@ -188,7 +209,10 @@ const pendingCount = ref(0);
 const loadingQueue = ref(false);
 const selectedIds = ref<number[]>([]);
 const retrying = ref(false);
+const removing = ref(false);
+const refreshing = ref<{ done: number; total: number } | null>(null);
 const retryMessage = ref('');
+const queueBusy = computed(() => retrying.value || removing.value || !!refreshing.value);
 
 let debounceTimer: ReturnType<typeof setTimeout>;
 
@@ -285,32 +309,89 @@ function toggleSelect(id: number) {
   }
 }
 
-const retryableItems = computed(() =>
-  queueList.value.filter(i => ['failed', 'processing'].includes(i.status))
+// Any item can be selected (for removal); only failed/processing ones can be retried
+const selectedRetryableIds = computed(() =>
+  queueList.value
+    .filter(i => ['failed', 'processing'].includes(i.status) && selectedIds.value.includes(i.id))
+    .map(i => i.id)
 );
 
 const allSelected = computed(() =>
-  retryableItems.value.length > 0 &&
-  retryableItems.value.every(i => selectedIds.value.includes(i.id))
+  queueList.value.length > 0 &&
+  queueList.value.every(i => selectedIds.value.includes(i.id))
 );
 
 function toggleAll(e: Event) {
   const checked = (e.target as HTMLInputElement).checked;
   if (checked) {
-    selectedIds.value = retryableItems.value.map(i => i.id);
+    selectedIds.value = queueList.value.map(i => i.id);
   } else {
     selectedIds.value = [];
   }
 }
 
-async function retrySelected() {
+// A user can have several selected items; each user is refreshed once
+const selectedFids = computed(() => [
+  ...new Set(queueList.value.filter(i => selectedIds.value.includes(i.id)).map(i => i.fid)),
+]);
+
+async function refreshSelectedProfiles() {
+  const fids = selectedFids.value;
+  if (fids.length === 0) return;
+  if (!confirm(`Refresh the profile (nickname, avatar, kingdom) of ${fids.length} user(s)? Users not found or inactive are deactivated and their queue items removed.`)) return;
+  refreshing.value = { done: 0, total: fids.length };
+  retryMessage.value = '';
+  const counts = { updated: 0, kingdom: 0, deactivated: 0, notFound: 0, failed: 0 };
+  for (const fid of fids) {
+    try {
+      const res: any = await $fetch(`/api/admin/users/${fid}/refresh-profile`, { method: 'POST' });
+      if (res.result === 'updated') counts.updated++;
+      else if (res.result === 'not_found') counts.notFound++;
+      else counts.failed++;
+      if (res.kingdom?.status === 'updated') counts.kingdom++;
+      if (res.deactivated) counts.deactivated++;
+    } catch {
+      counts.failed++;
+    }
+    refreshing.value!.done++;
+    if (refreshing.value!.done < fids.length) {
+      await new Promise(resolve => setTimeout(resolve, REFRESH_INTERVAL_MS));
+    }
+  }
+  refreshing.value = null;
+  retryMessage.value = `Profiles refreshed: ${counts.updated} updated (${counts.kingdom} kingdom changes, ${counts.deactivated} deactivated), ${counts.notFound} not found, ${counts.failed} failed`;
+  selectedIds.value = [];
+  fetchQueue();
+}
+
+async function removeSelected() {
   if (selectedIds.value.length === 0) return;
+  if (!confirm(`Remove ${selectedIds.value.length} item(s) from the queue? They will not be redeemed.`)) return;
+  removing.value = true;
+  retryMessage.value = '';
+  try {
+    const res: any = await $fetch('/api/admin/redemptions/remove', {
+      method: 'POST',
+      body: { ids: selectedIds.value },
+    });
+    retryMessage.value = `${res.removedCount} items removed from the queue`;
+    selectedIds.value = [];
+    fetchQueue();
+  } catch (e: any) {
+    retryMessage.value = e?.data?.message || 'Remove failed';
+  } finally {
+    removing.value = false;
+  }
+}
+
+async function retrySelected() {
+  if (selectedRetryableIds.value.length === 0) return;
   retrying.value = true;
   retryMessage.value = '';
   try {
     const res: any = await $fetch('/api/admin/redemptions/retry', {
       method: 'POST',
-      body: { ids: selectedIds.value },
+      body: { ids: selectedRetryableIds.value },
     });
     retryMessage.value = `${res.resetCount} items reset to pending`;
     selectedIds.value = [];
