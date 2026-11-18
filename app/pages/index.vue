@@ -3,17 +3,37 @@
     <header class="topbar">
       <div class="topbar-inner">
         <a href="/" class="brand">
-          <span class="brand-mark" aria-hidden="true">KS</span>
+          <BrandMark />
           <span class="brand-name">Kingshot Rewards</span>
         </a>
-        <a href="#codes-panel" class="topbar-link">Gift Codes</a>
+        <a href="https://ks-giftcode.centurygame.com" class="topbar-link" target="_blank" rel="noopener noreferrer">
+          Gift Codes
+          <svg class="topbar-link-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>
+        </a>
       </div>
     </header>
 
     <main class="main">
       <section class="hero">
-        <h1 class="hero-title">Kingshot Rewards <span class="hero-sub">— 자동 기프트 코드 수령</span></h1>
-        <p class="hero-lead">플레이어 ID를 한 번만 등록하면, 새 기프트 코드가 나올 때마다 자동으로 수령합니다.</p>
+        <div class="hero-text">
+          <h1 class="hero-title">Kingshot Rewards <span class="hero-sub">자동 기프트 코드 수령</span></h1>
+          <p class="hero-lead">플레이어 ID를 한 번만 등록하면, 새 기프트 코드가 나올 때마다 자동으로 수령합니다.</p>
+        </div>
+        <div v-if="siteStats" class="hero-stats">
+          <div class="stat-tile">
+            <div class="stat-label">등록 유저</div>
+            <div class="stat-value">{{ siteStats.totalUsers.toLocaleString() }}</div>
+            <div class="stat-detail"><span class="stat-dot is-active" />활성 {{ siteStats.activeUsers.toLocaleString() }}</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-label">수령 대기열</div>
+            <div class="stat-value">{{ siteStats.pendingQueueItems.toLocaleString() }}</div>
+            <div class="stat-detail">
+              <span :class="['stat-dot', siteStats.pendingQueueItems > 0 ? 'is-busy' : 'is-active']" />
+              {{ siteStats.pendingQueueItems > 0 ? '처리 중' : '대기 없음' }}
+            </div>
+          </div>
+        </div>
       </section>
 
       <section class="card register" aria-labelledby="register-title">
@@ -209,6 +229,17 @@ interface RedemptionsResponse {
   redemptions?: Redemption[];
 }
 
+interface SiteStats {
+  totalUsers: number;
+  activeUsers: number;
+  pendingQueueItems: number;
+}
+
+interface StatsResponse {
+  success: boolean;
+  stats?: SiteStats;
+}
+
 interface RegisterResponse {
   success: boolean;
   redeemedCount?: number;
@@ -226,6 +257,7 @@ const serverInput = ref('');
 const isRegistering = ref(false);
 const codes = ref<GiftCode[]>([]);
 const redemptions = ref<Redemption[]>([]);
+const siteStats = ref<SiteStats | null>(null);
 const codesStats = ref<CodesStats>({
   total: 0,
   validated: 0,
@@ -376,6 +408,17 @@ async function fetchRedemptions() {
   }
 }
 
+async function fetchStats() {
+  try {
+    const response = await $fetch<StatsResponse>('/api/stats');
+    if (response.success && response.stats) {
+      siteStats.value = response.stats;
+    }
+  } catch (error: any) {
+    console.error('Error fetching stats:', error);
+  }
+}
+
 async function registerPlayer() {
   const input = playerInput.value.trim();
   if (!input) {
@@ -469,6 +512,7 @@ async function registerPlayer() {
       // Refresh data
       await fetchCodes();
       await fetchRedemptions();
+      await fetchStats();
 
       // Show a concise summary plus the per-fid results so users see what happened
       const summary = `✅ ${successCount}명(건) 등록 완료`;
@@ -493,6 +537,7 @@ onMounted(() => {
   // Initial fetch
   fetchCodes();
   fetchRedemptions();
+  fetchStats();
 
   // Start polling
   redemptionsInterval = setInterval(() => {
@@ -502,6 +547,7 @@ onMounted(() => {
   // Fetch codes less frequently
   codesInterval = setInterval(() => {
     fetchCodes();
+    fetchStats();
   }, 10000);
 });
 
@@ -551,19 +597,6 @@ onUnmounted(() => {
   text-decoration: none;
 }
 
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius);
-  background: var(--primary);
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 800;
-}
-
 .brand-name {
   font-size: 1rem;
   font-weight: 700;
@@ -571,6 +604,9 @@ onUnmounted(() => {
 }
 
 .topbar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 6px 12px;
   border-radius: var(--radius);
   color: var(--text-2);
@@ -582,6 +618,16 @@ onUnmounted(() => {
 .topbar-link:hover {
   background: var(--surface-2);
   color: var(--text);
+}
+
+.topbar-link-icon {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* Layout */
@@ -596,8 +642,60 @@ onUnmounted(() => {
 }
 
 .hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
   padding: 48px 0 12px;
 }
+
+.hero-stats {
+  display: flex;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.stat-tile {
+  min-width: 132px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.stat-label {
+  color: var(--text-3);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.stat-value {
+  margin-top: 2px;
+  color: var(--text);
+  font-size: 1.625rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-detail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: 0.75rem;
+}
+
+.stat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.stat-dot.is-active { background: var(--success); }
+.stat-dot.is-busy { background: var(--warning); }
 
 .hero-title {
   margin: 0;
@@ -610,8 +708,12 @@ onUnmounted(() => {
 }
 
 .hero-sub {
+  display: block;
+  margin-top: 6px;
   color: var(--text-3);
+  font-size: 0.6em;
   font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .hero-lead {
@@ -1133,6 +1235,15 @@ onUnmounted(() => {
 
 /* Responsive */
 @media (max-width: 900px) {
+  .hero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .stat-tile {
+    flex: 1;
+  }
+
   .live {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1159,12 +1270,6 @@ onUnmounted(() => {
 
   .hero {
     padding: 28px 0 4px;
-  }
-
-  .hero-sub {
-    display: block;
-    margin-top: 4px;
-    font-size: 0.6em;
   }
 
   .hero-lead {

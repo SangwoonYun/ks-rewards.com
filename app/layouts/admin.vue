@@ -4,14 +4,14 @@
       <button class="menu-btn" aria-label="Open menu" :aria-expanded="menuOpen" @click="menuOpen = true">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
       </button>
-      <span class="admin-brand"><span class="brand-mark">KS</span> Admin</span>
+      <span class="admin-brand"><BrandMark :size="28" /> Admin</span>
     </header>
 
     <div v-if="menuOpen" class="admin-backdrop" @click="menuOpen = false" />
 
     <aside class="admin-sidebar" :class="{ open: menuOpen }">
       <div class="admin-logo">
-        <span class="admin-brand"><span class="brand-mark">KS</span> Admin</span>
+        <span class="admin-brand"><BrandMark :size="28" /> Admin</span>
         <button class="menu-btn close-btn" aria-label="Close menu" @click="menuOpen = false">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
         </button>
@@ -120,20 +120,6 @@ onBeforeUnmount(() => stopPolling?.());
   font-weight: 700;
   color: var(--text);
   letter-spacing: -0.01em;
-}
-
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius);
-  background: var(--primary);
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0;
 }
 
 .admin-nav {

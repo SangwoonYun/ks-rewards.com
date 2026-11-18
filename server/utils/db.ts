@@ -118,6 +118,11 @@ export const users = {
     return stmt.all() as User[];
   },
 
+  counts: (): { total: number; active: number } => {
+    const stmt = db.prepare('SELECT COUNT(*) AS total, COALESCE(SUM(active = 1), 0) AS active FROM users');
+    return stmt.get() as { total: number; active: number };
+  },
+
   // Deactivating also takes the user out of the priority queue and drops their queued redemptions
   updateActive: (fid: string, active: number) => {
     const stmt = db.prepare('UPDATE users SET active = ?, updated_at = CURRENT_TIMESTAMP WHERE fid = ?');

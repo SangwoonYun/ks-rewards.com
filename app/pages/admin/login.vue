@@ -1,7 +1,7 @@
 <template>
   <div class="login-wrapper">
     <div class="login-card">
-      <span class="brand-mark" aria-hidden="true">KS</span>
+      <BrandMark :size="44" class="login-logo" />
       <h1 class="login-title">KS Admin</h1>
       <p class="login-subtitle">Sign in to continue</p>
 
@@ -96,18 +96,8 @@ async function handleLogin() {
   text-align: center;
 }
 
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  margin-bottom: 16px;
-  border-radius: var(--radius-lg);
-  background: var(--primary);
-  color: #fff;
-  font-size: 0.875rem;
-  font-weight: 800;
+.login-logo {
+  margin: 0 auto 16px;
 }
 
 .login-title {
