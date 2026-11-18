@@ -1,11 +1,13 @@
-import axios from 'axios';
-import { users } from '../utils/db';
+import { users } from '../db';
 import { getErrorMessage } from '../utils/errors';
-import { verifyPlayer, searchRateLimiter, ipRateLimit } from './kingshotApi';
-import { redeemNowForUser } from './redemptionService';
+import { verifyPlayer, searchRateLimiter } from '../clients/kingshot';
+import { ipRateLimit } from '../clients/rateLimiter';
+import { fetchMaxKingdom } from '../clients/kingdomTracker';
+import { queueAndRedeem } from './queueWorker';
 import { lookupPlayer, saveProfile } from './playerLookup';
 import { logger } from '../utils/logger';
 import { config } from '../utils/config';
+import { sleep } from '../utils/sleep';
 
 /**
  * Background search for the new kingdom of users who were likely transferred.
@@ -38,13 +40,12 @@ import { config } from '../utils/config';
  * this server, or several different FIDs hitting TOO_FREQUENT within a minute) and shrinks by
  * STEP_MS after RECOVERY_QUIET_MS without signals, down to the base. Steps back down to (or below)
  * an interval that got an HTTP 429 need RETRY_429_QUIET_MS instead, so the search does not keep
- * bouncing off the limit. During a 429's Retry-After every request waits (see ipRateLimit in kingshotApi).
+ * bouncing off the limit. During a 429's Retry-After every request waits (see ipRateLimit in clients/rateLimiter).
  *
  * Users are interleaved round-robin so a single FID is not hammered (the API rate-limits per FID).
  */
 
 const MAX_DISTANCE = 500;
-const KINGDOM_TRACKER_URL = 'https://kingshot.net/api/kingdom-tracker';
 
 // Player lookup (see playerLookup): sequential and slow on purpose; a few failures in a row
 // turn it off for the rest of the search.
@@ -87,7 +88,7 @@ export interface UserSearch {
   foundViaGroup: boolean;          // found by trying a kingdom another group member was found in
   foundViaLookup: boolean;         // found by trying the kingdom the player lookup returned
   groupActive: boolean;            // the user's group has started (see planRound)
-  redeemedCount: number | null;
+  queuedCount: number | null;      // codes queued for redemption once found
   cooldownUntil: number | null;
   message: string | null;
 }
@@ -131,25 +132,6 @@ interface SearchJob {
 }
 
 let job: SearchJob | null = null;
-
-/**
- * Highest kingdom number that exists, from kingshot.net's public kingdom tracker.
- * Kingdoms above it do not exist yet, so the search skips them. null (no upper bound) on failure.
- */
-async function fetchMaxKingdom(): Promise<number | null> {
-  try {
-    const { data } = await axios.get(KINGDOM_TRACKER_URL, {
-      params: { sort: 'kingdomId-desc', limit: 1 },
-      timeout: 5000
-    });
-    const max = Number(data?.data?.servers?.[0]?.kingdomId);
-    if (!Number.isInteger(max) || max < 1) throw new Error('Unexpected response');
-    return max;
-  } catch (error) {
-    logger.warn(`🔎 Kingdom search: could not get the highest kingdom, searching without an upper bound: ${getErrorMessage(error)}`);
-    return null;
-  }
-}
 
 /**
  * Look up every user once, in group order, while the search runs. A kingdom found becomes the
@@ -198,8 +180,6 @@ function buildCandidates(kingdom: number, maxKingdom: number | null): number[] {
 function isActive(u: InternalSearch) {
   return u.status === 'queued' || u.status === 'waiting' || u.status === 'searching';
 }
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * The kingdom this user should try next, or null when every candidate was checked.
@@ -398,8 +378,9 @@ async function step(current: SearchJob, u: InternalSearch, next: NextKingdom) {
       logger.info(`🔎 Kingdom search: ${u.fid} is valid in its current kingdom ${kid}`);
     }
 
-    // Retry codes that failed with the old kingdom
-    u.redeemedCount = await redeemNowForUser(u.fid, String(kid));
+    // Codes that failed with the old kingdom are queued again and redeemed by the worker,
+    // so the search goes on without waiting for them
+    u.queuedCount = queueAndRedeem({ fid: u.fid, priority: 10 });
     return;
   }
 
@@ -505,7 +486,7 @@ export async function startKingdomSearch(fids: string[]) {
       foundViaGroup: false,
       foundViaLookup: false,
       groupActive: false,
-      redeemedCount: null,
+      queuedCount: null,
       cooldownUntil: null,
       message: null,
       candidates: [],
@@ -547,7 +528,7 @@ export async function startKingdomSearch(fids: string[]) {
 
   const groups = new Set(searches.map(u => u.originalKingdom)).size;
   logger.info(`🔎 Kingdom search started for ${searches.length} user(s) in ${groups} group(s), highest kingdom: ${maxKingdom ?? 'unknown'}`);
-  run(job);
+  run(job).catch(error => logger.error('🔎 Kingdom search error:', error));
   runLookups(job).catch(error => logger.error('🔎 Kingdom search: player lookup error:', error));
   return getKingdomSearchStatus();
 }

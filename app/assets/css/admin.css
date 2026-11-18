@@ -34,14 +34,13 @@
 
 .info-bar,
 .info-text {
-  margin-bottom: 10px;
   font-size: 0.8125rem;
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
 
-.info-text {
-  margin-bottom: 0;
+.info-bar {
+  margin-bottom: 10px;
 }
 
 .loading {
@@ -247,14 +246,6 @@
   background: #ddd6fe;
 }
 
-/* Page-level toolbar buttons that use the row-button class */
-.btn-apply-all,
-.btn-refresh-all {
-  height: 36px;
-  padding: 0 14px;
-  font-size: 0.875rem;
-}
-
 .dismiss-btn {
   flex-shrink: 0;
   display: inline-flex;
@@ -351,7 +342,6 @@
 }
 
 /* Banners */
-.message,
 .result-banner {
   display: flex;
   align-items: center;
@@ -366,14 +356,12 @@
   line-height: 1.45;
 }
 
-.message-success,
 .result-success {
   background: var(--success-soft);
   border-color: #bbf7d0;
   color: var(--success-text);
 }
 
-.message-error,
 .result-error {
   background: var(--danger-soft);
   border-color: #fecaca;
@@ -463,6 +451,10 @@
   font-size: 0.8125rem;
 }
 
+.check-cell {
+  width: 40px;
+}
+
 .admin-table input[type="checkbox"] {
   width: 16px;
   height: 16px;
@@ -539,8 +531,6 @@
   }
 
   .toolbar-btn,
-  .btn-apply-all,
-  .btn-refresh-all,
   .search-input,
   .filter-select,
   .filter-input {

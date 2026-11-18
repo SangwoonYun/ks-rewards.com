@@ -1,8 +1,8 @@
-﻿# Build stage - use Node for reliable cross-platform builds
-FROM node:20-alpine AS builder
+# Build stage - use Node for reliable cross-platform builds
+FROM node:26-alpine AS builder
 
 RUN apk add --no-cache python3 make g++
-RUN npm install -g bun@1.3.7
+RUN npm install -g bun@1.4.4
 
 WORKDIR /app
 
@@ -20,15 +20,15 @@ COPY . .
 RUN bun run build
 
 # Production stage
-FROM node:20-alpine
+FROM node:26-alpine
 
 WORKDIR /app
 
 # Copy built application from builder
 COPY --from=builder /app/.output ./.output
 
-# Create data directory
-RUN mkdir -p /app/data
+# Security patches for the OS packages released after the base image, and the data directory
+RUN apk upgrade --no-cache && mkdir -p /app/data
 
 # Expose port
 EXPOSE 3000

@@ -4,14 +4,14 @@
 
     <div class="toolbar">
       <button
-        class="action-btn btn-apply-all"
+        class="toolbar-btn btn-apply-all"
         :disabled="applyingAll"
         @click="applyAllCodes"
       >
         {{ applyingAll ? 'Applying...' : hasFilters ? `Apply Codes (${totalUsers} filtered)` : 'Apply All Codes' }}
       </button>
       <button
-        class="action-btn btn-refresh-all"
+        class="toolbar-btn btn-refresh-all"
         :disabled="bulkRefresh?.running"
         @click="startBulkRefresh"
       >
@@ -24,11 +24,8 @@
       ({{ bulkRefresh.updated }} updated, {{ bulkRefresh.kingdomUpdated }} kingdom changes, {{ bulkRefresh.deactivated }} deactivated, {{ bulkRefresh.notFound }} not found, {{ bulkRefresh.failed }} failed)
       <button class="dismiss-btn" title="Cancel" @click="cancelBulkRefresh">&times;</button>
     </div>
-    <div v-else-if="bulkRefreshResult" class="result-banner" :class="bulkRefreshResult.success ? 'result-success' : 'result-error'">
-      {{ bulkRefreshResult.message }}
-      <button class="dismiss-btn" @click="bulkRefreshResult = null">&times;</button>
-    </div>
-    <div v-if="!bulkRefresh?.running && bulkRefreshResult?.issues.length" class="refresh-report">
+    <ResultBanner v-else :flash="bulkRefreshFlash" @dismiss="clearBulkRefreshResult" />
+    <div v-if="!bulkRefresh?.running && bulkRefreshFlash && bulkRefreshIssues.length" class="refresh-report">
       <div v-for="group in issueGroups" :key="group.reason" class="report-group">
         <strong>{{ group.label }} ({{ group.items.length }})</strong>
         <ul>
@@ -39,10 +36,7 @@
       </div>
     </div>
 
-    <div v-if="applyAllResult" class="result-banner" :class="applyAllResult.success ? 'result-success' : 'result-error'">
-      {{ applyAllResult.message }}
-      <button class="dismiss-btn" @click="applyAllResult = null">&times;</button>
-    </div>
+    <ResultBanner :flash="applyAllFlash" @dismiss="clearApplyAllResult" />
 
     <div class="info-bar">
       <span>{{ users.length }} / {{ totalUsers }} users</span>
@@ -94,17 +88,12 @@
           <tr v-for="user in users" :key="user.fid">
             <td data-label="FID">{{ user.fid }}</td>
             <td class="avatar-cell">
-              <img
-                :src="user.avatar_url || '/images/default-avatar.png'"
-                :alt="user.nickname || user.fid"
-                class="avatar"
-                referrerpolicy="no-referrer"
-              />
+              <UserAvatar :src="user.avatar_url" :alt="user.nickname || user.fid" class="avatar" />
             </td>
             <td data-label="Nickname">{{ user.nickname || '-' }}</td>
             <td data-label="Kingdom">{{ user.kingdom || '-' }}</td>
             <td data-label="Status">
-              <span class="badge" :class="user.active ? 'badge-success' : 'badge-danger'">
+              <span class="badge" :class="activeBadgeClass(user.active)">
                 {{ user.active ? 'Active' : 'Inactive' }}
               </span>
             </td>
@@ -165,14 +154,11 @@
 <script setup lang="ts">
 import { VueDatePicker } from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
-import type { User } from '~~/server/utils/db';
+import type { User } from '~~/server/db';
 
 definePageMeta({
   layout: 'admin',
-  middleware: ['admin'],
 });
-
-const PAGE_SIZE = 50;
 
 const filters = reactive({ fid: '', nickname: '', kingdom: '', status: '', from: '', to: '' });
 
@@ -211,18 +197,11 @@ function toggleSort(key: SortKey) {
   }
   fetchUsers();
 }
-const users = ref<User[]>([]);
-const loading = ref(true);
-const totalUsers = ref(0);
-const hasMore = ref(false);
-const offset = ref(0);
-const sentinelRef = ref<HTMLElement | null>(null);
-const tableWrapperRef = ref<HTMLElement | null>(null);
 const toggling = ref<string | null>(null);
 const applying = ref<string | null>(null);
 const applyResults = ref<Record<string, { success: boolean; message: string }>>({});
 const applyingAll = ref(false);
-const applyAllResult = ref<{ success: boolean; message: string } | null>(null);
+const { flash: applyAllFlash, show: showApplyAllResult, clear: clearApplyAllResult } = useFlash();
 const priorityFids = ref<Set<string>>(new Set());
 const togglingPriority = ref<string | null>(null);
 const refreshing = ref<string | null>(null);
@@ -249,7 +228,19 @@ interface RefreshIssue {
   detail: string | null;
 }
 const bulkRefresh = ref<BulkRefreshStatus | null>(null);
-const bulkRefreshResult = ref<{ success: boolean; message: string; issues: RefreshIssue[] } | null>(null);
+const { flash: bulkRefreshFlash, show: showBulkRefreshFlash, clear: clearBulkRefreshFlash } = useFlash();
+// Users that did not refresh cleanly in the last run, reported under its result banner
+const bulkRefreshIssues = ref<RefreshIssue[]>([]);
+
+function showBulkRefreshResult(success: boolean, message: string, issues: RefreshIssue[] = []) {
+  showBulkRefreshFlash(success, message);
+  bulkRefreshIssues.value = issues;
+}
+
+function clearBulkRefreshResult() {
+  clearBulkRefreshFlash();
+  bulkRefreshIssues.value = [];
+}
 
 // Report of the users that did not refresh cleanly, grouped by reason
 const ISSUE_LABELS: Record<RefreshIssue['reason'], string> = {
@@ -259,23 +250,33 @@ const ISSUE_LABELS: Record<RefreshIssue['reason'], string> = {
   failed: 'Lookup failed',
 };
 const issueGroups = computed(() => {
-  const issues = bulkRefreshResult.value?.issues ?? [];
+  const issues = bulkRefreshIssues.value;
   return (Object.keys(ISSUE_LABELS) as RefreshIssue['reason'][])
     .map(reason => ({ reason, label: ISSUE_LABELS[reason], items: issues.filter(i => i.reason === reason) }))
     .filter(g => g.items.length > 0);
 });
-let bulkPollTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Row results disappear after 5s; a newer result of the same row restarts its timer
+const rowResultTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 function showResult(fid: string, success: boolean, message: string) {
+  clearTimeout(rowResultTimers.get(fid));
   applyResults.value[fid] = { success, message };
-  setTimeout(() => {
+  rowResultTimers.set(fid, setTimeout(() => {
+    rowResultTimers.delete(fid);
     delete applyResults.value[fid];
-  }, 5000);
+  }, 5000));
+}
+
+function clearResult(fid: string) {
+  clearTimeout(rowResultTimers.get(fid));
+  rowResultTimers.delete(fid);
+  delete applyResults.value[fid];
 }
 
 async function refreshProfile(user: User) {
   refreshing.value = user.fid;
-  delete applyResults.value[user.fid];
+  clearResult(user.fid);
   try {
     const res = await $fetch(`/api/admin/users/${user.fid}/refresh-profile`, { method: 'POST' }) as any;
     if (res.user) {
@@ -304,41 +305,45 @@ async function refreshProfile(user: User) {
   }
 }
 
-async function pollBulkRefresh() {
+async function fetchBulkRefreshStatus() {
   try {
     const wasRunning = bulkRefresh.value?.running;
     bulkRefresh.value = await $fetch<BulkRefreshStatus>('/api/admin/users/refresh-profiles/status');
     const s = bulkRefresh.value;
     if (s.running) {
-      bulkPollTimer = setTimeout(pollBulkRefresh, 2000);
-    } else if (wasRunning) {
-      bulkRefreshResult.value = {
-        success: !s.stoppedReason || s.stoppedReason === 'Cancelled',
-        message: `Profiles refreshed: ${s.updated} updated (${s.kingdomUpdated} kingdom changes, ${s.deactivated} deactivated), ${s.notFound} not found, ${s.failed} failed` +
-          (s.stoppedReason ? ` (${s.stoppedReason})` : ''),
-        issues: s.issues,
-      };
-      fetchUsers();
-      fetchPriorityUsers();
+      bulkPolling.start();
+    } else {
+      bulkPolling.stop();
+      if (wasRunning) {
+        showBulkRefreshResult(
+          !s.stoppedReason || s.stoppedReason === 'Cancelled',
+          `Profiles refreshed: ${s.updated} updated (${s.kingdomUpdated} kingdom changes, ${s.deactivated} deactivated), ${s.notFound} not found, ${s.failed} failed` +
+            (s.stoppedReason ? ` (${s.stoppedReason})` : ''),
+          s.issues,
+        );
+        fetchUsers();
+        fetchPriorityUsers();
+      }
     }
   } catch (e) {
     console.error('Failed to fetch profile refresh status:', e);
   }
 }
+const bulkPolling = usePolling(fetchBulkRefreshStatus, 2000);
 
 async function startBulkRefresh() {
   const targets = hasFilters.value ? `the ${totalUsers.value} user(s) matching the filters` : 'every user';
   if (!confirm(`Refresh the nickname, avatar and kingdom of ${targets} from mightpulse.com? Users not found (even by live search), inactive for 90 days or without coordinates are deactivated. This runs in the background (about 1.5s per user, up to ~15s more for users that need a live search).`)) return;
-  bulkRefreshResult.value = null;
+  clearBulkRefreshResult();
   try {
     bulkRefresh.value = await $fetch<BulkRefreshStatus>('/api/admin/users/refresh-profiles/start', { method: 'POST', body: filterParams() });
     if (bulkRefresh.value.total === 0) {
-      bulkRefreshResult.value = { success: true, message: 'No users match the filters', issues: [] };
+      showBulkRefreshResult(true, 'No users match the filters');
       return;
     }
-    bulkPollTimer = setTimeout(pollBulkRefresh, 2000);
+    bulkPolling.start();
   } catch (e: any) {
-    bulkRefreshResult.value = { success: false, message: e?.data?.message || 'Failed to start profile refresh', issues: [] };
+    showBulkRefreshResult(false, e?.data?.message || 'Failed to start profile refresh');
   }
 }
 
@@ -395,13 +400,6 @@ async function togglePriority(user: User) {
   }
 }
 
-let debounceTimer: ReturnType<typeof setTimeout>;
-
-function debouncedFetch() {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(fetchUsers, 300);
-}
-
 // Column filters as query params (also the targets of Apply Codes / Refresh Profiles);
 // the date range is in local days, sent as instants (to is exclusive)
 function filterParams() {
@@ -421,42 +419,19 @@ function filterParams() {
 const sortParams = (): Record<string, string> => (sort.key ? { sort: sort.key, order: sort.order } : {});
 const hasFilters = computed(() => Object.keys(filterParams()).length > 0);
 
-async function fetchUsers() {
-  loading.value = true;
-  offset.value = 0;
-  users.value = [];
-  try {
-    const params = { limit: String(PAGE_SIZE), offset: '0', ...sortParams(), ...filterParams() };
-
-    const res = await $fetch('/api/admin/users', { params }) as any;
-    users.value = res.users;
-    totalUsers.value = res.total;
-    hasMore.value = res.hasMore;
-    offset.value = res.users.length;
-  } catch (e) {
-    console.error('Failed to fetch users:', e);
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function fetchMoreUsers() {
-  if (loading.value || !hasMore.value) return;
-  loading.value = true;
-  try {
-    const params = { limit: String(PAGE_SIZE), offset: String(offset.value), ...sortParams(), ...filterParams() };
-
-    const res = await $fetch('/api/admin/users', { params }) as any;
-    users.value.push(...res.users);
-    totalUsers.value = res.total;
-    hasMore.value = res.hasMore;
-    offset.value += res.users.length;
-  } catch (e) {
-    console.error('Failed to fetch more users:', e);
-  } finally {
-    loading.value = false;
-  }
-}
+const {
+  items: users,
+  total: totalUsers,
+  hasMore,
+  loading,
+  refresh: fetchUsers,
+  rootRef: tableWrapperRef,
+  sentinelRef,
+} = usePaginatedList<User>('/api/admin/users', {
+  itemsKey: 'users',
+  params: () => ({ ...sortParams(), ...filterParams() }),
+});
+const debouncedFetch = useDebounceFn(fetchUsers, 300);
 
 async function toggleUser(user: User) {
   toggling.value = user.fid;
@@ -473,24 +448,13 @@ async function toggleUser(user: User) {
 
 async function applyCodes(user: User) {
   applying.value = user.fid;
-  delete applyResults.value[user.fid];
+  clearResult(user.fid);
   try {
+    // Queued codes are redeemed in the background
     const res = await $fetch(`/api/admin/users/${user.fid}/apply-codes`, { method: 'POST' }) as any;
-    applyResults.value[user.fid] = {
-      success: res.success,
-      message: res.queuedCount === 0
-        ? 'No codes to apply'
-        : `${res.redeemedCount}/${res.queuedCount} applied`,
-    };
-    // Auto-dismiss after 5 seconds
-    setTimeout(() => {
-      delete applyResults.value[user.fid];
-    }, 5000);
+    showResult(user.fid, res.success, res.queuedCount === 0 ? 'No codes to apply' : `Queued ${res.queuedCount} code(s)`);
   } catch (e: any) {
-    applyResults.value[user.fid] = {
-      success: false,
-      message: 'Failed to apply codes',
-    };
+    showResult(user.fid, false, 'Failed to apply codes');
   } finally {
     applying.value = null;
   }
@@ -501,51 +465,30 @@ async function applyAllCodes() {
   if (!confirm(`Apply all validated gift codes to ${targets}? This may take a while.`)) return;
 
   applyingAll.value = true;
-  applyAllResult.value = null;
+  clearApplyAllResult();
   try {
+    // Queued codes are redeemed in the background
     const res = await $fetch('/api/admin/users/apply-all', { method: 'POST', body: filterParams() }) as any;
     const scope = res.targetCount === null ? '' : `${res.targetCount} filtered active user(s): `;
-    applyAllResult.value = {
-      success: res.success,
-      message: scope + (res.queuedCount === 0
-        ? 'No unredeemed codes to apply'
-        : `Queued ${res.queuedCount}, processed ${res.processed} (${res.successCount} success, ${res.failedCount} failed)`),
-    };
+    showApplyAllResult(res.success, scope + (res.message || (res.queuedCount === 0
+      ? 'No unredeemed codes to apply'
+      : `Queued ${res.queuedCount} code(s)`)));
   } catch (e: any) {
-    applyAllResult.value = {
-      success: false,
-      message: 'Failed to apply codes for all users',
-    };
+    showApplyAllResult(false, 'Failed to apply codes for all users');
   } finally {
     applyingAll.value = false;
   }
 }
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString();
-}
-
-let observer: IntersectionObserver | null = null;
-
-watch(sentinelRef, (el) => {
-  if (observer) observer.disconnect();
-  if (!el || !tableWrapperRef.value) return;
-  observer = new IntersectionObserver((entries) => {
-    if (entries[0]?.isIntersecting) fetchMoreUsers();
-  }, { root: tableWrapperRef.value, threshold: 0 });
-  observer.observe(el);
-});
-
 onMounted(() => {
   fetchUsers();
   fetchPriorityUsers();
   // Picks up a refresh that is already running (e.g. after a page reload)
-  pollBulkRefresh();
+  fetchBulkRefreshStatus();
 });
 
 onUnmounted(() => {
-  observer?.disconnect();
-  if (bulkPollTimer) clearTimeout(bulkPollTimer);
+  for (const timer of rowResultTimers.values()) clearTimeout(timer);
 });
 </script>
 
@@ -658,7 +601,7 @@ onUnmounted(() => {
 }
 
 @media (max-width: 720px) {
-  .toolbar .action-btn {
+  .toolbar .toolbar-btn {
     flex: 1 1 100%;
   }
 

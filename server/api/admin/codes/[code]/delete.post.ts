@@ -1,8 +1,8 @@
-import { giftCodes } from '../../../../utils/db';
+import { giftCodes } from '../../../../db';
 import { logger } from '../../../../utils/logger';
 
-export default defineEventHandler(async (event) => {
-  const code = getRouterParam(event, 'code');
+export default defineEventHandler((event) => {
+  const code = getRouterParam(event, 'code', { decode: true });
   if (!code) {
     throw createError({ statusCode: 400, message: 'Code is required' });
   }

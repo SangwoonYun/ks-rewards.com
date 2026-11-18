@@ -1,32 +1,9 @@
-﻿import { giftCodes, type GiftCode } from '../../utils/db';
-import { logger } from '../../utils/logger';
+import { giftCodes } from '../../db';
 
-export default defineEventHandler(async (event) => {
-  try {
-    const query = getQuery(event);
-    const { status } = query;
+// The public code list: the newest active and expired codes
+const PUBLIC_STATUSES = ['validated', 'expired'];
+const LIMIT = 100;
 
-    let codes: GiftCode[];
-    if (status && typeof status === 'string' && status !== 'deleted') {
-      codes = giftCodes.findByStatus(status);
-    } else {
-      codes = giftCodes.findAll(100); // Limit to last 100 codes by default
-    }
-
-    // Get stats using the new helper
-    const stats = giftCodes.stats();
-
-    return {
-      success: true,
-      codes,
-      stats
-    };
-  } catch (error: any) {
-    logger.error('Error getting gift codes:', error);
-    return {
-      success: false,
-      error: 'Internal server error'
-    };
-  }
+export default defineEventHandler(() => {
+  return { success: true, codes: giftCodes.findByStatuses(PUBLIC_STATUSES, LIMIT) };
 });
-

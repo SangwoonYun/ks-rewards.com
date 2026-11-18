@@ -1,28 +1,26 @@
-import { giftCodes } from '../../../utils/db';
+import { giftCodes } from '../../../db';
 import { logger } from '../../../utils/logger';
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event);
-  const { code, source } = body;
+  const body = await readBody(event).catch(() => null);
+  const code = typeof body?.code === 'string' ? body.code.trim() : '';
 
-  if (!code || typeof code !== 'string' || !code.trim()) {
-    throw createError({ statusCode: 400, message: 'Gift code is required' });
+  if (!/^[a-zA-Z0-9]+$/.test(code)) {
+    throw createError({ statusCode: 400, message: 'Gift code must be letters and digits only' });
   }
 
-  const cleanCode = code.trim();
-
-  const existing = giftCodes.findByCode(cleanCode);
+  const existing = giftCodes.findByCode(code);
   if (existing?.validation_status === 'deleted') {
-    giftCodes.restoreDeleted(cleanCode);
-    logger.info(`Admin restored deleted gift code: ${cleanCode}`);
-    return { success: true, code: cleanCode };
+    giftCodes.restoreDeleted(code);
+    logger.info(`Admin restored deleted gift code: ${code}`);
+    return { success: true, code };
   }
   if (existing) {
     throw createError({ statusCode: 409, message: 'Gift code already exists' });
   }
 
-  giftCodes.insertOrIgnore(cleanCode, 'pending', source || 'admin');
-  logger.info(`Admin added gift code: ${cleanCode}`);
+  giftCodes.insertOrIgnore(code, 'pending', typeof body?.source === 'string' && body.source ? body.source : 'admin');
+  logger.info(`Admin added gift code: ${code}`);
 
-  return { success: true, code: cleanCode };
+  return { success: true, code };
 });

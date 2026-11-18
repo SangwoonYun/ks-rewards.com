@@ -4,13 +4,22 @@
  * with the NUXT_ prefix (e.g. NUXT_DB_PATH, NUXT_KS_ENCRYPT_KEY)
  */
 
+/**
+ * Parse a numeric setting; a missing or malformed value must fail at startup instead of turning
+ * into NaN (setInterval(fn, NaN) runs every millisecond)
+ */
+function positiveInt(name: string, value: unknown): number {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n <= 0) {
+    throw new Error(`Invalid configuration: ${name} must be a positive integer, got "${String(value)}"`);
+  }
+  return n;
+}
+
 export function getConfig() {
   const rc = useRuntimeConfig();
 
   return {
-    nodeEnv: process.env.NODE_ENV || 'development',
-    port: parseInt(String(process.env.PORT || '3000'), 10),
-
     db: {
       path: rc.dbPath as string,
     },
@@ -26,17 +35,17 @@ export function getConfig() {
     },
 
     retry: {
-      maxRetries: parseInt(String(rc.maxRetries), 10),
-      retryDelayMs: parseInt(String(rc.retryDelayMs), 10),
-      minRequestIntervalMs: parseInt(String(rc.minRequestIntervalMs), 10),
-      searchRequestIntervalMs: parseInt(String(rc.searchRequestIntervalMs), 10),
-      redeemDelayMs: parseInt(String(rc.redeemDelayMs), 10),
+      maxRetries: positiveInt('maxRetries', rc.maxRetries),
+      retryDelayMs: positiveInt('retryDelayMs', rc.retryDelayMs),
+      minRequestIntervalMs: positiveInt('minRequestIntervalMs', rc.minRequestIntervalMs),
+      searchRequestIntervalMs: positiveInt('searchRequestIntervalMs', rc.searchRequestIntervalMs),
+      redeemDelayMs: positiveInt('redeemDelayMs', rc.redeemDelayMs),
     },
 
     scheduler: {
-      redemptionIntervalMinutes: parseInt(String(rc.redemptionIntervalMinutes), 10),
-      discoveryIntervalMinutes: parseInt(String(rc.discoveryIntervalMinutes), 10),
-      backupIntervalHours: parseInt(String(rc.backupIntervalHours), 10),
+      redemptionIntervalMinutes: positiveInt('redemptionIntervalMinutes', rc.redemptionIntervalMinutes),
+      discoveryIntervalMinutes: positiveInt('discoveryIntervalMinutes', rc.discoveryIntervalMinutes),
+      backupIntervalHours: positiveInt('backupIntervalHours', rc.backupIntervalHours),
     },
 
     admin: {
@@ -47,8 +56,7 @@ export function getConfig() {
   } as const;
 }
 
-// Backward-compatible export: lazy singleton
-// Works in Nitro server context where useRuntimeConfig() is available
+// Lazy singleton: works in the Nitro server context where useRuntimeConfig() is available
 let _config: ReturnType<typeof getConfig> | null = null;
 
 export const config = new Proxy({} as ReturnType<typeof getConfig>, {
@@ -59,3 +67,30 @@ export const config = new Proxy({} as ReturnType<typeof getConfig>, {
     return (_config as any)[prop];
   },
 });
+
+// Placeholder values shipped in this repository; anyone can read them
+const PLACEHOLDER_SECRETS = new Set([
+  'change-me',
+  'change-me-in-production',
+  'change-me-in-production-to-a-random-64-char-string',
+]);
+const MIN_JWT_SECRET_LENGTH = 32;
+
+/**
+ * In production, refuse to start with admin credentials anyone can guess (a known JWT secret lets anyone forge an admin session)
+ */
+export function assertProductionSecrets() {
+  if (process.env.NODE_ENV !== 'production') return;
+
+  const { password, jwtSecret } = config.admin;
+  const problems: string[] = [];
+  if (PLACEHOLDER_SECRETS.has(jwtSecret) || jwtSecret.length < MIN_JWT_SECRET_LENGTH) {
+    problems.push(`NUXT_ADMIN_JWT_SECRET must be a random string of at least ${MIN_JWT_SECRET_LENGTH} characters`);
+  }
+  if (PLACEHOLDER_SECRETS.has(password)) {
+    problems.push('NUXT_ADMIN_PASSWORD must not be a placeholder value');
+  }
+  if (problems.length > 0) {
+    throw new Error(`Insecure configuration: ${problems.join('; ')}`);
+  }
+}

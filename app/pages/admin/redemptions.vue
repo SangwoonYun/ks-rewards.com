@@ -13,7 +13,7 @@
       <button
         class="tab-btn"
         :class="{ active: activeTab === 'queue' }"
-        @click="activeTab = 'queue'; fetchQueue()"
+        @click="openQueueTab"
       >
         Queue
         <span v-if="pendingCount > 0" class="tab-badge">{{ pendingCount }}</span>
@@ -60,12 +60,12 @@
               <td data-label="ID">{{ r.id }}</td>
               <td data-label="FID">{{ r.fid }}</td>
               <td class="avatar-cell">
-                <img :src="r.avatar_url || '/images/default-avatar.png'" :alt="r.nickname || r.fid" class="avatar" referrerpolicy="no-referrer" />
+                <UserAvatar :src="r.avatar_url" :alt="r.nickname || r.fid" class="avatar" />
               </td>
               <td data-label="Nickname">{{ r.nickname || '-' }}</td>
               <td data-label="Code"><code>{{ r.code }}</code></td>
               <td data-label="Status"><span class="badge" :class="redemptionStatusClass(r.status)">{{ r.status }}</span></td>
-              <td data-label="Time">{{ formatDate(r.redeemed_at) }}</td>
+              <td data-label="Time">{{ formatDateTime(r.redeemed_at) }}</td>
             </tr>
             <tr v-if="historyList.length === 0 && !loadingHistory">
               <td colspan="7" class="empty">No redemptions found</td>
@@ -104,6 +104,14 @@
           {{ refreshing ? `Refreshing... (${refreshing.done}/${refreshing.total})` : `Refresh Profile (${selectedFids.length})` }}
         </button>
         <button
+          v-if="refreshing"
+          class="toolbar-btn btn-danger"
+          :disabled="refreshing.cancel"
+          @click="refreshing.cancel = true"
+        >
+          {{ refreshing.cancel ? 'Stopping...' : 'Stop' }}
+        </button>
+        <button
           v-if="selectedIds.length > 0"
           class="toolbar-btn btn-danger"
           :disabled="queueBusy"
@@ -113,7 +121,7 @@
         </button>
       </div>
 
-      <div v-if="retryMessage" class="message message-success">{{ retryMessage }}</div>
+      <ResultBanner :flash="queueFlash" @dismiss="clearQueueMessage" />
       <div class="info-bar">
         <span>{{ queueList.length }} / {{ totalQueue }} items</span>
       </div>
@@ -140,7 +148,7 @@
               <td class="check-cell" data-label="Select">
                 <input
                   type="checkbox"
-                  :checked="selectedIds.includes(item.id)"
+                  :checked="isSelected(item.id)"
                   @change="toggleSelect(item.id)"
                 />
               </td>
@@ -148,14 +156,14 @@
               <td data-label="FID">{{ item.fid }}</td>
               <td data-label="Kingdom">{{ item.kingdom || '-' }}</td>
               <td class="avatar-cell">
-                <img :src="item.avatar_url || '/images/default-avatar.png'" :alt="item.nickname || item.fid" class="avatar" referrerpolicy="no-referrer" />
+                <UserAvatar :src="item.avatar_url" :alt="item.nickname || item.fid" class="avatar" />
               </td>
               <td data-label="Nickname">{{ item.nickname || '-' }}</td>
               <td data-label="Code"><code>{{ item.code }}</code></td>
               <td data-label="Status"><span class="badge" :class="queueStatusClass(item.status)">{{ item.status }}</span></td>
               <td data-label="Attempts">{{ item.attempts }}</td>
               <td class="error-cell" data-label="Error">{{ item.error_message || '-' }}</td>
-              <td data-label="Created">{{ formatDate(item.created_at) }}</td>
+              <td data-label="Created">{{ formatDateTime(item.created_at) }}</td>
             </tr>
             <tr v-if="queueList.length === 0 && !loadingQueue">
               <td colspan="11" class="empty">Queue is empty</td>
@@ -174,14 +182,12 @@
 </template>
 
 <script setup lang="ts">
-import type { QueueItem, Redemption } from '~~/server/utils/db';
+import type { QueueItem, Redemption } from '~~/server/db';
 
 definePageMeta({
   layout: 'admin',
-  middleware: ['admin'],
 });
 
-const PAGE_SIZE = 50;
 // Pause between users in a bulk profile refresh (same pace as the redemption failures page)
 const REFRESH_INTERVAL_MS = 1500;
 
@@ -190,159 +196,98 @@ const activeTab = ref<'history' | 'queue'>('history');
 // History state
 const fidFilter = ref('');
 const codeFilter = ref('');
-const historyList = ref<Redemption[]>([]);
-const totalHistory = ref(0);
-const historyHasMore = ref(false);
-const historyOffset = ref(0);
-const historyWrapperRef = ref<HTMLElement | null>(null);
-const historySentinelRef = ref<HTMLElement | null>(null);
-const loadingHistory = ref(true);
+const {
+  items: historyList,
+  total: totalHistory,
+  hasMore: historyHasMore,
+  loading: loadingHistory,
+  refresh: fetchHistory,
+  rootRef: historyWrapperRef,
+  sentinelRef: historySentinelRef,
+} = usePaginatedList<Redemption>('/api/admin/redemptions', {
+  itemsKey: 'redemptions',
+  params: () => {
+    const params: Record<string, string> = {};
+    if (fidFilter.value.trim()) params.fid = fidFilter.value.trim();
+    if (codeFilter.value.trim()) params.code = codeFilter.value.trim();
+    return params;
+  },
+});
+const debouncedFetchHistory = useDebounceFn(fetchHistory, 300);
 
 // Queue state
-const queueList = ref<QueueItem[]>([]);
-const totalQueue = ref(0);
-const queueHasMore = ref(false);
-const queueOffset = ref(0);
-const queueWrapperRef = ref<HTMLElement | null>(null);
-const queueSentinelRef = ref<HTMLElement | null>(null);
 const pendingCount = ref(0);
-const loadingQueue = ref(false);
-const selectedIds = ref<number[]>([]);
+const {
+  items: queueList,
+  total: totalQueue,
+  hasMore: queueHasMore,
+  loading: loadingQueue,
+  refresh: refreshQueue,
+  rootRef: queueWrapperRef,
+  sentinelRef: queueSentinelRef,
+} = usePaginatedList<QueueItem>('/api/admin/redemptions/queue', {
+  itemsKey: 'items',
+  onResponse: (res) => { pendingCount.value = res.pendingCount; },
+});
+const { selected, has: isSelected, toggle: toggleSelect, setAll, clear: clearSelection } = useSelection<number>();
 const retrying = ref(false);
 const removing = ref(false);
-const refreshing = ref<{ done: number; total: number } | null>(null);
-const retryMessage = ref('');
+const refreshing = ref<{ done: number; total: number; cancel: boolean } | null>(null);
+const { flash: queueFlash, show: showQueueMessage, clear: clearQueueMessage } = useFlash();
 const queueBusy = computed(() => retrying.value || removing.value || !!refreshing.value);
 
-let debounceTimer: ReturnType<typeof setTimeout>;
-
-function debouncedFetchHistory() {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(fetchHistory, 300);
+// The selection only refers to the rows of the list it was made on
+function fetchQueue() {
+  clearSelection();
+  return refreshQueue();
 }
 
-async function fetchHistory() {
-  loadingHistory.value = true;
-  historyOffset.value = 0;
-  historyList.value = [];
-  try {
-    const params: Record<string, string> = { limit: String(PAGE_SIZE), offset: '0' };
-    if (fidFilter.value.trim()) params.fid = fidFilter.value.trim();
-    if (codeFilter.value.trim()) params.code = codeFilter.value.trim();
-
-    const res: any = await $fetch('/api/admin/redemptions', { params });
-    historyList.value = res.redemptions;
-    totalHistory.value = res.total;
-    historyHasMore.value = res.hasMore;
-    historyOffset.value = res.redemptions.length;
-  } catch (e) {
-    console.error('Failed to fetch history:', e);
-  } finally {
-    loadingHistory.value = false;
-  }
+function openQueueTab() {
+  if (activeTab.value === 'queue') return;
+  activeTab.value = 'queue';
+  fetchQueue();
 }
 
-async function fetchMoreHistory() {
-  if (loadingHistory.value || !historyHasMore.value) return;
-  loadingHistory.value = true;
-  try {
-    const params: Record<string, string> = { limit: String(PAGE_SIZE), offset: String(historyOffset.value) };
-    if (fidFilter.value.trim()) params.fid = fidFilter.value.trim();
-    if (codeFilter.value.trim()) params.code = codeFilter.value.trim();
-
-    const res: any = await $fetch('/api/admin/redemptions', { params });
-    historyList.value.push(...res.redemptions);
-    totalHistory.value = res.total;
-    historyHasMore.value = res.hasMore;
-    historyOffset.value += res.redemptions.length;
-  } catch (e) {
-    console.error('Failed to fetch more history:', e);
-  } finally {
-    loadingHistory.value = false;
-  }
-}
-
-async function fetchQueue() {
-  loadingQueue.value = true;
-  queueOffset.value = 0;
-  queueList.value = [];
-  try {
-    const res: any = await $fetch('/api/admin/redemptions/queue', {
-      params: { limit: String(PAGE_SIZE), offset: '0' },
-    });
-    queueList.value = res.items;
-    totalQueue.value = res.total;
-    queueHasMore.value = res.hasMore;
-    queueOffset.value = res.items.length;
-    pendingCount.value = res.pendingCount;
-  } catch (e) {
-    console.error('Failed to fetch queue:', e);
-  } finally {
-    loadingQueue.value = false;
-  }
-}
-
-async function fetchMoreQueue() {
-  if (loadingQueue.value || !queueHasMore.value) return;
-  loadingQueue.value = true;
-  try {
-    const res: any = await $fetch('/api/admin/redemptions/queue', {
-      params: { limit: String(PAGE_SIZE), offset: String(queueOffset.value) },
-    });
-    queueList.value.push(...res.items);
-    totalQueue.value = res.total;
-    queueHasMore.value = res.hasMore;
-    queueOffset.value += res.items.length;
-  } catch (e) {
-    console.error('Failed to fetch more queue:', e);
-  } finally {
-    loadingQueue.value = false;
-  }
-}
-
-function toggleSelect(id: number) {
-  const idx = selectedIds.value.indexOf(id);
-  if (idx >= 0) {
-    selectedIds.value.splice(idx, 1);
-  } else {
-    selectedIds.value.push(id);
-  }
-}
+const selectedIds = computed(() => [...selected.value]);
 
 // Any item can be selected (for removal); only failed/processing ones can be retried
 const selectedRetryableIds = computed(() =>
   queueList.value
-    .filter(i => ['failed', 'processing'].includes(i.status) && selectedIds.value.includes(i.id))
+    .filter(i => ['failed', 'processing'].includes(i.status) && isSelected(i.id))
     .map(i => i.id)
 );
 
 const allSelected = computed(() =>
   queueList.value.length > 0 &&
-  queueList.value.every(i => selectedIds.value.includes(i.id))
+  queueList.value.every(i => isSelected(i.id))
 );
 
 function toggleAll(e: Event) {
   const checked = (e.target as HTMLInputElement).checked;
   if (checked) {
-    selectedIds.value = queueList.value.map(i => i.id);
+    setAll(queueList.value.map(i => i.id), true);
   } else {
-    selectedIds.value = [];
+    clearSelection();
   }
 }
 
 // A user can have several selected items; each user is refreshed once
 const selectedFids = computed(() => [
-  ...new Set(queueList.value.filter(i => selectedIds.value.includes(i.id)).map(i => i.fid)),
+  ...new Set(queueList.value.filter(i => isSelected(i.id)).map(i => i.fid)),
 ]);
+
+let unmounted = false;
 
 async function refreshSelectedProfiles() {
   const fids = selectedFids.value;
   if (fids.length === 0) return;
   if (!confirm(`Refresh the profile (nickname, avatar, kingdom) of ${fids.length} user(s)? Users not found or inactive are deactivated and their queue items removed.`)) return;
-  refreshing.value = { done: 0, total: fids.length };
-  retryMessage.value = '';
+  const run = { done: 0, total: fids.length, cancel: false };
+  refreshing.value = run;
+  clearQueueMessage();
   const counts = { updated: 0, kingdom: 0, deactivated: 0, notFound: 0, failed: 0 };
   for (const fid of fids) {
+    if (run.cancel) break;
     try {
       const res: any = await $fetch(`/api/admin/users/${fid}/refresh-profile`, { method: 'POST' });
       if (res.result === 'updated') counts.updated++;
@@ -354,13 +299,17 @@ async function refreshSelectedProfiles() {
       counts.failed++;
     }
     refreshing.value!.done++;
-    if (refreshing.value!.done < fids.length) {
+    if (run.done < fids.length && !run.cancel) {
       await new Promise(resolve => setTimeout(resolve, REFRESH_INTERVAL_MS));
     }
   }
+  if (unmounted) return;
   refreshing.value = null;
-  retryMessage.value = `Profiles refreshed: ${counts.updated} updated (${counts.kingdom} kingdom changes, ${counts.deactivated} deactivated), ${counts.notFound} not found, ${counts.failed} failed`;
-  selectedIds.value = [];
+  showQueueMessage(
+    counts.failed === 0,
+    `Profiles refreshed: ${counts.updated} updated (${counts.kingdom} kingdom changes, ${counts.deactivated} deactivated), ${counts.notFound} not found, ${counts.failed} failed` +
+      (run.done < fids.length ? ` (stopped after ${run.done}/${fids.length})` : ''),
+  );
   fetchQueue();
 }
 
@@ -368,17 +317,16 @@ async function removeSelected() {
   if (selectedIds.value.length === 0) return;
   if (!confirm(`Remove ${selectedIds.value.length} item(s) from the queue? They will not be redeemed.`)) return;
   removing.value = true;
-  retryMessage.value = '';
+  clearQueueMessage();
   try {
     const res: any = await $fetch('/api/admin/redemptions/remove', {
       method: 'POST',
       body: { ids: selectedIds.value },
     });
-    retryMessage.value = `${res.removedCount} items removed from the queue`;
-    selectedIds.value = [];
+    showQueueMessage(true, `${res.removedCount} items removed from the queue`);
     fetchQueue();
   } catch (e: any) {
-    retryMessage.value = e?.data?.message || 'Remove failed';
+    showQueueMessage(false, e?.data?.message || 'Remove failed');
   } finally {
     removing.value = false;
   }
@@ -387,62 +335,20 @@ async function removeSelected() {
 async function retrySelected() {
   if (selectedRetryableIds.value.length === 0) return;
   retrying.value = true;
-  retryMessage.value = '';
+  clearQueueMessage();
   try {
     const res: any = await $fetch('/api/admin/redemptions/retry', {
       method: 'POST',
       body: { ids: selectedRetryableIds.value },
     });
-    retryMessage.value = `${res.resetCount} items reset to pending`;
-    selectedIds.value = [];
+    showQueueMessage(true, `${res.resetCount} items reset to pending`);
     fetchQueue();
   } catch (e: any) {
-    retryMessage.value = e?.data?.message || 'Retry failed';
+    showQueueMessage(false, e?.data?.message || 'Retry failed');
   } finally {
     retrying.value = false;
   }
 }
-
-function redemptionStatusClass(status: string) {
-  const s = status.toUpperCase();
-  if (['SUCCESS', 'RECEIVED'].includes(s)) return 'badge-success';
-  if (s.includes('PENDING')) return 'badge-warning';
-  return 'badge-danger';
-}
-
-function queueStatusClass(status: string) {
-  switch (status) {
-    case 'pending': return 'badge-warning';
-    case 'processing': return 'badge-info';
-    case 'failed': return 'badge-danger';
-    default: return 'badge-muted';
-  }
-}
-
-function formatDate(d: string) {
-  return new Date(d).toLocaleString();
-}
-
-let historyObserver: IntersectionObserver | null = null;
-let queueObserver: IntersectionObserver | null = null;
-
-watch(historySentinelRef, (el) => {
-  if (historyObserver) historyObserver.disconnect();
-  if (!el || !historyWrapperRef.value) return;
-  historyObserver = new IntersectionObserver((entries) => {
-    if (entries[0]?.isIntersecting) fetchMoreHistory();
-  }, { root: historyWrapperRef.value, threshold: 0 });
-  historyObserver.observe(el);
-});
-
-watch(queueSentinelRef, (el) => {
-  if (queueObserver) queueObserver.disconnect();
-  if (!el || !queueWrapperRef.value) return;
-  queueObserver = new IntersectionObserver((entries) => {
-    if (entries[0]?.isIntersecting) fetchMoreQueue();
-  }, { root: queueWrapperRef.value, threshold: 0 });
-  queueObserver.observe(el);
-});
 
 onMounted(() => {
   fetchHistory();
@@ -450,16 +356,12 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  historyObserver?.disconnect();
-  queueObserver?.disconnect();
+  unmounted = true;
+  if (refreshing.value) refreshing.value.cancel = true;
 });
 </script>
 
 <style scoped>
-.check-cell {
-  width: 40px;
-}
-
 @media (max-width: 720px) {
   .toolbar .search-input {
     flex-basis: calc(50% - 4px);

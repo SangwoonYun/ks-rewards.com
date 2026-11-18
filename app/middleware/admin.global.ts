@@ -1,5 +1,7 @@
+// Every admin page except the login page needs a session
 export default defineNuxtRouteMiddleware(async (to) => {
-  if (to.path === '/admin/login') {
+  const isAdminPage = to.path === '/admin' || to.path.startsWith('/admin/');
+  if (!isAdminPage || to.path === '/admin/login') {
     return;
   }
 

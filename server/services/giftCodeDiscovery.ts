@@ -1,272 +1,60 @@
-﻿import axios from 'axios';
-import { cleanGiftCode } from './kingshotApi';
+import { giftCodes, queue } from '../db';
+import { fetchGiftCodes } from '../clients/giftCodeSource';
+import { validatePendingCodes, validateExistingCodes } from './codeValidation';
+import { kickQueueWorker } from './queueWorker';
+import { runExclusive } from './jobs';
 import { logger } from '../utils/logger';
-import { getErrorMessage } from '../utils/errors';
-import { config } from '../utils/config';
 
-interface GiftCodeInfo {
-  code: string;
-  date?: string;   // publish date; absent for codes listed without one
-}
+// Validated codes are re-checked for expiry at most this often. Each check is a real redemption per code;
+// between checks, the queue itself marks a code expired as soon as a redemption says so.
+const EXISTING_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+let lastExistingCheckAt = 0;
 
 /**
- * Parse gift code line from API response
- * @param line - Line in format "CODE DD.MM.YYYY", or just "CODE" for codes without a date
- * @returns Parsed code (and date when present) or null if invalid
+ * Add the codes from the external API that are not in the database yet (as pending)
  */
-function parseGiftCodeLine(line: string): GiftCodeInfo | null {
-  const parts = line.trim().split(/\s+/);
-  if (parts.length < 1 || parts.length > 2) {
-    return null;
+export async function syncGiftCodes() {
+  const apiCodes = await fetchGiftCodes();
+  const known = new Set(giftCodes.findAll().map(c => c.code));
+
+  const newCodeList: string[] = [];
+  for (const apiCode of apiCodes) {
+    // A deleted code is not in findAll; INSERT OR IGNORE keeps it deleted
+    if (!known.has(apiCode.code) && giftCodes.insertOrIgnore(apiCode.code, 'pending', 'api', apiCode.date).changes > 0) {
+      newCodeList.push(apiCode.code);
+      logger.info(`✨ New gift code discovered: ${apiCode.code}`);
+    }
   }
 
-  const [code, dateStr] = parts;
-
-  // Validate code format (alphanumeric only)
-  if (!code || !/^[a-zA-Z0-9]+$/.test(code)) {
-    return null;
-  }
-
-  // Some codes have no date (permanent, or expiring at an unannounced time).
-  // The date is only the publish date - whether a code still works is decided by redeeming it.
-  const date = dateStr ? parseCodeDate(dateStr) : null;
-  if (dateStr && !date) {
-    logger.warn(`Gift code ${code} has an unreadable date "${dateStr}", treating it as undated`);
-  }
-
+  logger.info(`Gift code sync: ${newCodeList.length} new, ${apiCodes.length} from API`);
   return {
-    code: cleanGiftCode(code),
-    ...(date ? { date } : {})
+    newCodes: newCodeList.length,
+    newCodeList,
+    existingCodes: apiCodes.length - newCodeList.length,
+    totalApiCodes: apiCodes.length
   };
 }
 
 /**
- * Parse a DD.MM.YYYY date to an ISO string, or null if unreadable
+ * One discovery cycle: sync, validate pending codes (new ones and ones whose validation was
+ * inconclusive before), re-check validated codes once a day, then queue every validated code for every
+ * active user who still needs it (also covers reactivated users) and start the worker.
+ * Never runs twice at once: null when a cycle is already running.
  */
-function parseCodeDate(dateStr: string): string | null {
-  const dateParts = dateStr.split('.');
-  if (dateParts.length !== 3) {
-    return null;
-  }
+export function runDiscoveryCycle() {
+  return runExclusive('Gift code discovery', async () => {
+    const sync = await syncGiftCodes();
+    const validation = await validatePendingCodes();
 
-  const [day = NaN, month = NaN, year = NaN] = dateParts.map(p => parseInt(p, 10));
-  if (isNaN(day) || isNaN(month) || isNaN(year)) {
-    return null;
-  }
-
-  // Use AOE (Anywhere on Earth, UTC-12) so a code is valid on its date regardless of timezone
-  const date = new Date(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-12:00`);
-  if (isNaN(date.getTime())) {
-    return null;
-  }
-
-  return date.toISOString();
-}
-
-/**
- * Fetch gift codes from the external API
- * @returns Array of gift code objects
- */
-export async function fetchGiftCodesFromAPI(): Promise<GiftCodeInfo[]> {
-  try {
-    logger.info('Fetching gift codes from external API...');
-
-    const response = await axios.get(config.giftCodeApi.url, {
-      headers: {
-        'X-API-Key': config.giftCodeApi.key,
-        'Content-Type': 'application/json'
-      },
-      timeout: 15000
-    });
-
-    if (response.status !== 200) {
-      throw new Error(`API returned status ${response.status}`);
+    if (Date.now() - lastExistingCheckAt >= EXISTING_CHECK_INTERVAL_MS) {
+      // The clock starts with the first check that had something to check
+      if ((await validateExistingCodes()).checked > 0) lastExistingCheckAt = Date.now();
     }
 
-    const data = response.data;
+    const queuedCount = queue.enqueue();
+    if (queuedCount > 0) logger.info(`Queued ${queuedCount} redemption(s)`);
+    kickQueueWorker();
 
-    if (data.error || data.detail) {
-      throw new Error(data.error || data.detail || 'Unknown API error');
-    }
-
-    const apiCodes = data.codes || [];
-    logger.info(`Received ${apiCodes.length} code lines from API`);
-
-    // Parse and validate codes
-    const validCodes: GiftCodeInfo[] = [];
-    const invalidCodes: string[] = [];
-
-    for (const line of apiCodes) {
-      const parsed = parseGiftCodeLine(line);
-      if (parsed) {
-        validCodes.push(parsed);
-      } else {
-        invalidCodes.push(line);
-      }
-    }
-
-    if (invalidCodes.length > 0) {
-      logger.warn(`Found ${invalidCodes.length} invalid code lines:`, invalidCodes);
-    }
-
-    logger.info(`Parsed ${validCodes.length} valid gift codes from API`);
-
-    return validCodes;
-  } catch (error: any) {
-    const msg = getErrorMessage(error);
-    logger.error('Error fetching gift codes from API:', msg);
-
-    // Handle rate limiting errors specially
-    if (error.response?.status === 429 || error.response?.status === 1015) {
-      logger.warn('Rate limited by API, will retry later');
-    }
-
-    return [];
-  }
-}
-
-/**
- * Validate existing gift codes to check if they're still active
- */
-export async function validateExistingCodes() {
-  try {
-    const { giftCodes } = await import('../utils/db');
-    const { validateGiftCode } = await import('./redemptionService');
-
-    // Get all validated codes (currently considered active)
-    const validatedCodes = giftCodes.findByStatus('validated');
-
-    if (validatedCodes.length === 0) {
-      logger.info('No validated codes to check');
-      return {
-        success: true,
-        checkedCodes: 0,
-        expiredCodes: 0,
-        stillValidCodes: 0
-      };
-    }
-
-    logger.info(`Checking ${validatedCodes.length} validated code(s) for expiration...`);
-
-    let expiredCodes = 0;
-    let stillValidCodes = 0;
-    const expiredCodeList: string[] = [];
-
-    for (const codeEntry of validatedCodes) {
-      try {
-        logger.info(`Validating code: ${codeEntry.code}`);
-        const validationResult = await validateGiftCode(codeEntry.code);
-
-        // The validateGiftCode function already updates the database status
-        // We just need to count the results
-        if (validationResult.valid === false) {
-          expiredCodes++;
-          expiredCodeList.push(codeEntry.code);
-          logger.warn(`Code ${codeEntry.code} is now expired or invalid`);
-        } else if (validationResult.valid === true) {
-          stillValidCodes++;
-          logger.info(`Code ${codeEntry.code} is still valid`);
-        }
-
-        // Add a delay between validation checks to respect rate limits
-        await new Promise(resolve => setTimeout(resolve, 3000));
-      } catch (error) {
-        logger.error(`Error validating code ${codeEntry.code}:`, getErrorMessage(error));
-      }
-    }
-
-    logger.info(`Validation check complete: ${stillValidCodes} still valid, ${expiredCodes} expired`);
-
-    return {
-      success: true,
-      checkedCodes: validatedCodes.length,
-      expiredCodes,
-      expiredCodeList,
-      stillValidCodes
-    };
-  } catch (error) {
-    logger.error('Error during code validation:', getErrorMessage(error));
-    return {
-      success: false,
-      error: getErrorMessage(error)
-    };
-  }
-}
-
-/**
- * Synchronize gift codes from external API to the local database
- */
-export async function syncGiftCodes() {
-  try {
-    logger.info('Starting gift code synchronization...');
-
-    const apiCodes = await fetchGiftCodesFromAPI();
-
-    if (apiCodes.length === 0) {
-      logger.info('No gift codes received from API');
-      return {
-        success: true,
-        newCodes: 0,
-        existingCodes: 0,
-        totalApiCodes: 0,
-        validationCheck: null
-      };
-    }
-
-    const { giftCodes } = await import('../utils/db');
-    const localCodes = giftCodes.findAll();
-
-    const localCodesMap = new Map(localCodes.map(c => [c.code, c]));
-
-    let newCodes = 0;
-    let existingCodes = 0;
-    const newCodeList: string[] = [];
-
-    for (const apiCode of apiCodes) {
-      try {
-        if (!localCodesMap.has(apiCode.code)) {
-          // New code discovered
-          const result = giftCodes.insertOrIgnore(apiCode.code, 'pending', 'api', apiCode.date);
-          if (result.changes > 0) {
-            newCodes++;
-            newCodeList.push(apiCode.code);
-            logger.info(`✨ New gift code discovered: ${apiCode.code}`);
-          }
-        } else {
-          existingCodes++;
-        }
-      } catch (error) {
-        logger.error(`Error processing code ${apiCode.code}:`, getErrorMessage(error));
-      }
-    }
-
-    logger.info(`Sync complete: ${newCodes} new, ${existingCodes} existing, ${apiCodes.length} total`);
-
-    // Validate existing codes to check for expired ones
-    logger.info('Checking existing validated codes for expiration...');
-    const validationCheck = await validateExistingCodes();
-
-    return {
-      success: true,
-      newCodes,
-      newCodeList,
-      existingCodes,
-      totalApiCodes: apiCodes.length,
-      validationCheck
-    };
-  } catch (error) {
-    logger.error('Error during gift code sync:', getErrorMessage(error));
-    return {
-      success: false,
-      error: getErrorMessage(error)
-    };
-  }
-}
-
-/**
- * Get statistics about gift codes
- */
-export async function getGiftCodeStats() {
-  const { giftCodes } = await import('../utils/db');
-  return giftCodes.stats();
+    return { ...sync, validated: validation.valid, queuedCount };
+  });
 }

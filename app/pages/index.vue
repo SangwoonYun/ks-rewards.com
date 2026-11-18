@@ -105,15 +105,14 @@
           <div id="redemptions" :class="['redemptions-list', { 'is-empty': redemptions.length === 0 }]">
             <template v-if="redemptions.length > 0">
               <div
-                v-for="(redemption, index) in redemptions"
-                :key="index"
+                v-for="redemption in redemptions"
+                :key="redemption.id"
                 class="redemption-row"
               >
-                <img
-                  :src="redemption.avatar_url || '/images/default-avatar.png'"
+                <UserAvatar
+                  :src="redemption.avatar_url"
                   :alt="`${redemption.nickname || 'Player'} avatar`"
                   class="redemption-avatar"
-                  @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
                 />
 
                 <div class="redemption-info">
@@ -121,7 +120,7 @@
                     <span class="redemption-nickname">{{ redemption.nickname || 'Player' }}</span>
                     <span v-if="redemption.kingdom" class="redemption-kingdom">(#{{ redemption.kingdom }})</span>
                   </div>
-                  <span class="redemption-time">{{ formatTimeKST(redemption.redeemed_at) }} KST</span>
+                  <span class="redemption-time">{{ formatKST(redemption.redeemed_at) }} KST</span>
                 </div>
                 <span class="redemption-code">{{ redemption.code }}</span>
               </div>
@@ -201,6 +200,7 @@ interface GiftCode {
 }
 
 interface Redemption {
+  id: number;
   fid: string;
   code: string;
   status: string;
@@ -210,18 +210,9 @@ interface Redemption {
   redeemed_at: string;
 }
 
-interface CodesStats {
-  total: number;
-  validated: number;
-  pending: number;
-  invalid: number;
-  expired: number;
-}
-
 interface CodesResponse {
   success: boolean;
   codes?: GiftCode[];
-  stats?: CodesStats;
 }
 
 interface RedemptionsResponse {
@@ -240,13 +231,15 @@ interface StatsResponse {
   stats?: SiteStats;
 }
 
+// Failures are HTTP errors (400 invalid input, 422 verification failed, 500 server error)
 interface RegisterResponse {
-  success: boolean;
-  redeemedCount?: number;
+  success: true;
+  message: string;
+  // Codes queued (high priority) for this player, redeemed in the background
+  queuedCount: number;
   alreadyRegistered?: boolean;
   kidUpdated?: boolean;
   reactivated?: boolean;
-  error?: string;
 }
 
 // Reactive state
@@ -258,13 +251,6 @@ const isRegistering = ref(false);
 const codes = ref<GiftCode[]>([]);
 const redemptions = ref<Redemption[]>([]);
 const siteStats = ref<SiteStats | null>(null);
-const codesStats = ref<CodesStats>({
-  total: 0,
-  validated: 0,
-  pending: 0,
-  invalid: 0,
-  expired: 0
-});
 
 // Add SEO meta tags and structured data for the homepage
 useHead({
@@ -351,44 +337,24 @@ const displayedCodes = computed(() => {
 });
 
 
-// Helper functions
-const formatTimeKST = (time: string) => {
-  if (!time) return '';
-  const date = new Date(time); // ISO 8601 UTC format from API
-
-  return new Intl.DateTimeFormat('ko-KR', {
-    timeZone: 'Asia/Seoul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  }).format(date);
-};
-
 // API functions
 let abortController: AbortController | null = null;
 
 async function fetchCodes() {
+  // Cancel any pending request
+  abortController?.abort();
+  const controller = new AbortController();
+  abortController = controller;
   try {
-    // Cancel any pending request
-    if (abortController) {
-      abortController.abort();
-    }
-    abortController = new AbortController();
-
     const response = await $fetch<CodesResponse>('/api/codes', {
-      signal: abortController.signal
+      signal: controller.signal
     });
     if (response.success) {
       codes.value = response.codes || [];
-      codesStats.value = response.stats || codesStats.value;
     }
   } catch (error: any) {
-    // Ignore abort errors (they're expected when we cancel requests)
-    if (error.name !== 'AbortError') {
+    // Ignore aborts (expected when we cancel requests); ofetch wraps them in a FetchError
+    if (!controller.signal.aborted) {
       console.error('Error fetching codes:', error);
     }
   }
@@ -401,10 +367,7 @@ async function fetchRedemptions() {
       redemptions.value = response.redemptions || [];
     }
   } catch (error: any) {
-    // Ignore abort errors
-    if (error.name !== 'AbortError') {
-      console.error('Error fetching redemptions:', error);
-    }
+    console.error('Error fetching redemptions:', error);
   }
 }
 
@@ -468,34 +431,23 @@ async function registerPlayer() {
           body: { fid, kid }
         });
 
-        if (response.success) {
-          if (response.alreadyRegistered) {
-            if (response.reactivated) {
-              const head = response.kidUpdated ? '재활성화됨(왕국 번호 갱신)' : '재활성화됨';
-              results.push(response.redeemedCount
-                ? `${fid}: ${head}, 코드 ${response.redeemedCount}개 수령 성공`
-                : `${fid}: ${head}`);
-            } else if (response.kidUpdated) {
-              results.push(response.redeemedCount
-                ? `${fid}: 왕국 번호 갱신됨, 코드 ${response.redeemedCount}개 수령 성공`
-                : `${fid}: 왕국 번호 갱신됨`);
-            } else {
-              results.push(response.redeemedCount
-                ? `${fid}: 이미 등록됨, 코드 ${response.redeemedCount}개 수령 성공`
-                : `${fid}: 이미 등록됨`);
-            }
-          } else if (response.redeemedCount) {
-            results.push(`${fid}: 등록 완료, 코드 ${response.redeemedCount}개 수령 성공`);
+        // Queued codes are redeemed in the background, so they show up in the recent redemptions shortly
+        const queued = response.queuedCount ? `, 코드 ${response.queuedCount}개 수령 대기열에 추가됨` : '';
+        let head = '등록 완료';
+        if (response.alreadyRegistered) {
+          if (response.reactivated) {
+            head = response.kidUpdated ? '재활성화됨(왕국 번호 갱신)' : '재활성화됨';
           } else {
-            results.push(`${fid}: 등록 완료`);
+            head = response.kidUpdated ? '왕국 번호 갱신됨' : '이미 등록됨';
           }
-          successCount++;
-        } else {
-          results.push(`${fid}: 실패 - ${response.error || '알 수 없는 오류'}`);
-          failCount++;
         }
+        results.push(`${fid}: ${head}${queued}`);
+        successCount++;
       } catch (error: any) {
-        results.push(`${fid}: 오류 - ${error.message || String(error)}`);
+        // 400 (invalid input) and 422 (verification failed) carry a message for the user; anything else is an error
+        const message = error.data?.message ?? error.data?.statusMessage ?? error.message ?? String(error);
+        const rejected = error.statusCode === 400 || error.statusCode === 422;
+        results.push(`${fid}: ${rejected ? '실패' : '오류'} - ${message}`);
         failCount++;
       }
     }
@@ -505,14 +457,8 @@ async function registerPlayer() {
       playerInput.value = ''; // Clear input on success
       serverInput.value = '';
 
-      // Wait a moment to let immediate redemptions complete, then refresh
-      statusMessage.value += ' 수령 내역 갱신 중...';
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Refresh data
-      await fetchCodes();
-      await fetchRedemptions();
-      await fetchStats();
+      // The rest shows up through polling as the queued codes are redeemed
+      fetchRedemptions();
 
       // Show a concise summary plus the per-fid results so users see what happened
       const summary = `✅ ${successCount}명(건) 등록 완료`;
@@ -529,31 +475,17 @@ async function registerPlayer() {
   }
 }
 
-// Polling for updates
-let redemptionsInterval: NodeJS.Timeout;
-let codesInterval: NodeJS.Timeout;
+// Polling for updates (right away, then after each run)
+const redemptionsPolling = usePolling(fetchRedemptions, 5000, { immediate: true });
+// Codes less frequently
+const codesPolling = usePolling(() => Promise.all([fetchCodes(), fetchStats()]), 10000, { immediate: true });
 
 onMounted(() => {
-  // Initial fetch
-  fetchCodes();
-  fetchRedemptions();
-  fetchStats();
-
-  // Start polling
-  redemptionsInterval = setInterval(() => {
-    fetchRedemptions();
-  }, 5000);
-
-  // Fetch codes less frequently
-  codesInterval = setInterval(() => {
-    fetchCodes();
-    fetchStats();
-  }, 10000);
+  redemptionsPolling.start();
+  codesPolling.start();
 });
 
 onUnmounted(() => {
-  if (redemptionsInterval) clearInterval(redemptionsInterval);
-  if (codesInterval) clearInterval(codesInterval);
   if (abortController) abortController.abort();
 });
 </script>

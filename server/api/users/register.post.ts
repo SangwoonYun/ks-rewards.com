@@ -1,7 +1,8 @@
-﻿import { users } from '../../utils/db';
-import { verifyPlayer } from '../../services/kingshotApi';
-import { redeemNowForUser } from '../../services/redemptionService';
+import { users } from '../../db';
+import { verifyPlayer } from '../../clients/kingshot';
+import { queueAndRedeem } from '../../services/queueWorker';
 import { refreshProfile } from '../../services/playerLookup';
+import { parseFid, parseKingdom } from '../../utils/player';
 import { logger } from '../../utils/logger';
 
 const VERIFY_ERRORS = {
@@ -10,121 +11,78 @@ const VERIFY_ERRORS = {
   UNVERIFIED: '플레이어 정보를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.'
 } as const;
 
+// New and re-verified users go ahead of the regular queue
+const REGISTRATION_PRIORITY = 10;
+
+/**
+ * Register a player (or update its kingdom / reactivate it). The fid/kid pair is verified first;
+ * the codes the player still needs are then queued with high priority and redeemed in the background.
+ */
 export default defineEventHandler(async (event) => {
-  try {
-    const body = await readBody(event);
-    const { fid, kid } = body;
+  const body = await readBody(event).catch(() => null);
+  const fid = parseFid(body?.fid);
+  const kid = parseKingdom(body?.kid);
 
-    if (!fid) {
-      return {
-        success: false,
-        error: 'FID is required'
-      };
-    }
+  if (!fid) {
+    throw createError({ statusCode: 400, message: 'FID must be numeric' });
+  }
+  if (!kid) {
+    throw createError({ statusCode: 400, message: 'Kingdom number must be numeric' });
+  }
 
-    if (!kid) {
-      return {
-        success: false,
-        error: 'Kingdom number (kid) is required'
-      };
-    }
+  const existingUser = users.findByFid(fid);
 
-    // Validate FID and kid format
-    if (!/^\d+$/.test(fid)) {
-      return {
-        success: false,
-        error: 'FID must be numeric'
-      };
-    }
-
-    if (!/^\d+$/.test(String(kid))) {
-      return {
-        success: false,
-        error: 'Kingdom number must be numeric'
-      };
-    }
-
-    const existingUser = await users.findByFid(fid);
-
-    // Already registered and active with the same, already verified kingdom: nothing to verify.
-    // A deactivated user registering again goes through verification and is reactivated below.
-    if (existingUser && existingUser.active === 1 && String(kid) === existingUser.kingdom && existingUser.kingdom_verified_at) {
-      return {
-        success: true,
-        message: 'User already registered',
-        user: existingUser,
-        redeemedCount: 0,
-        alreadyRegistered: true,
-        kidUpdated: false
-      };
-    }
-
-    // New user, kingdom change, or a kingdom never verified: verify the fid/kid pair before saving it
-    const verification = await verifyPlayer(fid, String(kid));
-    if (!verification.ok) {
-      logger.warn(`❌ Rejected registration for ${fid} (kid ${kid}): ${verification.status}`);
-      return {
-        success: false,
-        error: VERIFY_ERRORS[verification.reason],
-        reason: verification.reason
-      };
-    }
-
-    if (existingUser) {
-      const kidUpdated = String(kid) !== existingUser.kingdom;
-      const reactivated = existingUser.active !== 1;
-      await users.setVerifiedKingdom(fid, String(kid));
-      // The user asked for redemptions again, so a deactivated account (by an admin or the lookup) comes back
-      if (reactivated) {
-        users.updateActive(fid, 1);
-        logger.info(`✅ Reactivated ${fid} on registration`);
-      }
-      void refreshProfile(fid, false);
-      logger.info(kidUpdated
-        ? `✅ Updated kingdom for ${fid}: ${existingUser.kingdom} -> ${kid}`
-        : `✅ Verified kingdom for ${fid}: ${kid}`);
-
-      // Retry codes that failed with the old (or unverified) kingdom
-      const redeemedCount = await redeemNowForUser(fid, String(kid));
-
-      return {
-        success: true,
-        message: reactivated ? 'User reactivated' : kidUpdated ? 'Kingdom updated' : 'User already registered',
-        user: {
-          ...existingUser,
-          kingdom: String(kid),
-          active: 1
-        },
-        redeemedCount,
-        alreadyRegistered: true,
-        kidUpdated,
-        reactivated
-      };
-    }
-
-    // Create new user
-    await users.create(fid, null, 1);
-    await users.setVerifiedKingdom(fid, String(kid));
-    // Nickname and avatar in the background, so registration does not wait on the lookup site
-    void refreshProfile(fid, false);
-    const user = await users.findByFid(fid);
-
-    logger.info(`✅ User registered: ${fid} (kid ${kid})`);
-
-    const redeemedCount = await redeemNowForUser(fid, String(kid));
-
+  // Already registered and active with the same, already verified kingdom: nothing to verify.
+  // A deactivated user registering again goes through verification and is reactivated below.
+  if (existingUser && existingUser.active === 1 && kid === existingUser.kingdom && existingUser.kingdom_verified_at) {
     return {
       success: true,
-      message: 'User registered successfully',
-      user,
-      redeemedCount
-    };
-  } catch (error: any) {
-    logger.error('Error registering user:', error);
-    return {
-      success: false,
-      error: 'Internal server error',
-      message: error?.message || String(error)
+      message: 'User already registered',
+      user: existingUser,
+      queuedCount: 0,
+      alreadyRegistered: true,
+      kidUpdated: false
     };
   }
+
+  // New user, kingdom change, or a kingdom never verified: verify the fid/kid pair before saving it
+  const verification = await verifyPlayer(fid, kid);
+  if (!verification.ok) {
+    logger.warn(`❌ Rejected registration for ${fid} (kid ${kid}): ${verification.status}`);
+    throw createError({
+      statusCode: 422,
+      message: VERIFY_ERRORS[verification.reason],
+      data: { reason: verification.reason, message: VERIFY_ERRORS[verification.reason] }
+    });
+  }
+
+  if (!existingUser) {
+    users.create(fid, null, 1);
+  }
+  users.setVerifiedKingdom(fid, kid);
+  const reactivated = existingUser !== undefined && existingUser.active !== 1;
+  // The user asked for redemptions again, so a deactivated account (by an admin or the lookup) comes back
+  if (reactivated) users.updateActive(fid, 1);
+  // Nickname and avatar in the background, so registration does not wait on the lookup site
+  void refreshProfile(fid, false);
+
+  // Codes that failed with the old (or unverified) kingdom are queued again too
+  const queuedCount = queueAndRedeem({ fid, priority: REGISTRATION_PRIORITY });
+
+  if (!existingUser) {
+    logger.info(`✅ User registered: ${fid} (kid ${kid}), ${queuedCount} code(s) queued`);
+    return { success: true, message: 'User registered successfully', user: users.findByFid(fid), queuedCount };
+  }
+
+  const kidUpdated = kid !== existingUser.kingdom;
+  logger.info(`✅ ${reactivated ? 'Reactivated' : kidUpdated ? 'Updated kingdom for' : 'Verified kingdom for'} ${fid}: ${existingUser.kingdom} -> ${kid}, ${queuedCount} code(s) queued`);
+  return {
+    success: true,
+    message: reactivated ? 'User reactivated' : kidUpdated ? 'Kingdom updated' : 'User already registered',
+    user: users.findByFid(fid),
+    queuedCount,
+    alreadyRegistered: true,
+    kidUpdated,
+    reactivated
+  };
 });

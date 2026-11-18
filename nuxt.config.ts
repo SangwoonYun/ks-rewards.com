@@ -35,7 +35,8 @@ export default defineNuxtConfig({
   // Nitro configuration (server engine)
   nitro: {
     experimental: {
-      openAPI: true
+      // API docs (/_openapi.json, /_scalar) only in development: they list every admin route
+      openAPI: process.env.NODE_ENV !== 'production'
     }
   },
 

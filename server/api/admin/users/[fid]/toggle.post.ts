@@ -1,11 +1,10 @@
-import { users } from '../../../../utils/db';
+import { users } from '../../../../db';
+import { queueAndRedeem } from '../../../../services/queueWorker';
+import { requireFidParam } from '../../../../utils/http';
 import { logger } from '../../../../utils/logger';
 
-export default defineEventHandler(async (event) => {
-  const fid = getRouterParam(event, 'fid');
-  if (!fid) {
-    throw createError({ statusCode: 400, message: 'FID is required' });
-  }
+export default defineEventHandler((event) => {
+  const fid = requireFidParam(event);
 
   const user = users.findByFid(fid);
   if (!user) {
@@ -14,8 +13,10 @@ export default defineEventHandler(async (event) => {
 
   const newActive = user.active === 1 ? 0 : 1;
   users.updateActive(fid, newActive);
+  // Deactivating dropped the user's queue; a reactivated user gets the codes they still need
+  const queuedCount = newActive === 1 ? queueAndRedeem({ fid }) : 0;
 
-  logger.info(`Admin toggled user ${fid} active status: ${user.active} -> ${newActive}`);
+  logger.info(`Admin toggled user ${fid} active status: ${user.active} -> ${newActive}` + (queuedCount ? `, ${queuedCount} code(s) queued` : ''));
 
   return {
     success: true,

@@ -1,6 +1,5 @@
 export function useAdmin() {
   const isAuthenticated = useState<boolean>('admin-auth', () => false);
-  const isLoading = useState<boolean>('admin-loading', () => true);
 
   async function checkAuth(): Promise<boolean> {
     try {
@@ -17,8 +16,6 @@ export function useAdmin() {
     } catch {
       isAuthenticated.value = false;
       return false;
-    } finally {
-      isLoading.value = false;
     }
   }
 
@@ -30,11 +27,16 @@ export function useAdmin() {
     isAuthenticated.value = true;
   }
 
+  // Leaves the admin panel even when the request fails (e.g. the session already expired)
   async function logout(): Promise<void> {
-    await $fetch('/api/admin/auth/logout', { method: 'POST' });
+    try {
+      await $fetch('/api/admin/auth/logout', { method: 'POST' });
+    } catch (e) {
+      console.error('Logout request failed:', e);
+    }
     isAuthenticated.value = false;
     navigateTo('/admin/login');
   }
 
-  return { isAuthenticated, isLoading, checkAuth, login, logout };
+  return { isAuthenticated, checkAuth, login, logout };
 }

@@ -34,9 +34,9 @@
             @focus="showDropdown = true"
             @input="onSearchInput"
           />
-          <div v-if="showDropdown && filteredUsers.length > 0" class="dropdown-list">
+          <div v-if="showDropdown && searchResults.length > 0" class="dropdown-list">
             <div
-              v-for="user in filteredUsers"
+              v-for="user in searchResults"
               :key="user.fid"
               class="dropdown-item"
               @mousedown.prevent="selectUser(user)"
@@ -46,14 +46,11 @@
               <span v-if="isPriorityUser(user.fid)" class="dropdown-badge">Priority</span>
             </div>
           </div>
-          <div v-if="showDropdown && searchQuery.trim() && filteredUsers.length === 0 && !loadingUsers" class="dropdown-list">
+          <div v-if="showDropdown && searchQuery.trim() && searchResults.length === 0 && !loadingUsers" class="dropdown-list">
             <div class="dropdown-empty">No users found</div>
           </div>
         </div>
-        <div v-if="addResult" class="result-banner" :class="addResult.success ? 'result-success' : 'result-error'">
-          {{ addResult.message }}
-          <button class="dismiss-btn" @click="addResult = null">&times;</button>
-        </div>
+        <ResultBanner :flash="addResult" @dismiss="clearAddResult" />
       </div>
 
       <div class="table-wrapper">
@@ -74,7 +71,7 @@
             <tr v-for="pu in registeredUsers" :key="pu.fid">
               <td data-label="FID">{{ pu.fid }}</td>
               <td class="avatar-cell">
-                <img :src="pu.avatar_url || '/images/default-avatar.png'" :alt="pu.nickname || pu.fid" class="avatar" referrerpolicy="no-referrer" />
+                <UserAvatar :src="pu.avatar_url" :alt="pu.nickname || pu.fid" class="avatar" />
               </td>
               <td data-label="Nickname">{{ pu.nickname || '-' }}</td>
               <td data-label="Kingdom">{{ pu.kingdom || '-' }}</td>
@@ -98,11 +95,11 @@
                 >{{ pu.priority }}</span>
               </td>
               <td data-label="Status">
-                <span class="badge" :class="pu.active ? 'badge-success' : 'badge-danger'">
+                <span class="badge" :class="activeBadgeClass(pu.active)">
                   {{ pu.active ? 'Active' : 'Inactive' }}
                 </span>
               </td>
-              <td data-label="Added">{{ formatDate(pu.added_at) }}</td>
+              <td data-label="Added">{{ formatDateTime(pu.added_at) }}</td>
               <td class="actions-cell">
                 <button
                   class="action-btn btn-remove"
@@ -113,12 +110,12 @@
                 </button>
               </td>
             </tr>
-            <tr v-if="registeredUsers.length === 0 && !loading">
+            <tr v-if="registeredUsers.length === 0 && !loadingRegistered">
               <td colspan="8" class="empty">No priority users registered</td>
             </tr>
           </tbody>
         </table>
-        <div v-if="loading" class="loading">Loading...</div>
+        <div v-if="loadingRegistered" class="loading">Loading...</div>
       </div>
     </div>
 
@@ -148,15 +145,15 @@
               <td data-label="ID">{{ item.id }}</td>
               <td data-label="FID">{{ item.fid }}</td>
               <td class="avatar-cell">
-                <img :src="item.avatar_url || '/images/default-avatar.png'" :alt="item.nickname || item.fid" class="avatar" referrerpolicy="no-referrer" />
+                <UserAvatar :src="item.avatar_url" :alt="item.nickname || item.fid" class="avatar" />
               </td>
               <td data-label="Nickname">{{ item.nickname || '-' }}</td>
               <td data-label="Code"><code>{{ item.code }}</code></td>
               <td data-label="Priority"><span class="badge badge-priority">{{ item.priority }}</span></td>
-              <td data-label="Status"><span class="badge" :class="statusClass(item.status)">{{ item.status }}</span></td>
+              <td data-label="Status"><span class="badge" :class="queueStatusClass(item.status)">{{ item.status }}</span></td>
               <td data-label="Attempts">{{ item.attempts }}</td>
               <td class="error-cell" data-label="Error">{{ item.error_message || '-' }}</td>
-              <td data-label="Created">{{ formatDate(item.created_at) }}</td>
+              <td data-label="Created">{{ formatDateTime(item.created_at) }}</td>
             </tr>
             <tr v-if="queueItems.length === 0 && !loading">
               <td colspan="10" class="empty">No priority items in queue</td>
@@ -175,42 +172,55 @@
 </template>
 
 <script setup lang="ts">
-import type { QueueItem, User, PriorityUser } from '~~/server/utils/db';
+import type { QueueItem, User, PriorityUser } from '~~/server/db';
 
 definePageMeta({
   layout: 'admin',
-  middleware: ['admin'],
 });
+
+const MAX_PRIORITY = 100;
 
 const activeTab = ref<'users' | 'queue'>('users');
 
 // Search / dropdown state
 const searchQuery = ref('');
 const showDropdown = ref(false);
-const allUsers = ref<User[]>([]);
+const searchResults = ref<User[]>([]);
 const loadingUsers = ref(false);
 const dropdownRef = ref<HTMLElement | null>(null);
 
 // Add result
-const addResult = ref<{ success: boolean; message: string } | null>(null);
+const { flash: addResult, show: showAddResult, clear: clearAddResult } = useFlash();
 
-const PAGE_SIZE = 50;
-
-// Priority data
+// Priority data: the registered users come with every page of the priority queue
 const registeredUsers = ref<PriorityUser[]>([]);
-const queueItems = ref<QueueItem[]>([]);
 const pendingCount = ref(0);
-const totalQueueItems = ref(0);
-const queueHasMore = ref(false);
-const queueOffset = ref(0);
-const queueWrapperRef = ref<HTMLElement | null>(null);
-const queueSentinelRef = ref<HTMLElement | null>(null);
-const loading = ref(true);
+const {
+  items: queueItems,
+  total: totalQueueItems,
+  hasMore: queueHasMore,
+  loading,
+  refresh: fetchData,
+  rootRef: queueWrapperRef,
+  sentinelRef: queueSentinelRef,
+} = usePaginatedList<QueueItem>('/api/admin/priority/queue', {
+  itemsKey: 'queueItems',
+  limitParam: 'queueLimit',
+  offsetParam: 'queueOffset',
+  totalKey: 'totalQueueItems',
+  hasMoreKey: 'queueHasMore',
+  onResponse: (res) => {
+    registeredUsers.value = res.registeredUsers;
+    pendingCount.value = res.pendingCount;
+  },
+});
+// A refresh (not loading the next queue page) also reloads the registered users
+const loadingRegistered = computed(() => loading.value && queueItems.value.length === 0);
 const removing = ref<string | null>(null);
 
 // Inline priority editing
 const editingFid = ref<string | null>(null);
-const editingValue = ref<number>(10);
+const editingValue = ref<number | ''>(10);
 const priorityInputRef = ref<HTMLInputElement[] | null>(null);
 
 function startEdit(pu: PriorityUser) {
@@ -229,11 +239,18 @@ function cancelEdit() {
 }
 
 async function savePriority(pu: PriorityUser) {
+  // Escape already ended the edit; the blur that follows must not save
+  if (editingFid.value !== pu.fid) return;
   const fid = pu.fid;
-  const newPriority = Math.min(100, Math.max(1, editingValue.value));
+  const newPriority = editingValue.value;
   editingFid.value = null;
 
   if (newPriority === pu.priority) return;
+  // An emptied input gives '' (not a number)
+  if (typeof newPriority !== 'number' || !Number.isInteger(newPriority) || newPriority < 1 || newPriority > MAX_PRIORITY) {
+    showAddResult(false, `Priority must be a whole number between 1 and ${MAX_PRIORITY}`, 5000);
+    return;
+  }
 
   try {
     await $fetch('/api/admin/priority/update', {
@@ -241,8 +258,8 @@ async function savePriority(pu: PriorityUser) {
       body: { fid, priority: newPriority },
     });
     pu.priority = newPriority;
-  } catch (e) {
-    console.error('Failed to update priority:', e);
+  } catch (e: any) {
+    showAddResult(false, e?.data?.message || 'Failed to update priority');
   }
 }
 
@@ -252,48 +269,49 @@ function isPriorityUser(fid: string) {
   return priorityFidSet.value.has(fid);
 }
 
-const filteredUsers = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase();
-  if (!q) return allUsers.value.filter((u: User) => u.active === 1).slice(0, 20);
-  return allUsers.value
-    .filter((u: User) =>
-      u.active === 1 &&
-      (u.fid.toLowerCase().includes(q) || (u.nickname && u.nickname.toLowerCase().includes(q)))
-    )
-    .slice(0, 20);
-});
+// Active users matching the query (FID or nickname), searched on the server
+let searchRequest = 0;
+async function searchUsers() {
+  const request = ++searchRequest;
+  loadingUsers.value = true;
+  try {
+    const params: Record<string, string> = { status: 'active', limit: '20' };
+    if (searchQuery.value.trim()) params.search = searchQuery.value.trim();
+    const res: any = await $fetch('/api/admin/users', { params });
+    if (request === searchRequest) searchResults.value = res.users;
+  } catch (e) {
+    console.error('Failed to search users:', e);
+  } finally {
+    if (request === searchRequest) loadingUsers.value = false;
+  }
+}
+const debouncedSearchUsers = useDebounceFn(searchUsers, 300);
 
 function onSearchInput() {
   showDropdown.value = true;
+  debouncedSearchUsers();
 }
 
 async function selectUser(user: User) {
   showDropdown.value = false;
   searchQuery.value = '';
+  searchUsers();
 
   if (isPriorityUser(user.fid)) {
-    addResult.value = { success: false, message: `${user.nickname || user.fid} is already in priority queue` };
-    setTimeout(() => { addResult.value = null; }, 3000);
+    showAddResult(false, `${user.nickname || user.fid} is already in priority queue`, 3000);
     return;
   }
 
-  addResult.value = null;
+  clearAddResult();
   try {
     const res: any = await $fetch('/api/admin/priority/add', {
       method: 'POST',
       body: { fid: user.fid },
     });
-    addResult.value = {
-      success: res.success,
-      message: `${user.nickname || user.fid}: ${res.message}`,
-    };
+    showAddResult(res.success, `${user.nickname || user.fid}: ${res.message}`, 5000);
     fetchData();
-    setTimeout(() => { addResult.value = null; }, 5000);
   } catch (e: any) {
-    addResult.value = {
-      success: false,
-      message: e?.data?.message || 'Failed to add user',
-    };
+    showAddResult(false, e?.data?.message || 'Failed to add user');
   }
 }
 
@@ -312,95 +330,20 @@ async function removeUser(fid: string) {
   }
 }
 
-async function fetchUsers() {
-  loadingUsers.value = true;
-  try {
-    const res: any = await $fetch('/api/admin/users');
-    allUsers.value = res.users;
-  } catch (e) {
-    console.error('Failed to fetch users:', e);
-  } finally {
-    loadingUsers.value = false;
-  }
-}
-
-async function fetchData() {
-  loading.value = true;
-  queueOffset.value = 0;
-  queueItems.value = [];
-  try {
-    const res: any = await $fetch('/api/admin/priority/queue', {
-      params: { queueLimit: String(PAGE_SIZE), queueOffset: '0' },
-    });
-    registeredUsers.value = res.registeredUsers;
-    queueItems.value = res.queueItems;
-    pendingCount.value = res.pendingCount;
-    totalQueueItems.value = res.totalQueueItems;
-    queueHasMore.value = res.queueHasMore;
-    queueOffset.value = res.queueItems.length;
-  } catch (e) {
-    console.error('Failed to fetch priority data:', e);
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function fetchMoreQueue() {
-  if (loading.value || !queueHasMore.value) return;
-  loading.value = true;
-  try {
-    const res: any = await $fetch('/api/admin/priority/queue', {
-      params: { queueLimit: String(PAGE_SIZE), queueOffset: String(queueOffset.value) },
-    });
-    queueItems.value.push(...res.queueItems);
-    queueHasMore.value = res.queueHasMore;
-    queueOffset.value += res.queueItems.length;
-  } catch (e) {
-    console.error('Failed to fetch more queue items:', e);
-  } finally {
-    loading.value = false;
-  }
-}
-
-function statusClass(status: string) {
-  switch (status) {
-    case 'pending': return 'badge-warning';
-    case 'processing': return 'badge-info';
-    case 'failed': return 'badge-danger';
-    default: return 'badge-muted';
-  }
-}
-
-function formatDate(d: string) {
-  return new Date(d).toLocaleString();
-}
-
 function handleClickOutside(e: MouseEvent) {
   if (dropdownRef.value && !dropdownRef.value.contains(e.target as Node)) {
     showDropdown.value = false;
   }
 }
 
-let queueObserver: IntersectionObserver | null = null;
-
-watch(queueSentinelRef, (el) => {
-  if (queueObserver) queueObserver.disconnect();
-  if (!el || !queueWrapperRef.value) return;
-  queueObserver = new IntersectionObserver((entries) => {
-    if (entries[0]?.isIntersecting) fetchMoreQueue();
-  }, { root: queueWrapperRef.value, threshold: 0 });
-  queueObserver.observe(el);
-});
-
 onMounted(() => {
   fetchData();
-  fetchUsers();
+  searchUsers();
   document.addEventListener('mousedown', handleClickOutside);
 });
 
 onUnmounted(() => {
   document.removeEventListener('mousedown', handleClickOutside);
-  queueObserver?.disconnect();
 });
 </script>
 

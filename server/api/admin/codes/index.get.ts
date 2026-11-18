@@ -1,35 +1,14 @@
-import { giftCodes, type GiftCode } from '../../../utils/db';
+import { giftCodes } from '../../../db';
+import { getPagination } from '../../../utils/http';
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler((event) => {
   const query = getQuery(event);
-  const status = query.status as string;
-  const search = (query.search as string || '').trim().toLowerCase();
-  const limit = parseInt(query.limit as string) || 50;
-  const offset = parseInt(query.offset as string) || 0;
+  const status = typeof query.status === 'string' && query.status ? query.status : undefined;
+  const search = typeof query.search === 'string' ? query.search.trim() : '';
 
-  let codes: GiftCode[];
-  if (status && typeof status === 'string') {
-    codes = giftCodes.findByStatus(status);
-  } else {
-    codes = giftCodes.findAll();
-  }
+  // Without a status filter: validated codes first, newest first within each group
+  const { limit, offset } = getPagination(event);
+  const { codes, total } = giftCodes.list({ status, search, limit, offset });
 
-  if (search) {
-    codes = codes.filter(c => c.code.toLowerCase().includes(search));
-  }
-
-  // Show validated codes first, keeping date_discovered DESC ordering within each group
-  if (!status) {
-    codes = [...codes].sort((a, b) => {
-      const aValidated = a.validation_status === 'validated' ? 0 : 1;
-      const bValidated = b.validation_status === 'validated' ? 0 : 1;
-      return aValidated - bValidated;
-    });
-  }
-
-  const total = codes.length;
-  const paginated = codes.slice(offset, offset + limit);
-  const stats = giftCodes.stats();
-
-  return { success: true, codes: paginated, total, hasMore: offset + limit < total, stats };
+  return { success: true, codes, total, hasMore: offset + limit < total, stats: giftCodes.stats() };
 });

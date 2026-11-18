@@ -4,7 +4,10 @@
 
     <div v-if="loading" class="loading">Loading...</div>
 
-    <template v-else-if="data">
+    <!-- A failed refresh keeps the last data below the error -->
+    <div v-if="error" class="result-banner result-error">{{ error }}</div>
+
+    <template v-if="data">
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-label">Total Users</div>
@@ -60,12 +63,12 @@
               <tr v-for="r in data.recentRedemptions" :key="r.id">
                 <td data-label="FID">{{ r.fid }}</td>
                 <td class="avatar-cell">
-                  <img :src="r.avatar_url || '/images/default-avatar.png'" :alt="r.nickname || r.fid" class="avatar" referrerpolicy="no-referrer" />
+                  <UserAvatar :src="r.avatar_url" :alt="r.nickname || r.fid" class="avatar" />
                 </td>
                 <td data-label="Nickname">{{ r.nickname || '-' }}</td>
                 <td data-label="Code"><code>{{ r.code }}</code></td>
-                <td data-label="Status"><span class="badge" :class="statusClass(r.status)">{{ r.status }}</span></td>
-                <td data-label="Time">{{ formatDate(r.redeemed_at) }}</td>
+                <td data-label="Status"><span class="badge" :class="redemptionStatusClass(r.status)">{{ r.status }}</span></td>
+                <td data-label="Time">{{ formatDateTime(r.redeemed_at) }}</td>
               </tr>
               <tr v-if="data.recentRedemptions.length === 0">
                 <td colspan="6" class="empty">No recent redemptions</td>
@@ -81,39 +84,26 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
-  middleware: ['admin'],
 });
 
 const loading = ref(true);
 const data = ref<any>(null);
+const error = ref('');
 
 async function fetchDashboard() {
   try {
     data.value = await $fetch('/api/admin/dashboard');
-  } catch (e) {
+    error.value = '';
+  } catch (e: any) {
     console.error('Failed to fetch dashboard:', e);
+    error.value = `Failed to load the dashboard: ${e?.data?.message || e?.message || 'Request failed'}`;
   } finally {
     loading.value = false;
   }
 }
 
-function statusClass(status: string) {
-  const s = status.toUpperCase();
-  if (['SUCCESS', 'RECEIVED'].includes(s)) return 'badge-success';
-  if (s.includes('PENDING')) return 'badge-warning';
-  return 'badge-danger';
-}
-
-function formatDate(d: string) {
-  return new Date(d).toLocaleString();
-}
-
-let interval: ReturnType<typeof setInterval>;
-onMounted(() => {
-  fetchDashboard();
-  interval = setInterval(fetchDashboard, 30000);
-});
-onUnmounted(() => clearInterval(interval));
+const { start } = usePolling(fetchDashboard, 30000, { immediate: true });
+onMounted(() => start());
 </script>
 
 <style scoped>

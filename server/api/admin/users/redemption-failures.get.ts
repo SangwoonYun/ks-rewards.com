@@ -1,5 +1,6 @@
-import { redemptions } from '../../../utils/db';
-import { SETTLED_STATUSES, setFailureCount } from '../../../utils/failureCount';
+import { redemptions } from '../../../db';
+import { SETTLED_STATUSES } from '../../../domain/redemptionStatus';
+import { setFailureCount } from '../../../utils/failureCount';
 
 // What to do about a user, from their worst failure
 export type FailureCategory = 'wrong_kingdom' | 'no_account' | 'other';

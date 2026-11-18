@@ -7,10 +7,7 @@
       원인이 해결되면(왕국 확인, 재시도 성공, 비활성화) 목록에서 자동으로 빠집니다.
     </p>
 
-    <div v-if="result" class="result-banner" :class="result.success ? 'result-success' : 'result-error'">
-      {{ result.message }}
-      <button class="dismiss-btn" @click="result = null">&times;</button>
-    </div>
+    <ResultBanner :flash="result" @dismiss="clearResult" />
 
     <div class="tabs">
       <button
@@ -140,12 +137,7 @@
             </td>
             <td data-label="FID">{{ user.fid }}</td>
             <td class="avatar-cell">
-              <img
-                :src="user.avatar_url || '/images/default-avatar.png'"
-                :alt="user.nickname || user.fid"
-                class="avatar"
-                referrerpolicy="no-referrer"
-              />
+              <UserAvatar :src="user.avatar_url" :alt="user.nickname || user.fid" class="avatar" />
             </td>
             <td data-label="Nickname">{{ user.nickname || '-' }}</td>
             <td class="kingdom-cell" data-label="Kingdom" title="Double-click to edit" @dblclick="startEdit(user)">
@@ -174,7 +166,7 @@
                 {{ STATUS_LABELS[f.status] ?? f.status }} ×{{ f.codes.length }}
               </span>
             </td>
-            <td class="nowrap" data-label="Last Failed">{{ formatDate(user.last_failed_at) }}</td>
+            <td class="nowrap" data-label="Last Failed">{{ formatDateTime(user.last_failed_at) }}</td>
             <td class="result-cell" data-label="Result">
               <span v-if="searchByFid[user.fid]" class="search-status" :class="`search-${searchByFid[user.fid]!.status}`">
                 {{ searchLabel(searchByFid[user.fid]!) }}
@@ -206,7 +198,6 @@ import type { FailureCategory, FailureUser } from '~~/server/api/admin/users/red
 
 definePageMeta({
   layout: 'admin',
-  middleware: ['admin'],
 });
 
 interface SearchState {
@@ -266,12 +257,11 @@ const editInputRef = ref<HTMLInputElement[] | HTMLInputElement | null>(null);
 const saving = ref<string | null>(null);
 const working = ref<string | null>(null);
 const rowResults = ref<Record<string, ActionResult>>({});
-const result = ref<ActionResult | null>(null);
-const selected = ref<Set<string>>(new Set());
+const { flash: result, show: showResult, clear: clearResult } = useFlash();
+const { selected, toggle: toggleOne, setAll, retain: retainSelected, clear: clearSelection } = useSelection<string>();
 const bulk = ref<{ action: Action; fids: string[]; done: number; ok: number; failed: number; cancel: boolean } | null>(null);
 const search = ref<SearchState>({ running: false, cancelRequested: false, intervalMs: 0, baseIntervalMs: 0, last429IntervalMs: null, pausedUntil: null, backoffs: 0, perFidIntervalMs: 0, activeGroups: 0, targetSenders: 0, users: [] });
 const now = ref(Date.now());
-let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
 // One action at a time (row or bulk); the kingdom search also locks the selection
 const busy = computed(() => !!bulk.value || !!working.value);
@@ -372,20 +362,7 @@ const worstCaseMinutes = computed(() => {
 });
 
 function toggleAll() {
-  const next = new Set(selected.value);
-  const check = !allChecked.value;
-  for (const u of visibleUsers.value) {
-    if (check) next.add(u.fid);
-    else next.delete(u.fid);
-  }
-  selected.value = next;
-}
-
-function toggleOne(fid: string) {
-  const next = new Set(selected.value);
-  if (next.has(fid)) next.delete(fid);
-  else next.add(fid);
-  selected.value = next;
+  setAll(visibleUsers.value.map(u => u.fid), !allChecked.value);
 }
 
 function searchLabel(u: UserSearch) {
@@ -403,7 +380,8 @@ function searchLabel(u: UserSearch) {
       const head = u.foundKingdom === u.originalKingdom
         ? 'Current kingdom OK'
         : `Found → ${u.foundKingdom}${u.foundViaGroup ? ' (group)' : u.foundViaLookup ? ' (lookup)' : ''}`;
-      return u.redeemedCount === null ? `${head} · redeeming...` : `${head} · ${u.redeemedCount} code(s) redeemed`;
+      // queuedCount: the codes queued for redemption once the kingdom was saved
+      return u.queuedCount === null ? head : `${head} · ${u.queuedCount} code(s) queued`;
     }
     case 'not_found':
       return `Not found (±500, ${u.tried} tried)`;
@@ -420,19 +398,23 @@ function searchLabel(u: UserSearch) {
 const { count: failureCount } = useFailureCount();
 watch(users, (list) => { failureCount.value = list.length; });
 
+// Called from several places at once (actions, search status): only the latest request's response is applied
+let fetchRequest = 0;
 async function fetchUsers() {
+  const request = ++fetchRequest;
   loading.value = true;
   try {
     const res = await $fetch<{ users: FailureUser[] }>('/api/admin/users/redemption-failures');
+    if (request !== fetchRequest) return;
     users.value = res.users;
     // Drop selections and results for users no longer listed
     const listed = new Set(users.value.map(u => u.fid));
-    selected.value = new Set([...selected.value].filter(fid => listed.has(fid)));
+    retainSelected(listed);
     rowResults.value = Object.fromEntries(Object.entries(rowResults.value).filter(([fid]) => listed.has(fid)));
   } catch (e) {
-    console.error('Failed to fetch redemption failures:', e);
+    if (request === fetchRequest) console.error('Failed to fetch redemption failures:', e);
   } finally {
-    loading.value = false;
+    if (request === fetchRequest) loading.value = false;
   }
 }
 
@@ -457,20 +439,18 @@ async function fetchSearchStatus() {
 
     if (wasRunning && !search.value.running) {
       const c = searchCounts.value;
-      result.value = {
-        success: true,
-        message: `Kingdom search finished: found ${c.found}, not found ${c.not_found}, no account ${c.no_player}, aborted ${c.aborted}, cancelled ${c.cancelled}.`
-      };
+      showResult(true, `Kingdom search finished: found ${c.found}, not found ${c.not_found}, no account ${c.no_player}, aborted ${c.aborted}, cancelled ${c.cancelled}.`);
       await fetchUsers();
     }
   } catch (e) {
     console.error('Failed to fetch kingdom search status:', e);
   }
 
-  if (search.value.running) {
-    pollTimer = setTimeout(fetchSearchStatus, POLL_INTERVAL_MS);
-  }
+  if (search.value.running) searchPolling.start();
+  else searchPolling.stop();
 }
+// One loop at most: start() does nothing while it runs
+const searchPolling = usePolling(fetchSearchStatus, POLL_INTERVAL_MS);
 
 async function startSearch() {
   const fids = selectedWrongKingdom.value.map(u => u.fid);
@@ -481,12 +461,11 @@ async function startSearch() {
       method: 'POST',
       body: { fids }
     });
-    result.value = null;
-    selected.value = new Set();
-    if (pollTimer) clearTimeout(pollTimer);
-    pollTimer = setTimeout(fetchSearchStatus, POLL_INTERVAL_MS);
+    clearResult();
+    clearSelection();
+    searchPolling.start();
   } catch (e: any) {
-    result.value = { success: false, message: e?.data?.message || e?.message || 'Failed to start search' };
+    showResult(false, e?.data?.message || e?.message || 'Failed to start search');
   }
 }
 
@@ -494,7 +473,7 @@ async function cancelSearch() {
   try {
     search.value = await $fetch<SearchState>('/api/admin/kingdom-search/cancel', { method: 'POST' });
   } catch (e: any) {
-    result.value = { success: false, message: e?.data?.message || e?.message || 'Failed to cancel search' };
+    showResult(false, e?.data?.message || e?.message || 'Failed to cancel search');
   }
 }
 
@@ -512,10 +491,11 @@ async function performAction(action: Action, user: FailureUser): Promise<ActionR
       return { success: res.result === 'updated' && res.kingdom?.status !== 'rejected', message, deactivated: !!res.deactivated };
     }
     if (action === 'retry') {
+      // Queued codes are redeemed in the background
       const res = await $fetch(`/api/admin/users/${user.fid}/apply-codes`, { method: 'POST' }) as any;
       return {
-        success: res.queuedCount === 0 || res.redeemedCount > 0,
-        message: res.queuedCount === 0 ? 'No codes to retry' : `Redeemed ${res.redeemedCount}/${res.queuedCount}`,
+        success: res.success !== false,
+        message: res.queuedCount === 0 ? 'No codes to retry' : `Queued ${res.queuedCount} code(s)`,
       };
     }
     // Everyone listed is active, so the toggle deactivates
@@ -528,11 +508,7 @@ async function performAction(action: Action, user: FailureUser): Promise<ActionR
 
 function removeUser(fid: string) {
   users.value = users.value.filter(u => u.fid !== fid);
-  if (selected.value.has(fid)) {
-    const next = new Set(selected.value);
-    next.delete(fid);
-    selected.value = next;
-  }
+  setAll([fid], false);
 }
 
 async function runOne(action: Action, user: FailureUser) {
@@ -542,7 +518,7 @@ async function runOne(action: Action, user: FailureUser) {
   working.value = null;
   rowResults.value[user.fid] = res;
   // The row may drop off the list once fixed, so the banner keeps the outcome
-  result.value = { success: res.success, message: `${user.fid}: ${res.message}` };
+  showResult(res.success, `${user.fid}: ${res.message}`);
   await fetchUsers();
 }
 
@@ -556,7 +532,7 @@ async function runBulk(action: Action) {
   if (!confirm(confirmText[action])) return;
 
   bulk.value = { action, fids: targets.map(u => u.fid), done: 0, ok: 0, failed: 0, cancel: false };
-  result.value = null;
+  clearResult();
   for (const user of targets) {
     if (bulk.value.cancel) break;
     working.value = user.fid;
@@ -575,13 +551,13 @@ async function runBulk(action: Action) {
 
   const b = bulk.value;
   bulk.value = null;
-  result.value = {
-    success: b.failed === 0,
-    message: `${ACTION_LABELS[action]}: ${b.ok} ok, ${b.failed} failed` +
+  showResult(
+    b.failed === 0,
+    `${ACTION_LABELS[action]}: ${b.ok} ok, ${b.failed} failed` +
       (b.done < b.fids.length ? ` (stopped after ${b.done}/${b.fids.length})` : '') +
       '. Fixed users were removed from the list.',
-  };
-  selected.value = new Set();
+  );
+  clearSelection();
   await fetchUsers();
 }
 
@@ -605,7 +581,7 @@ async function saveEdit(user: FailureUser) {
 
   if (kid === (user.kingdom || '')) return;
   if (!/^\d+$/.test(kid)) {
-    result.value = { success: false, message: `${user.fid}: Kingdom number must be numeric` };
+    showResult(false, `${user.fid}: Kingdom number must be numeric`);
     return;
   }
 
@@ -617,21 +593,17 @@ async function saveEdit(user: FailureUser) {
     }) as any;
 
     if (res.success) {
-      result.value = { success: true, message: `${user.fid}: ${user.kingdom || '-'} → ${kid}. ${res.message}` };
+      showResult(true, `${user.fid}: ${user.kingdom || '-'} → ${kid}. ${res.message}`);
       await fetchUsers();
     } else {
       // Nothing was saved: the cell keeps showing the original kingdom
-      result.value = { success: false, message: `${user.fid}: ${kid} rejected - ${res.message}` };
+      showResult(false, `${user.fid}: ${kid} rejected - ${res.message}`);
     }
   } catch (e: any) {
-    result.value = { success: false, message: `${user.fid}: ${e?.data?.message || e?.message || 'Request failed'}` };
+    showResult(false, `${user.fid}: ${e?.data?.message || e?.message || 'Request failed'}`);
   } finally {
     saving.value = null;
   }
-}
-
-function formatDate(d: string) {
-  return new Date(d).toLocaleString();
 }
 
 onMounted(() => {
@@ -640,7 +612,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  if (pollTimer) clearTimeout(pollTimer);
   if (bulk.value) bulk.value.cancel = true;
 });
 </script>
@@ -777,10 +748,6 @@ onUnmounted(() => {
 .found-list {
   margin-top: 6px;
   color: var(--success-text);
-}
-
-.check-cell {
-  width: 40px;
 }
 
 .kingdom-cell {
