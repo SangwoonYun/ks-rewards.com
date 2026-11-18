@@ -44,7 +44,7 @@
       </button>
     </div>
 
-    <div v-if="message" class="message" :class="messageType">{{ message }}</div>
+    <ResultBanner :flash="flash" @dismiss="clearMessage" />
 
     <div class="info-bar">
       <span>{{ codes.length }} / {{ totalCodes }} codes</span>
@@ -107,25 +107,15 @@
 </template>
 
 <script setup lang="ts">
-import type { GiftCode } from '~~/server/utils/db';
+import type { GiftCode } from '~~/server/db';
 
 definePageMeta({
   layout: 'admin',
-  middleware: ['admin'],
 });
-
-const PAGE_SIZE = 50;
 
 const search = ref('');
 const statusFilter = ref('');
-const codes = ref<GiftCode[]>([]);
-const totalCodes = ref(0);
-const hasMore = ref(false);
-const offset = ref(0);
-const sentinelRef = ref<HTMLElement | null>(null);
-const tableWrapperRef = ref<HTMLElement | null>(null);
 const stats = ref<any>(null);
-const loading = ref(true);
 const showAddForm = ref(false);
 const newCode = ref('');
 const adding = ref(false);
@@ -134,75 +124,44 @@ const revalidatingCode = ref<string | null>(null);
 const validating = ref(false);
 const revalidating = ref(false);
 const syncing = ref(false);
-const message = ref('');
-const messageType = ref('');
+const { flash, show: showMessage, clear: clearMessage } = useFlash();
 
-let debounceTimer: ReturnType<typeof setTimeout>;
-
-function debouncedFetch() {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(fetchCodes, 300);
-}
-
-async function fetchCodes() {
-  loading.value = true;
-  offset.value = 0;
-  codes.value = [];
-  try {
-    const params: Record<string, string> = { limit: String(PAGE_SIZE), offset: '0' };
+const {
+  items: codes,
+  total: totalCodes,
+  hasMore,
+  loading,
+  refresh: fetchCodes,
+  rootRef: tableWrapperRef,
+  sentinelRef,
+} = usePaginatedList<GiftCode>('/api/admin/codes', {
+  itemsKey: 'codes',
+  params: () => {
+    const params: Record<string, string> = {};
     if (search.value.trim()) params.search = search.value.trim();
     if (statusFilter.value) params.status = statusFilter.value;
+    return params;
+  },
+  onResponse: (res) => { if (res.stats) stats.value = res.stats; },
+});
 
-    const res: any = await $fetch('/api/admin/codes', { params });
-    codes.value = res.codes;
-    totalCodes.value = res.total;
-    hasMore.value = res.hasMore;
-    offset.value = res.codes.length;
-    stats.value = res.stats;
-  } catch (e) {
-    console.error('Failed to fetch codes:', e);
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function fetchMoreCodes() {
-  if (loading.value || !hasMore.value) return;
-  loading.value = true;
-  try {
-    const params: Record<string, string> = { limit: String(PAGE_SIZE), offset: String(offset.value) };
-    if (search.value.trim()) params.search = search.value.trim();
-    if (statusFilter.value) params.status = statusFilter.value;
-
-    const res: any = await $fetch('/api/admin/codes', { params });
-    codes.value.push(...res.codes);
-    totalCodes.value = res.total;
-    hasMore.value = res.hasMore;
-    offset.value += res.codes.length;
-  } catch (e) {
-    console.error('Failed to fetch more codes:', e);
-  } finally {
-    loading.value = false;
-  }
-}
+const debouncedFetch = useDebounceFn(fetchCodes, 300);
 
 async function addCode() {
   if (!newCode.value.trim()) return;
   adding.value = true;
-  message.value = '';
+  clearMessage();
   try {
     await $fetch('/api/admin/codes', {
       method: 'POST',
       body: { code: newCode.value.trim(), source: 'admin' },
     });
-    message.value = `Code "${newCode.value.trim()}" added successfully`;
-    messageType.value = 'message-success';
+    showMessage(true, `Code "${newCode.value.trim()}" added successfully`);
     newCode.value = '';
     showAddForm.value = false;
     fetchCodes();
   } catch (e: any) {
-    message.value = e?.data?.message || 'Failed to add code';
-    messageType.value = 'message-error';
+    showMessage(false, e?.data?.message || 'Failed to add code');
   } finally {
     adding.value = false;
   }
@@ -212,13 +171,18 @@ async function deleteCode(code: string) {
   if (!confirm(`Delete code "${code}"?`)) return;
   deleting.value = code;
   try {
-    await $fetch(`/api/admin/codes/${code}/delete`, { method: 'POST' });
-    codes.value = codes.value.filter(c => c.code !== code);
-    message.value = `Code "${code}" deleted`;
-    messageType.value = 'message-success';
+    await $fetch(`/api/admin/codes/${encodeURIComponent(code)}/delete`, { method: 'POST' });
+    // Drop the row and count it out, so the next page starts at the right offset
+    const idx = codes.value.findIndex(c => c.code === code);
+    const removed = codes.value[idx];
+    if (removed) {
+      codes.value.splice(idx, 1);
+      totalCodes.value--;
+      if (stats.value && typeof stats.value[removed.validation_status] === 'number') stats.value[removed.validation_status]--;
+    }
+    showMessage(true, `Code "${code}" deleted`);
   } catch (e: any) {
-    message.value = e?.data?.message || 'Failed to delete code';
-    messageType.value = 'message-error';
+    showMessage(false, e?.data?.message || 'Failed to delete code');
   } finally {
     deleting.value = null;
   }
@@ -226,22 +190,22 @@ async function deleteCode(code: string) {
 
 async function revalidateCode(code: string) {
   revalidatingCode.value = code;
-  message.value = '';
+  clearMessage();
   try {
     const res: any = await $fetch(`/api/admin/codes/${encodeURIComponent(code)}/revalidate`, { method: 'POST' });
     const statusChanged = res.previousStatus !== res.currentStatus;
-    message.value = statusChanged
-      ? `Code "${code}": ${res.previousStatus} → ${res.currentStatus}`
-      : `Code "${code}": still ${res.currentStatus}`;
-    messageType.value = res.currentStatus === 'validated' ? 'message-success' : 'message-error';
+    showMessage(
+      res.currentStatus === 'validated',
+      statusChanged
+        ? `Code "${code}": ${res.previousStatus} → ${res.currentStatus}`
+        : `Code "${code}": still ${res.currentStatus}`,
+    );
     const idx = codes.value.findIndex(c => c.code === code);
     const existing = codes.value[idx];
     if (existing) codes.value[idx] = { ...existing, validation_status: res.currentStatus };
-    const statsRes: any = await $fetch('/api/admin/codes', { params: { limit: '1', offset: '0' } });
-    if (statsRes.stats) stats.value = statsRes.stats;
+    if (res.stats) stats.value = res.stats;
   } catch (e: any) {
-    message.value = e?.data?.message || `Failed to revalidate "${code}"`;
-    messageType.value = 'message-error';
+    showMessage(false, e?.data?.message || `Failed to revalidate "${code}"`);
   } finally {
     revalidatingCode.value = null;
   }
@@ -249,15 +213,13 @@ async function revalidateCode(code: string) {
 
 async function triggerRevalidateInvalid() {
   revalidating.value = true;
-  message.value = '';
+  clearMessage();
   try {
     const res: any = await $fetch('/api/admin/codes/revalidate-invalid', { method: 'POST' });
-    message.value = `Revalidation complete: ${res.restored ?? 0} restored, ${res.stillInvalid ?? 0} still invalid, ${res.transient ?? 0} skipped (transient)`;
-    messageType.value = 'message-success';
+    showMessage(true, `Revalidation complete: ${res.restored ?? 0} restored, ${res.stillInvalid ?? 0} still invalid, ${res.transient ?? 0} skipped (transient)`);
     fetchCodes();
   } catch (e: any) {
-    message.value = e?.data?.message || 'Revalidation failed';
-    messageType.value = 'message-error';
+    showMessage(false, e?.data?.message || 'Revalidation failed');
   } finally {
     revalidating.value = false;
   }
@@ -265,15 +227,13 @@ async function triggerRevalidateInvalid() {
 
 async function triggerSync() {
   syncing.value = true;
-  message.value = '';
+  clearMessage();
   try {
     const res: any = await $fetch('/api/admin/codes/sync', { method: 'POST' });
-    message.value = `Sync complete: ${res.newCodes ?? 0} new, ${res.existingCodes ?? 0} existing`;
-    messageType.value = 'message-success';
+    showMessage(true, `Sync complete: ${res.newCodes ?? 0} new, ${res.existingCodes ?? 0} existing`);
     fetchCodes();
   } catch (e: any) {
-    message.value = e?.data?.message || 'Sync failed';
-    messageType.value = 'message-error';
+    showMessage(false, e?.data?.message || 'Sync failed');
   } finally {
     syncing.value = false;
   }
@@ -281,49 +241,19 @@ async function triggerSync() {
 
 async function triggerValidation() {
   validating.value = true;
-  message.value = '';
+  clearMessage();
   try {
     const res: any = await $fetch('/api/admin/codes/validate', { method: 'POST' });
-    message.value = `Validation complete: ${res.processed || 0} processed, ${res.valid || 0} valid, ${res.invalid || 0} invalid`;
-    messageType.value = 'message-success';
+    showMessage(true, `Validation complete: ${res.processed || 0} processed, ${res.valid || 0} valid, ${res.invalid || 0} invalid`);
     fetchCodes();
   } catch (e: any) {
-    message.value = e?.data?.message || 'Validation failed';
-    messageType.value = 'message-error';
+    showMessage(false, e?.data?.message || 'Validation failed');
   } finally {
     validating.value = false;
   }
 }
 
-function codeStatusClass(status: string) {
-  switch (status) {
-    case 'validated': return 'badge-success';
-    case 'pending': return 'badge-warning';
-    case 'expired': case 'invalid': return 'badge-danger';
-    default: return 'badge-muted';
-  }
-}
-
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString();
-}
-
-let observer: IntersectionObserver | null = null;
-
-watch(sentinelRef, (el) => {
-  if (observer) observer.disconnect();
-  if (!el || !tableWrapperRef.value) return;
-  observer = new IntersectionObserver((entries) => {
-    if (entries[0]?.isIntersecting) fetchMoreCodes();
-  }, { root: tableWrapperRef.value, threshold: 0 });
-  observer.observe(el);
-});
-
 onMounted(fetchCodes);
-
-onUnmounted(() => {
-  observer?.disconnect();
-});
 </script>
 
 <style scoped>

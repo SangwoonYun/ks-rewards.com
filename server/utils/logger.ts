@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Simple logging utility for server-side operations
  */
 
@@ -9,7 +9,9 @@ const LOG_LEVELS = {
   DEBUG: 3
 } as const;
 
-const currentLevel = LOG_LEVELS.INFO;
+// LOG_LEVEL=error|warn|info|debug (default info)
+const currentLevel: number =
+  LOG_LEVELS[(process.env.LOG_LEVEL || '').toUpperCase() as keyof typeof LOG_LEVELS] ?? LOG_LEVELS.INFO;
 
 function formatTimestamp(): string {
   return new Date().toISOString();

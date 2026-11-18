@@ -1,17 +1,13 @@
-﻿import { runMigrations, queue } from '../utils/db';
-import { initializeScheduledTasks } from '../services/scheduler';
+import { runMigrations, queue } from '../db';
+import { startScheduledTasks, stopScheduledTasks } from '../services/scheduler';
+import { assertProductionSecrets } from '../utils/config';
 import { logger } from '../utils/logger';
 
-let initialized = false;
-
 export default defineNitroPlugin((nitroApp) => {
-  if (initialized) return;
-  initialized = true;
-
   logger.info('🚀 Starting Kingshot Rewards service...');
 
   try {
-    // Run database migrations
+    assertProductionSecrets();
     runMigrations();
 
     // Nothing is processing yet at startup: recover items interrupted by the last shutdown
@@ -20,8 +16,8 @@ export default defineNitroPlugin((nitroApp) => {
       logger.info(`♻️  Reset ${recovered} queue item(s) stuck in 'processing' to 'pending'`);
     }
 
-    // Initialize scheduled tasks
-    initializeScheduledTasks();
+    startScheduledTasks();
+    nitroApp.hooks.hook('close', stopScheduledTasks);
 
     logger.info('✅ Kingshot Rewards service started successfully');
   } catch (error) {
@@ -29,4 +25,3 @@ export default defineNitroPlugin((nitroApp) => {
     throw error;
   }
 });
-

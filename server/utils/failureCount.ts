@@ -1,15 +1,5 @@
-import { redemptions } from './db';
-import {
-  SUCCESS_STATUSES,
-  CODE_EXPIRED_STATUSES,
-  CODE_INVALID_STATUSES,
-  PLAYER_INELIGIBLE_STATUSES
-} from '../services/kingshotApi';
-
-// Outcomes that are final and expected: not a failure to act on
-export const SETTLED_STATUSES = [
-  ...SUCCESS_STATUSES, ...CODE_EXPIRED_STATUSES, ...CODE_INVALID_STATUSES, ...PLAYER_INELIGIBLE_STATUSES
-];
+import { redemptions } from '../db';
+import { SETTLED_STATUSES } from '../domain/redemptionStatus';
 
 // The failures query is heavy and blocks the server (better-sqlite3 is synchronous), so the sidebar badge
 // reads a cached count. It may lag up to the TTL; the failures page itself always computes the full list.

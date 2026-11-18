@@ -1,61 +1,37 @@
-import {
-  autoRedeemValidatedCodes,
-  processRedemptionQueue,
-  processRedemptionsForUsers,
-  queueUnredeemedCodesForUser
-} from '../../../services/redemptionService';
-import { filterUsers, hasUserFilters } from '../../../utils/userFilters';
+import { users, queue } from '../../../db';
+import { kickQueueWorker } from '../../../services/queueWorker';
+import { parseUserFilters, hasUserFilters } from '../../../utils/userFilters';
 import { logger } from '../../../utils/logger';
 
 /**
- * Apply the validated codes to the active users matching the user grid's filters (body), or to every
- * active user when no filter is set
+ * Queue the validated codes for the active users matching the user grid's filters (body), or for every
+ * active user when no filter is set; they are redeemed in the background
  */
 export default defineEventHandler(async (event) => {
-  const filters = (await readBody(event).catch(() => null)) ?? {};
-  const filtered = hasUserFilters(filters);
+  const body = (await readBody(event).catch(() => null)) ?? {};
+  const filtered = hasUserFilters(body);
 
-  try {
-    let queuedCount = 0;
-    let targets: string[] = [];
-    if (filtered) {
-      targets = filterUsers(filters).filter(u => u.active === 1).map(u => u.fid);
-      for (const fid of targets) {
-        queuedCount += await queueUnredeemedCodesForUser(fid, 5);
-      }
-    } else {
-      // Queue validated codes for all active users
-      queuedCount = await autoRedeemValidatedCodes();
+  let queuedCount = 0;
+  let targetCount: number | null = null;
+  if (filtered) {
+    const filters = parseUserFilters(body);
+    // Only active users get codes: an "inactive" filter matches nobody to apply to
+    const targets = filters.status === 'inactive' ? [] : users.findFids({ ...filters, status: 'active' });
+    targetCount = targets.length;
+    for (const fid of targets) {
+      queuedCount += queue.enqueue({ fid, priority: 5, retryKingdomMismatch: true });
     }
-
-    if (queuedCount === 0) {
-      return {
-        success: true,
-        targetCount: filtered ? targets.length : null,
-        queuedCount: 0,
-        processed: 0,
-        successCount: 0,
-        failedCount: 0,
-        message: 'No unredeemed codes to apply',
-      };
-    }
-
-    // Process the queue (only the targets' items when filtered)
-    const result = filtered ? await processRedemptionsForUsers(targets) : await processRedemptionQueue(queuedCount);
-
-    logger.info(`Admin apply-all${filtered ? ` (${targets.length} filtered users)` : ''}: queued ${queuedCount}, processed ${result.processed}, success ${result.success}, failed ${result.failed}`);
-
-    return {
-      success: true,
-      targetCount: filtered ? targets.length : null,
-      queuedCount,
-      processed: result.processed,
-      successCount: result.success,
-      failedCount: result.failed,
-      message: `Queued ${queuedCount}, processed ${result.processed} (${result.success} success, ${result.failed} failed)`,
-    };
-  } catch (error: any) {
-    logger.error('Admin apply-all error:', error);
-    throw createError({ statusCode: 500, message: error.message || 'Internal server error' });
+  } else {
+    queuedCount = queue.enqueue();
   }
+  if (queuedCount > 0) kickQueueWorker();
+
+  logger.info(`Admin apply-all${filtered ? ` (${targetCount} filtered users)` : ''}: queued ${queuedCount}`);
+
+  return {
+    success: true,
+    targetCount,
+    queuedCount,
+    message: queuedCount === 0 ? 'No unredeemed codes to apply' : `Queued ${queuedCount} redemption(s), redeeming in the background`,
+  };
 });

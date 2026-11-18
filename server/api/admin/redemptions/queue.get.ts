@@ -1,14 +1,9 @@
-import { queue } from '../../../utils/db';
+import { queue } from '../../../db';
+import { getPagination } from '../../../utils/http';
 
-export default defineEventHandler(async (event) => {
-  const query = getQuery(event);
-  const limit = parseInt(query.limit as string) || 50;
-  const offset = parseInt(query.offset as string) || 0;
+export default defineEventHandler((event) => {
+  const { limit, offset } = getPagination(event);
+  const { items, total } = queue.list({ limit, offset });
 
-  const allItems = queue.getAll(10000);
-  const total = allItems.length;
-  const paginated = allItems.slice(offset, offset + limit);
-  const pendingCount = queue.countPending();
-
-  return { success: true, items: paginated, total, hasMore: offset + limit < total, pendingCount };
+  return { success: true, items, total, hasMore: offset + limit < total, pendingCount: queue.countPending() };
 });

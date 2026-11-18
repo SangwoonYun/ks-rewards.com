@@ -1,6 +1,8 @@
-import { users } from '../../../../utils/db';
-import { verifyPlayer } from '../../../../services/kingshotApi';
-import { redeemNowForUser } from '../../../../services/redemptionService';
+import { users } from '../../../../db';
+import { verifyPlayer } from '../../../../clients/kingshot';
+import { queueAndRedeem } from '../../../../services/queueWorker';
+import { requireFidParam } from '../../../../utils/http';
+import { parseKingdom } from '../../../../utils/player';
 import { logger } from '../../../../utils/logger';
 
 const VERIFY_ERRORS = {
@@ -14,13 +16,11 @@ const VERIFY_ERRORS = {
  * saved if verification fails.
  */
 export default defineEventHandler(async (event) => {
-  const fid = getRouterParam(event, 'fid');
-  const { kid } = await readBody(event);
+  const fid = requireFidParam(event);
+  const body = await readBody(event).catch(() => null);
+  const kid = parseKingdom(body?.kid);
 
-  if (!fid) {
-    throw createError({ statusCode: 400, message: 'FID is required' });
-  }
-  if (!kid || !/^\d+$/.test(String(kid))) {
+  if (!kid) {
     throw createError({ statusCode: 400, message: 'Kingdom number must be numeric' });
   }
 
@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'User not found' });
   }
 
-  const verification = await verifyPlayer(fid, String(kid));
+  const verification = await verifyPlayer(fid, kid);
   if (!verification.ok) {
     logger.warn(`Admin kingdom change rejected for ${fid} (kid ${kid}): ${verification.status}`);
     return {
@@ -40,16 +40,15 @@ export default defineEventHandler(async (event) => {
     };
   }
 
-  users.setVerifiedKingdom(fid, String(kid));
-  logger.info(`Admin updated kingdom for ${fid}: ${user.kingdom} -> ${kid}`);
-
-  // Retry codes that failed with the old kingdom
-  const redeemedCount = await redeemNowForUser(fid, String(kid));
+  users.setVerifiedKingdom(fid, kid);
+  // Codes that failed with the old kingdom are queued again
+  const queuedCount = queueAndRedeem({ fid, priority: 10 });
+  logger.info(`Admin updated kingdom for ${fid}: ${user.kingdom} -> ${kid}, ${queuedCount} code(s) queued`);
 
   return {
     success: true,
-    kingdom: String(kid),
-    redeemedCount,
-    message: `Kingdom updated, ${redeemedCount} code(s) redeemed`
+    kingdom: kid,
+    queuedCount,
+    message: `Kingdom updated, ${queuedCount} code(s) queued`
   };
 });

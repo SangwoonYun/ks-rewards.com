@@ -1,11 +1,9 @@
-import { users } from '../../../../utils/db';
+import { users } from '../../../../db';
 import { refreshProfile } from '../../../../services/playerLookup';
+import { requireFidParam } from '../../../../utils/http';
 
 export default defineEventHandler(async (event) => {
-  const fid = getRouterParam(event, 'fid');
-  if (!fid) {
-    throw createError({ statusCode: 400, message: 'FID is required' });
-  }
+  const fid = requireFidParam(event);
   if (!users.findByFid(fid)) {
     throw createError({ statusCode: 404, message: 'User not found' });
   }

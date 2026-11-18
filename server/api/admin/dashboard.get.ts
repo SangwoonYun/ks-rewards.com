@@ -1,31 +1,22 @@
-import { users, giftCodes, redemptions, queue } from '../../utils/db';
-import { logger } from '../../utils/logger';
+import { users, giftCodes, redemptions, queue } from '../../db';
 
-export default defineEventHandler(async () => {
-  try {
-    const allUsers = users.findAll();
-    const activeUsers = users.findActive();
-    const codeStats = giftCodes.stats();
-    const pendingQueueCount = queue.countPending();
-    const recentRedemptions = redemptions.findRecent(10);
+export default defineEventHandler(() => {
+  const userCounts = users.counts();
+  const codeStats = giftCodes.stats();
 
-    return {
-      success: true,
-      stats: {
-        totalUsers: allUsers.length,
-        activeUsers: activeUsers.length,
-        inactiveUsers: allUsers.length - activeUsers.length,
-        totalCodes: codeStats.total,
-        validatedCodes: codeStats.validated,
-        pendingCodes: codeStats.pending,
-        expiredCodes: codeStats.expired,
-        invalidCodes: codeStats.invalid,
-        pendingQueueItems: pendingQueueCount,
-      },
-      recentRedemptions,
-    };
-  } catch (error: any) {
-    logger.error('Error fetching dashboard data:', error);
-    throw createError({ statusCode: 500, message: 'Internal server error' });
-  }
+  return {
+    success: true,
+    stats: {
+      totalUsers: userCounts.total,
+      activeUsers: userCounts.active,
+      inactiveUsers: userCounts.total - userCounts.active,
+      totalCodes: codeStats.total,
+      validatedCodes: codeStats.validated,
+      pendingCodes: codeStats.pending,
+      expiredCodes: codeStats.expired,
+      invalidCodes: codeStats.invalid,
+      pendingQueueItems: queue.countPending(),
+    },
+    recentRedemptions: redemptions.findRecentSuccesses(10),
+  };
 });

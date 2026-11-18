@@ -1,20 +1,16 @@
-import { queue } from '../../../utils/db';
+import { queue } from '../../../db';
 import { logger } from '../../../utils/logger';
 
 // Force-remove queue items, whatever their status
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event);
-  const { ids } = body;
+  const body = await readBody(event).catch(() => null);
+  const ids = body?.ids;
 
-  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+  if (!Array.isArray(ids) || ids.length === 0 || !ids.every(id => Number.isInteger(id))) {
     throw createError({ statusCode: 400, message: 'Array of queue item IDs is required' });
   }
 
-  let removedCount = 0;
-  for (const id of ids) {
-    const result = queue.delete(id);
-    if (result.changes > 0) removedCount++;
-  }
+  const removedCount = ids.filter(id => queue.delete(id).changes > 0).length;
 
   logger.info(`Admin removed ${removedCount} queue items`);
   return { success: true, removedCount };

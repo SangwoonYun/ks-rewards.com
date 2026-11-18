@@ -1,38 +1,28 @@
-import { priorityUsers } from '../../../utils/db';
+import { priorityUsers, queue } from '../../../db';
+import { parseFid } from '../../../utils/player';
 import { logger } from '../../../utils/logger';
 
 const MAX_PRIORITY = 100;
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event);
-  const fid = body?.fid?.toString().trim();
+  const body = await readBody(event).catch(() => null);
+  const fid = parseFid(body?.fid);
   const priority = Number(body?.priority);
 
   if (!fid) {
     throw createError({ statusCode: 400, message: 'FID is required' });
   }
-
-  if (isNaN(priority) || priority < 1 || priority > MAX_PRIORITY) {
-    throw createError({ statusCode: 400, message: `Priority must be between 1 and ${MAX_PRIORITY}` });
+  if (!Number.isInteger(priority) || priority < 1 || priority > MAX_PRIORITY) {
+    throw createError({ statusCode: 400, message: `Priority must be an integer between 1 and ${MAX_PRIORITY}` });
   }
-
-  const existing = priorityUsers.findByFid(fid);
-  if (!existing) {
+  if (!priorityUsers.findByFid(fid)) {
     throw createError({ statusCode: 404, message: 'User not found in priority queue' });
   }
 
-  try {
-    priorityUsers.add(fid, priority);
-    logger.info(`Admin priority update: user ${fid} priority changed to ${priority}`);
+  priorityUsers.add(fid, priority);
+  // The items already queued for the user move too
+  queue.setPriorityForFid(fid, priority);
+  logger.info(`Admin priority update: user ${fid} priority changed to ${priority}`);
 
-    return {
-      success: true,
-      fid,
-      priority,
-      message: `Priority updated to ${priority}`,
-    };
-  } catch (error: any) {
-    logger.error(`Admin priority update error for ${fid}:`, error);
-    throw createError({ statusCode: 500, message: error.message || 'Internal server error' });
-  }
+  return { success: true, fid, priority, message: `Priority updated to ${priority}` };
 });

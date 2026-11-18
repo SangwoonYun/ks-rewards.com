@@ -1,38 +1,16 @@
-import type { User } from '../../../utils/db';
-import { filterUsers } from '../../../utils/userFilters';
+import { users, type UserSortKey } from '../../../db';
+import { parseUserFilters } from '../../../utils/userFilters';
+import { getPagination } from '../../../utils/http';
 
-// Sortable columns; fid and kingdom compare as numbers. Missing values always go last.
-const SORT_KEYS: Record<string, (u: User) => string | number | null> = {
-  fid: u => Number(u.fid),
-  nickname: u => u.nickname?.toLowerCase() || null,
-  kingdom: u => (u.kingdom ? Number(u.kingdom) : null),
-  active: u => u.active,
-  created_at: u => u.created_at
-};
+const SORT_KEYS: UserSortKey[] = ['fid', 'nickname', 'kingdom', 'active', 'created_at'];
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler((event) => {
   const query = getQuery(event);
-  const sortKey = SORT_KEYS[query.sort as string];
-  const desc = query.order === 'desc';
-  const limit = parseInt(query.limit as string) || 50;
-  const offset = parseInt(query.offset as string) || 0;
+  const sort = SORT_KEYS.find(key => key === query.sort);
+  const { limit, offset } = getPagination(event);
 
-  const result = filterUsers(query);
+  // Without a sort: newest first. fid and kingdom sort as numbers; missing values always go last.
+  const result = users.list(parseUserFilters(query), { sort, desc: query.order === 'desc', limit, offset });
 
-  // Without a sort, findAll's order (newest first)
-  if (sortKey) {
-    result.sort((a, b) => {
-      const x = sortKey(a);
-      const y = sortKey(b);
-      if (x === y) return 0;
-      if (x === null) return 1;
-      if (y === null) return -1;
-      return (x < y ? -1 : 1) * (desc ? -1 : 1);
-    });
-  }
-
-  const total = result.length;
-  const paginated = result.slice(offset, offset + limit);
-
-  return { success: true, users: paginated, total, hasMore: offset + limit < total };
+  return { success: true, users: result.users, total: result.total, hasMore: offset + limit < result.total };
 });
