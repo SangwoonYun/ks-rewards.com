@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { users } from '../server/db';
-import { parseUserFilters, hasUserFilters } from '../server/utils/userFilters';
+import { parseUserFilters } from '../server/utils/userFilters';
 import { resetDb, addUser } from './helpers';
 
 beforeEach(() => {
@@ -44,10 +44,5 @@ describe('users.list', () => {
 
   it('returns ISO-like UTC timestamps', () => {
     expect(users.findByFid('100')!.created_at).toBe('2026-01-01 00:00:00Z');
-  });
-
-  it('knows when a filter is set', () => {
-    expect(hasUserFilters({ search: ' ' })).toBe(false);
-    expect(hasUserFilters({ kingdom: '3' })).toBe(true);
   });
 });

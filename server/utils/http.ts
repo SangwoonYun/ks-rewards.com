@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3';
+import { parseFid } from './player';
 
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 200;
@@ -25,4 +26,16 @@ export function requireFidParam(event: H3Event): string {
     throw createError({ statusCode: 400, message: 'FID is required' });
   }
   return fid;
+}
+
+/**
+ * The fids array of a request body (numeric strings, duplicates dropped), or a 400 error when missing or empty
+ */
+export function requireFidList(body: unknown): string[] {
+  const list = (body as { fids?: unknown } | null)?.fids;
+  const fids = Array.isArray(list) ? list.map(parseFid) : [];
+  if (fids.length === 0 || fids.some(fid => fid === null)) {
+    throw createError({ statusCode: 400, message: 'fids must be a non-empty list of numeric FIDs' });
+  }
+  return [...new Set(fids as string[])];
 }

@@ -5,17 +5,17 @@
     <div class="toolbar">
       <button
         class="toolbar-btn btn-apply-all"
-        :disabled="applyingAll"
-        @click="applyAllCodes"
+        :disabled="applyingAll || selected.size === 0"
+        @click="applySelectedCodes"
       >
-        {{ applyingAll ? 'Applying...' : hasFilters ? `Apply Codes (${totalUsers} filtered)` : 'Apply All Codes' }}
+        {{ applyingAll ? 'Applying...' : `Apply Codes (${selected.size} selected)` }}
       </button>
       <button
         class="toolbar-btn btn-refresh-all"
-        :disabled="bulkRefresh?.running"
+        :disabled="bulkRefresh?.running || selected.size === 0"
         @click="startBulkRefresh"
       >
-        {{ bulkRefresh?.running ? 'Refreshing...' : hasFilters ? `Refresh Profiles (${totalUsers} filtered)` : 'Refresh All Profiles' }}
+        {{ bulkRefresh?.running ? 'Refreshing...' : `Refresh Profiles (${selected.size} selected)` }}
       </button>
     </div>
 
@@ -40,12 +40,26 @@
 
     <div class="info-bar">
       <span>{{ users.length }} / {{ totalUsers }} users</span>
+      <span v-if="selected.size">
+        · {{ selected.size }} selected<template v-if="selectedOutsideFilter"> ({{ selectedOutsideFilter }} not matching the filters)</template>
+        <button class="clear-selection" @click="clearSelection">Clear</button>
+      </span>
     </div>
 
     <div ref="tableWrapperRef" class="table-wrapper">
       <table class="admin-table">
         <thead>
           <tr>
+            <th class="select-cell">
+              <input
+                type="checkbox"
+                title="Select every user matching the filters"
+                :checked="allFilteredSelected"
+                :indeterminate="someFilteredSelected && !allFilteredSelected"
+                :disabled="filteredFids.length === 0"
+                @change="toggleAllFiltered"
+              />
+            </th>
             <th v-for="col in SORT_COLUMNS" :key="col.key">
               <button v-if="col.sort" class="sort-btn" :class="{ active: sort.key === col.sort }" @click="toggleSort(col.sort)">
                 {{ col.label }}
@@ -55,6 +69,7 @@
             <th>Actions</th>
           </tr>
           <tr class="filter-row">
+            <th></th>
             <th data-label="FID"><input v-model="filters.fid" type="text" inputmode="numeric" class="filter-input filter-fid" placeholder="Contains" @input="debouncedFetch" /></th>
             <th></th>
             <th data-label="Nickname"><input v-model="filters.nickname" type="text" class="filter-input filter-nickname" placeholder="Contains" @input="debouncedFetch" /></th>
@@ -86,6 +101,9 @@
         </thead>
         <tbody>
           <tr v-for="user in users" :key="user.fid">
+            <td class="select-cell" data-label="Select">
+              <input type="checkbox" :checked="isSelected(user.fid)" @change="toggleSelect(user.fid)" />
+            </td>
             <td data-label="FID">{{ user.fid }}</td>
             <td class="avatar-cell">
               <UserAvatar :src="user.avatar_url" :alt="user.nickname || user.fid" class="avatar" />
@@ -137,10 +155,10 @@
             </td>
           </tr>
           <tr v-if="users.length === 0 && !loading">
-            <td colspan="7" class="empty">No users found</td>
+            <td colspan="8" class="empty">No users found</td>
           </tr>
           <tr v-if="hasMore">
-            <td colspan="7" class="sentinel-cell">
+            <td colspan="8" class="sentinel-cell">
               <div ref="sentinelRef" class="sentinel"></div>
             </td>
           </tr>
@@ -322,6 +340,8 @@ async function fetchBulkRefreshStatus() {
           s.issues,
         );
         fetchUsers();
+        // Deactivations change which users match a status filter
+        fetchFilteredFids();
         fetchPriorityUsers();
       }
     }
@@ -332,13 +352,12 @@ async function fetchBulkRefreshStatus() {
 const bulkPolling = usePolling(fetchBulkRefreshStatus, 2000);
 
 async function startBulkRefresh() {
-  const targets = hasFilters.value ? `the ${totalUsers.value} user(s) matching the filters` : 'every user';
-  if (!confirm(`Refresh the nickname, avatar and kingdom of ${targets} from mightpulse.com? Users not found (even by live search), inactive for 90 days or without coordinates are deactivated. This runs in the background (about 1.5s per user, up to ~15s more for users that need a live search).`)) return;
+  if (!confirm(`Refresh the nickname, avatar and kingdom of the ${selected.value.size} selected user(s) from mightpulse.com? Users not found (even by live search), inactive for 90 days or without coordinates are deactivated. This runs in the background (about 1.5s per user, up to ~15s more for users that need a live search).`)) return;
   clearBulkRefreshResult();
   try {
-    bulkRefresh.value = await $fetch<BulkRefreshStatus>('/api/admin/users/refresh-profiles/start', { method: 'POST', body: filterParams() });
+    bulkRefresh.value = await $fetch<BulkRefreshStatus>('/api/admin/users/refresh-profiles/start', { method: 'POST', body: { fids: [...selected.value] } });
     if (bulkRefresh.value.total === 0) {
-      showBulkRefreshResult(true, 'No users match the filters');
+      showBulkRefreshResult(true, 'None of the selected users exist anymore');
       return;
     }
     bulkPolling.start();
@@ -400,7 +419,7 @@ async function togglePriority(user: User) {
   }
 }
 
-// Column filters as query params (also the targets of Apply Codes / Refresh Profiles);
+// Column filters as query params (also what the select-all checkbox selects);
 // the date range is in local days, sent as instants (to is exclusive)
 function filterParams() {
   const params: Record<string, string> = {};
@@ -417,7 +436,6 @@ function filterParams() {
 }
 
 const sortParams = (): Record<string, string> => (sort.key ? { sort: sort.key, order: sort.order } : {});
-const hasFilters = computed(() => Object.keys(filterParams()).length > 0);
 
 const {
   items: users,
@@ -432,6 +450,35 @@ const {
   params: () => ({ ...sortParams(), ...filterParams() }),
 });
 const debouncedFetch = useDebounceFn(fetchUsers, 300);
+
+// Bulk actions target the checked users. The selection is kept when the filters change; the header
+// checkbox selects every user matching the current filters (all pages, not only the loaded rows).
+const { selected, has: isSelected, toggle: toggleSelect, setAll, clear: clearSelection } = useSelection<string>();
+const filteredFids = ref<string[]>([]);
+
+async function fetchFilteredFids() {
+  try {
+    const res = await $fetch<{ fids: string[] }>('/api/admin/users/fids', { query: filterParams() });
+    filteredFids.value = res.fids;
+  } catch (e) {
+    console.error('Failed to fetch filtered users:', e);
+  }
+}
+const debouncedFetchFilteredFids = useDebounceFn(fetchFilteredFids, 300);
+watch(() => JSON.stringify(filterParams()), debouncedFetchFilteredFids);
+
+const allFilteredSelected = computed(() =>
+  filteredFids.value.length > 0 && filteredFids.value.every(fid => selected.value.has(fid))
+);
+const someFilteredSelected = computed(() => filteredFids.value.some(fid => selected.value.has(fid)));
+const selectedOutsideFilter = computed(() => {
+  const filtered = new Set(filteredFids.value);
+  return [...selected.value].filter(fid => !filtered.has(fid)).length;
+});
+
+function toggleAllFiltered() {
+  setAll(filteredFids.value, !allFilteredSelected.value);
+}
 
 async function toggleUser(user: User) {
   toggling.value = user.fid;
@@ -460,21 +507,20 @@ async function applyCodes(user: User) {
   }
 }
 
-async function applyAllCodes() {
-  const targets = hasFilters.value ? `the active users among the ${totalUsers.value} matching the filters` : 'all active users';
-  if (!confirm(`Apply all validated gift codes to ${targets}? This may take a while.`)) return;
+async function applySelectedCodes() {
+  if (!confirm(`Apply all validated gift codes to the active users among the ${selected.value.size} selected? This may take a while.`)) return;
 
   applyingAll.value = true;
   clearApplyAllResult();
   try {
     // Queued codes are redeemed in the background
-    const res = await $fetch('/api/admin/users/apply-all', { method: 'POST', body: filterParams() }) as any;
-    const scope = res.targetCount === null ? '' : `${res.targetCount} filtered active user(s): `;
+    const res = await $fetch('/api/admin/users/apply-all', { method: 'POST', body: { fids: [...selected.value] } }) as any;
+    const scope = `${res.targetCount} selected active user(s): `;
     showApplyAllResult(res.success, scope + (res.message || (res.queuedCount === 0
       ? 'No unredeemed codes to apply'
       : `Queued ${res.queuedCount} code(s)`)));
   } catch (e: any) {
-    showApplyAllResult(false, 'Failed to apply codes for all users');
+    showApplyAllResult(false, 'Failed to apply codes to the selected users');
   } finally {
     applyingAll.value = false;
   }
@@ -482,6 +528,7 @@ async function applyAllCodes() {
 
 onMounted(() => {
   fetchUsers();
+  fetchFilteredFids();
   fetchPriorityUsers();
   // Picks up a refresh that is already running (e.g. after a page reload)
   fetchBulkRefreshStatus();
@@ -574,6 +621,24 @@ onUnmounted(() => {
   width: 170px;
 }
 
+.select-cell {
+  width: 40px;
+}
+
+.clear-selection {
+  margin-left: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.clear-selection:hover {
+  text-decoration: underline;
+}
+
 .apply-result {
   font-size: 0.75rem;
   font-weight: 600;
@@ -643,6 +708,19 @@ onUnmounted(() => {
     background: var(--primary-soft);
     border-color: #bfdbfe;
     color: var(--primary-text);
+  }
+
+  .admin-table thead th.select-cell {
+    display: flex;
+    flex-basis: 100%;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-2);
+    font-size: 0.8125rem;
+  }
+
+  .admin-table thead th.select-cell::after {
+    content: 'Select all matching';
   }
 
   .filter-row {

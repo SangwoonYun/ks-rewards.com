@@ -294,7 +294,8 @@ async function refreshSelectedProfiles() {
       else if (res.result === 'not_found') counts.notFound++;
       else counts.failed++;
       if (res.kingdom?.status === 'updated') counts.kingdom++;
-      if (res.deactivated) counts.deactivated++;
+      // Shown within "updated" in the summary: not-found users are deactivated too, but counted as not found
+      if (res.result === 'updated' && res.deactivated) counts.deactivated++;
     } catch {
       counts.failed++;
     }
