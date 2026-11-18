@@ -132,6 +132,15 @@ export const users = {
     return stmt('UPDATE users SET nickname = ?, updated_at = CURRENT_TIMESTAMP WHERE fid = ?').run(nickname, fid);
   },
 
+  // Save a kingdom the API could not check (inactive players): unverified, so registering again verifies it
+  setUnverifiedKingdom: (fid: string, kingdom: string) => {
+    return stmt(`
+      UPDATE users
+      SET kingdom = ?, kingdom_verified_at = NULL, updated_at = CURRENT_TIMESTAMP
+      WHERE fid = ?
+    `).run(kingdom, fid);
+  },
+
   // Save a kingdom that the API just accepted for this fid
   setVerifiedKingdom: (fid: string, kingdom: string) => {
     return stmt(`

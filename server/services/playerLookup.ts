@@ -20,18 +20,26 @@ export interface RefreshResult {
   result: 'updated' | 'not_found' | 'failed';
   // Only when the lookup's kingdom differs from the one on record
   kingdom?: { from: string | null; to: string; status: 'updated' | 'rejected' };
-  // The user was deactivated because the player looks inactive (see PlayerProfile.inactive)
+  // The player is not found or looks inactive (see PlayerProfile.inactive), so the user is now inactive:
+  // also when it already was (e.g. deactivated by another refresh running at the same time)
   deactivated?: boolean;
 }
 
 /**
- * Save a kingdom from the lookup, after the official API accepts it (lookup data can be stale).
+ * Save a kingdom from the lookup, after the official API accepts it (lookup data can be stale); inactive users skip the check.
  * Codes that failed with the old kingdom are queued and redeemed right away (active users only), as with an admin kingdom change.
  */
 async function applyLookupKingdom(fid: string, kid: number): Promise<RefreshResult['kingdom']> {
   const from = users.findByFid(fid)?.kingdom ?? null;
   const to = String(kid);
   if (from === to) return undefined;
+
+  // The API answers USER_INFO_ERROR for inactive players whatever the kingdom, so theirs is saved unchecked
+  if (users.findByFid(fid)?.active !== 1) {
+    users.setUnverifiedKingdom(fid, to);
+    logger.info(`👤 Kingdom for inactive ${fid} updated from lookup without API check: ${from} -> ${to}`);
+    return { from, to, status: 'updated' };
+  }
 
   const verification = await verifyPlayer(fid, to);
   if (!verification.ok) {
@@ -56,20 +64,19 @@ export async function refreshProfile(fid: string, full = true): Promise<RefreshR
     if (!profile) {
       // Not even in the live search: treated as gone (the live search does not cover every kingdom,
       // so the not_found group of the bulk report lists these for review)
-      if (full && users.findByFid(fid)?.active === 1) {
+      if (!full) return { result: 'not_found' };
+      if (users.findByFid(fid)?.active === 1) {
         users.updateActive(fid, 0);
         logger.info(`👤 Deactivated ${fid}: not found by the lookup (cache and live search)`);
-        return { result: 'not_found', deactivated: true };
       }
-      return { result: 'not_found' };
+      return { result: 'not_found', deactivated: true };
     }
     saveProfile(fid, profile);
     if (!full) return { result: 'updated' };
 
-    let deactivated: true | undefined;
-    if (profile.inactive && users.findByFid(fid)?.active === 1) {
+    const deactivated = profile.inactive || undefined;
+    if (deactivated && users.findByFid(fid)?.active === 1) {
       users.updateActive(fid, 0);
-      deactivated = true;
       logger.info(`👤 Deactivated ${fid}: inactive according to the lookup (90 days / no coordinates)`);
     }
     // The kingdom is kept up to date for inactive users too (no codes are redeemed for them)
@@ -147,7 +154,8 @@ async function runBulkRefresh(fids: string[]) {
       else if (result === 'not_found') bulk.notFound++;
       else bulk.failed++;
       if (kingdom?.status === 'updated') bulk.kingdomUpdated++;
-      if (deactivated) bulk.deactivated++;
+      // Shown within "updated" in the summary: not-found users are deactivated too, but counted as not found
+      if (result === 'updated' && deactivated) bulk.deactivated++;
 
       const reason = result !== 'updated' ? result
         : deactivated ? 'deactivated'

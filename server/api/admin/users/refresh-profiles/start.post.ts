@@ -1,9 +1,9 @@
 import { users } from '../../../../db';
 import { startBulkRefresh } from '../../../../services/playerLookup';
-import { parseUserFilters } from '../../../../utils/userFilters';
+import { requireFidList } from '../../../../utils/http';
 
-// Refreshes the users matching the user grid's filters (body); every user when no filter is set
+// Refreshes the users selected in the user grid (body.fids); unknown fids are skipped
 export default defineEventHandler(async (event) => {
-  const body = (await readBody(event).catch(() => null)) ?? {};
-  return startBulkRefresh(users.findFids(parseUserFilters(body)));
+  const fids = requireFidList(await readBody(event).catch(() => null));
+  return startBulkRefresh(fids.filter(fid => users.findByFid(fid)));
 });
