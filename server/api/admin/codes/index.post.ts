@@ -12,6 +12,11 @@ export default defineEventHandler(async (event) => {
   const cleanCode = code.trim();
 
   const existing = giftCodes.findByCode(cleanCode);
+  if (existing?.validation_status === 'deleted') {
+    giftCodes.restoreDeleted(cleanCode);
+    logger.info(`Admin restored deleted gift code: ${cleanCode}`);
+    return { success: true, code: cleanCode };
+  }
   if (existing) {
     throw createError({ statusCode: 409, message: 'Gift code already exists' });
   }

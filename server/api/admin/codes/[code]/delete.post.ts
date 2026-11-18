@@ -1,4 +1,4 @@
-import { giftCodes, queue } from '../../../../utils/db';
+import { giftCodes } from '../../../../utils/db';
 import { logger } from '../../../../utils/logger';
 
 export default defineEventHandler(async (event) => {
@@ -8,12 +8,11 @@ export default defineEventHandler(async (event) => {
   }
 
   const existing = giftCodes.findByCode(code);
-  if (!existing) {
+  if (!existing || existing.validation_status === 'deleted') {
     throw createError({ statusCode: 404, message: 'Gift code not found' });
   }
 
-  queue.deleteByCode(code);
-  giftCodes.delete(code);
+  giftCodes.markDeleted(code);
 
   logger.info(`Admin deleted gift code: ${code}`);
   return { success: true };
