@@ -1,0 +1,113 @@
+{
+  "common": {
+    "language": "Idioma"
+  },
+  "home": {
+    "meta": {
+      "title": "Kingshot Rewards — Canje automático de códigos de regalo",
+      "description": "Kingshot Rewards detecta automáticamente los códigos de regalo de Kingshot y los canjea al instante en los ID de jugador registrados. Registra tu ID de jugador y olvídate de introducir códigos a mano.",
+      "keywords": "kingshot gift codes, kingshot codes, kingshot rewards, canje automático, códigos de regalo, códigos kingshot",
+      "shareTitle": "Kingshot Rewards — Canje automático de códigos de regalo",
+      "shareDescription": "Detecta automáticamente los códigos de regalo de Kingshot y los canjea al instante en los ID de jugador registrados."
+    },
+    "hero": {
+      "subtitle": "Canje automático de códigos de regalo",
+      "lead": "Registra tu ID de jugador una sola vez y cada nuevo código de regalo se canjeará automáticamente."
+    },
+    "stats": {
+      "users": "Usuarios registrados",
+      "active": "{count} activos",
+      "queue": "Cola de canje",
+      "processing": "Procesando",
+      "idle": "Sin pendientes"
+    },
+    "register": {
+      "title": "Registro de canje automático",
+      "playerId": "ID de jugador",
+      "playerIdPlaceholder": "Introduce uno o varios ID de jugador separados por comas (ej.: 12345678, 23456789)",
+      "kingdom": "Número de reino",
+      "kingdomPlaceholder": "Ej.: 120 (se aplica a todos los ID de jugador indicados arriba)",
+      "submit": "Registrar canje automático",
+      "submitting": "Registrando...",
+      "errors": {
+        "noPlayerId": "Introduce al menos un ID de jugador.",
+        "noValidPlayerId": "Introduce al menos un ID de jugador válido.",
+        "invalidPlayerId": "ID de jugador no válido: {fid}. El ID de jugador solo puede contener números.",
+        "invalidKingdom": "Introduce el número de reino en cifras."
+      },
+      "inProgress": "Registrando {count} ID de jugador... (puede tardar unos minutos)",
+      "result": {
+        "registered": "Registrado",
+        "reactivated": "Reactivado",
+        "reactivatedKingdomUpdated": "Reactivado (número de reino actualizado)",
+        "kingdomUpdated": "Número de reino actualizado",
+        "alreadyRegistered": "Ya registrado",
+        "queued": ", {count} códigos añadidos a la cola de canje",
+        "failed": "Fallido",
+        "error": "Error"
+      },
+      "verify": {
+        "WRONG_KINGDOM": "El número de reino no coincide con el ID de jugador. Compruébalo.",
+        "NO_SUCH_PLAYER": "Este ID de jugador no existe.",
+        "UNVERIFIED": "No se pudo verificar la información del jugador. Inténtalo de nuevo más tarde."
+      },
+      "successSummary": "✅ {count} registrados correctamente",
+      "failSummary": "Registro fallido",
+      "failGeneric": "No se pudo completar el registro.",
+      "processError": "Error al procesar el registro: {message}"
+    },
+    "codes": {
+      "title": "Códigos de regalo",
+      "active": "Disponible",
+      "expired": "Caducado",
+      "empty": "No hay códigos registrados."
+    },
+    "redemptions": {
+      "title": "Canjes recientes",
+      "empty": "Aún no hay canjes."
+    },
+    "about": {
+      "title": "Acerca de",
+      "featureTerm": "Función",
+      "featureDesc": "Detecta automáticamente los códigos de regalo de Kingshot y los canjea al instante en los ID de jugador registrados.",
+      "howTerm": "Cómo registrarse",
+      "howDesc": "Introduce tu ID de jugador y pulsa el botón de registro. Los canjes seguirán haciéndose automáticamente aunque cierres el sitio.",
+      "findIdTerm": "Dónde ver tu ID de jugador",
+      "findIdDesc": "Abre el juego → Perfil → pestaña Información; aparece debajo de tu nombre.",
+      "kingdomTerm": "Número de reino",
+      "kingdomDesc": "El número de reino que introduzcas se aplica a todos los ID de jugador indicados arriba. Registra por separado a los jugadores de reinos distintos.",
+      "noticeProfileLabel": "Aviso:",
+      "noticeProfile": "El apodo y el avatar se muestran a partir de información pública externa, por lo que pueden tardar en actualizarse o no aparecer.",
+      "noticeTransferLabel": "Si te has trasladado:",
+      "noticeTransfer": "Si has cambiado de reino, vuelve a registrarte con el mismo ID de jugador y el nuevo número de reino; la información del reino se actualizará automáticamente.",
+      "noticeInactiveLabel": "Inactividad prolongada:",
+      "noticeInactive": "Los jugadores que no hayan entrado al juego en mucho tiempo (90 días o más) se detectan automáticamente y se detienen sus canjes (se desactivan). Si vuelves a registrarte, se reactivan al momento.",
+      "disclaimerTitle": "Aviso legal",
+      "disclaimerText": "Para respetar los límites de solicitudes de los servidores de Kingshot, todos los registros y canjes se procesan mediante una cola.",
+      "disclaimerItem1": "El registro inicial y el primer canje pueden tardar unos minutos.",
+      "disclaimerItem2": "Si hay muchos usuarios registrados, el canje de nuevos códigos puede retrasarse.",
+      "disclaimerItem3": "Si los retrasos se vuelven excesivos, se aplicarán mejoras."
+    },
+    "support": {
+      "title": "Apoyo",
+      "text": "Este sitio se mantiene gracias a donaciones.",
+      "toss": "Toss Bank",
+      "tossQrAlt": "Código QR para donar con Toss Bank",
+      "bmcQrAlt": "Código QR para donar con Buy Me a Coffee"
+    },
+    "contact": {
+      "title": "Contacto",
+      "text": "Para comentarios o solicitudes de eliminación de ID de jugador, escribe a {email}."
+    },
+    "policies": "Políticas"
+  },
+  "legal": {
+    "privacyTitle": "Política de privacidad",
+    "termsTitle": "Términos de servicio",
+    "effectiveDate": "Fecha de entrada en vigor: {date}",
+    "updatedDate": "Última actualización: {date}",
+    "machineTranslation": "Este documento es una traducción automática del original en coreano y puede contener imprecisiones. Si la traducción difiere del original, prevalecerá el original en coreano.",
+    "viewOriginal": "Ver el original en coreano",
+    "back": "← Volver al inicio"
+  }
+}

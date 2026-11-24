@@ -1,0 +1,113 @@
+{
+  "common": {
+    "language": "Langue"
+  },
+  "home": {
+    "meta": {
+      "title": "Kingshot Rewards — Récupération automatique des codes cadeaux",
+      "description": "Kingshot Rewards détecte automatiquement les nouveaux codes cadeaux Kingshot et les utilise immédiatement pour vos ID joueur enregistrés. Enregistrez votre ID joueur et ne saisissez plus jamais un code à la main.",
+      "keywords": "kingshot gift codes, kingshot codes, kingshot rewards, récupération automatique, codes cadeaux, code cadeau Kingshot",
+      "shareTitle": "Kingshot Rewards — Codes cadeaux récupérés automatiquement",
+      "shareDescription": "Détecte automatiquement les codes cadeaux Kingshot et les utilise immédiatement pour vos ID joueur enregistrés."
+    },
+    "hero": {
+      "subtitle": "Récupération automatique des codes cadeaux",
+      "lead": "Enregistrez votre ID joueur une seule fois : chaque nouveau code cadeau sera récupéré automatiquement."
+    },
+    "stats": {
+      "users": "Joueurs inscrits",
+      "active": "{count} actifs",
+      "queue": "File d’attente",
+      "processing": "En cours",
+      "idle": "Vide"
+    },
+    "register": {
+      "title": "Activer la récupération automatique",
+      "playerId": "ID joueur",
+      "playerIdPlaceholder": "Plusieurs ID joueur séparés par des virgules (ex. : 12345678, 23456789)",
+      "kingdom": "Numéro de royaume",
+      "kingdomPlaceholder": "ex. : 120 (s’applique à tous les ID joueur ci-dessus)",
+      "submit": "S’inscrire",
+      "submitting": "Inscription en cours...",
+      "errors": {
+        "noPlayerId": "Veuillez saisir au moins un ID joueur.",
+        "noValidPlayerId": "Veuillez saisir au moins un ID joueur valide.",
+        "invalidPlayerId": "ID joueur invalide : {fid}. Un ID joueur ne contient que des chiffres.",
+        "invalidKingdom": "Veuillez saisir le numéro de royaume en chiffres."
+      },
+      "inProgress": "Inscription de {count} ID joueur en cours... (cela peut prendre quelques minutes)",
+      "result": {
+        "registered": "Inscrit",
+        "reactivated": "Réactivé",
+        "reactivatedKingdomUpdated": "Réactivé (royaume mis à jour)",
+        "kingdomUpdated": "Royaume mis à jour",
+        "alreadyRegistered": "Déjà inscrit",
+        "queued": ", {count} code(s) ajouté(s) à la file d’attente",
+        "failed": "Échec",
+        "error": "Erreur"
+      },
+      "verify": {
+        "WRONG_KINGDOM": "Le numéro de royaume ne correspond pas à l’ID joueur. Veuillez le vérifier.",
+        "NO_SUCH_PLAYER": "Cet ID joueur n’existe pas.",
+        "UNVERIFIED": "Impossible de vérifier les informations du joueur. Veuillez réessayer plus tard."
+      },
+      "successSummary": "✅ {count} inscription(s) réussie(s)",
+      "failSummary": "Échec de l’inscription",
+      "failGeneric": "L’inscription a échoué.",
+      "processError": "Erreur lors de l’inscription : {message}"
+    },
+    "codes": {
+      "title": "Codes cadeaux",
+      "active": "Valides",
+      "expired": "Expirés",
+      "empty": "Aucun code pour le moment."
+    },
+    "redemptions": {
+      "title": "Récupérations récentes",
+      "empty": "Aucune récupération pour le moment."
+    },
+    "about": {
+      "title": "À propos",
+      "featureTerm": "Fonctionnement",
+      "featureDesc": "Détecte automatiquement les codes cadeaux Kingshot et les utilise immédiatement pour vos ID joueur enregistrés.",
+      "howTerm": "Inscription",
+      "howDesc": "Saisissez votre ID joueur puis cliquez sur S’inscrire. La récupération continue même si vous fermez le site.",
+      "findIdTerm": "Trouver son ID joueur",
+      "findIdDesc": "Lancez le jeu → Profil → onglet Infos : l’ID s’affiche sous votre nom.",
+      "kingdomTerm": "Numéro de royaume",
+      "kingdomDesc": "Le numéro de royaume saisi s’applique à tous les ID joueur saisis ci-dessus. Inscrivez séparément les joueurs de royaumes différents.",
+      "noticeProfileLabel": "À noter :",
+      "noticeProfile": "Le pseudo et l’avatar proviennent d’informations publiques externes ; leur mise à jour peut être retardée ou ils peuvent ne pas s’afficher.",
+      "noticeTransferLabel": "Après une migration :",
+      "noticeTransfer": "Si vous avez migré vers un autre royaume, inscrivez à nouveau le même ID joueur avec le nouveau numéro de royaume : les informations seront mises à jour automatiquement.",
+      "noticeInactiveLabel": "En cas d’inactivité prolongée :",
+      "noticeInactive": "Les joueurs qui ne se sont pas connectés au jeu depuis longtemps (90 jours ou plus) sont détectés automatiquement et la récupération est suspendue (désactivation). Il suffit de vous réinscrire pour être réactivé immédiatement.",
+      "disclaimerTitle": "Avertissement",
+      "disclaimerText": "Pour respecter les limites de requêtes des serveurs Kingshot, toutes les inscriptions et récupérations sont traitées via une file d’attente.",
+      "disclaimerItem1": "La première inscription et la récupération immédiate peuvent prendre quelques minutes.",
+      "disclaimerItem2": "Lorsque les inscrits sont nombreux, la récupération des nouveaux codes peut être retardée.",
+      "disclaimerItem3": "Si les délais deviennent trop longs, des améliorations seront apportées au traitement."
+    },
+    "support": {
+      "title": "Soutenir",
+      "text": "Ce site fonctionne grâce aux dons.",
+      "toss": "Toss Bank",
+      "tossQrAlt": "QR code de don Toss Bank",
+      "bmcQrAlt": "QR code de don Buy Me a Coffee"
+    },
+    "contact": {
+      "title": "Contact",
+      "text": "Pour un retour ou une demande de suppression d’ID joueur, écrivez à {email}."
+    },
+    "policies": "Règles"
+  },
+  "legal": {
+    "privacyTitle": "Politique de confidentialité",
+    "termsTitle": "Conditions d’utilisation",
+    "effectiveDate": "Date d’entrée en vigueur : {date}",
+    "updatedDate": "Dernière mise à jour : {date}",
+    "machineTranslation": "Ce document est une traduction automatique de l’original coréen et peut contenir des inexactitudes. En cas de divergence entre la traduction et l’original, l’original coréen fait foi.",
+    "viewOriginal": "Voir l’original coréen",
+    "back": "← Retour à l’accueil"
+  }
+}

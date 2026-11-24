@@ -1,0 +1,113 @@
+{
+  "common": {
+    "language": "语言"
+  },
+  "home": {
+    "meta": {
+      "title": "Kingshot Rewards — 礼包码自动领取服务",
+      "description": "Kingshot Rewards 会自动检测 Kingshot 礼包码，并立即用已登记的玩家 ID 领取。只要登记玩家 ID，就无需再手动输入兑换码。",
+      "keywords": "kingshot gift codes, kingshot codes, kingshot rewards, 自动领取, 礼包码, Kingshot 兑换码",
+      "shareTitle": "Kingshot Rewards — 礼包码自动领取",
+      "shareDescription": "自动检测 Kingshot 礼包码，并立即用已登记的玩家 ID 领取。"
+    },
+    "hero": {
+      "subtitle": "礼包码自动领取",
+      "lead": "只需登记一次玩家 ID，每当有新礼包码发布就会自动帮你领取。"
+    },
+    "stats": {
+      "users": "已登记玩家",
+      "active": "活跃 {count}",
+      "queue": "领取队列",
+      "processing": "处理中",
+      "idle": "无排队"
+    },
+    "register": {
+      "title": "登记自动领取",
+      "playerId": "玩家 ID",
+      "playerIdPlaceholder": "可用逗号分隔输入多个玩家 ID（例：12345678, 23456789）",
+      "kingdom": "王国编号",
+      "kingdomPlaceholder": "例：120（将应用于上方所有玩家 ID）",
+      "submit": "登记自动领取",
+      "submitting": "登记中...",
+      "errors": {
+        "noPlayerId": "请至少输入 1 个玩家 ID。",
+        "noValidPlayerId": "请至少输入 1 个有效的玩家 ID。",
+        "invalidPlayerId": "玩家 ID 无效：{fid}。玩家 ID 只能包含数字。",
+        "invalidKingdom": "请输入数字形式的王国编号。"
+      },
+      "inProgress": "正在登记 {count} 个玩家 ID...（可能需要几分钟）",
+      "result": {
+        "registered": "登记成功",
+        "reactivated": "已重新激活",
+        "reactivatedKingdomUpdated": "已重新激活（王国编号已更新）",
+        "kingdomUpdated": "王国编号已更新",
+        "alreadyRegistered": "已登记",
+        "queued": "，已将 {count} 个兑换码加入领取队列",
+        "failed": "失败",
+        "error": "错误"
+      },
+      "verify": {
+        "WRONG_KINGDOM": "王国编号与玩家 ID 不匹配，请检查王国编号。",
+        "NO_SUCH_PLAYER": "该玩家 ID 不存在。",
+        "UNVERIFIED": "无法确认玩家信息，请稍后再试。"
+      },
+      "successSummary": "✅ 已成功登记 {count} 条",
+      "failSummary": "登记失败",
+      "failGeneric": "登记失败。",
+      "processError": "登记处理时出错：{message}"
+    },
+    "codes": {
+      "title": "礼包码",
+      "active": "可用",
+      "expired": "已过期",
+      "empty": "暂无礼包码。"
+    },
+    "redemptions": {
+      "title": "最近领取记录",
+      "empty": "暂无领取记录。"
+    },
+    "about": {
+      "title": "关于",
+      "featureTerm": "功能",
+      "featureDesc": "自动检测 Kingshot 礼包码，并立即用已登记的玩家 ID 领取。",
+      "howTerm": "登记方法",
+      "howDesc": "输入玩家 ID 后点击登记按钮即可。之后即使关闭网站，也会持续自动领取。",
+      "findIdTerm": "查看玩家 ID",
+      "findIdDesc": "打开游戏 → 个人资料 → 信息标签页，ID 显示在名字下方。",
+      "kingdomTerm": "王国编号",
+      "kingdomDesc": "一次输入的王国编号会应用于上方输入的所有玩家 ID。不同王国的玩家请分开登记。",
+      "noticeProfileLabel": "提示：",
+      "noticeProfile": "昵称和头像根据外部公开信息显示，可能更新较慢或无法显示。",
+      "noticeTransferLabel": "已迁服的玩家：",
+      "noticeTransfer": "如果你已迁服（转移王国），请用相同的玩家 ID 和新的王国编号重新登记，王国信息会自动更新。",
+      "noticeInactiveLabel": "长期未登录：",
+      "noticeInactive": "长时间（90 天以上）未登录游戏的玩家会被自动检测并停止领取（停用）。重新登记即可立即重新激活。",
+      "disclaimerTitle": "免责声明",
+      "disclaimerText": "为遵守 Kingshot 服务器的请求限制，所有登记和领取都通过队列依次处理。",
+      "disclaimerItem1": "首次登记及即时领取可能需要几分钟。",
+      "disclaimerItem2": "登记人数较多时，新兑换码的领取可能会延迟。",
+      "disclaimerItem3": "如果延迟过长，我们将引入改进机制。"
+    },
+    "support": {
+      "title": "赞助支持",
+      "text": "本网站依靠赞助维持运营。",
+      "toss": "Toss Bank",
+      "tossQrAlt": "Toss Bank 赞助二维码",
+      "bmcQrAlt": "Buy Me a Coffee 赞助二维码"
+    },
+    "contact": {
+      "title": "联系我们",
+      "text": "如有反馈或需删除玩家 ID，请发送邮件至 {email}。"
+    },
+    "policies": "政策"
+  },
+  "legal": {
+    "privacyTitle": "隐私政策",
+    "termsTitle": "服务条款",
+    "effectiveDate": "生效日期：{date}",
+    "updatedDate": "最后修订日期：{date}",
+    "machineTranslation": "本文档为韩文原文的机器翻译，内容可能存在不准确之处。如译文与原文内容不一致，以韩文原文为准。",
+    "viewOriginal": "查看韩文原文",
+    "back": "← 返回首页"
+  }
+}

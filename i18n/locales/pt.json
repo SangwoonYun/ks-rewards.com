@@ -1,0 +1,113 @@
+{
+  "common": {
+    "language": "Idioma"
+  },
+  "home": {
+    "meta": {
+      "title": "Kingshot Rewards — Resgate automático de códigos de presente",
+      "description": "O Kingshot Rewards detecta automaticamente os códigos de presente do Kingshot e os resgata na hora para os IDs de jogador cadastrados. Cadastre seu ID de jogador e não precisa mais digitar códigos manualmente.",
+      "keywords": "kingshot gift codes, kingshot codes, kingshot rewards, resgate automático, códigos de presente, códigos kingshot",
+      "shareTitle": "Kingshot Rewards — Resgate automático de códigos de presente",
+      "shareDescription": "Detecta automaticamente os códigos de presente do Kingshot e os resgata na hora para os IDs de jogador cadastrados."
+    },
+    "hero": {
+      "subtitle": "Resgate automático de códigos de presente",
+      "lead": "Cadastre seu ID de jogador uma única vez e cada novo código de presente será resgatado automaticamente."
+    },
+    "stats": {
+      "users": "Usuários cadastrados",
+      "active": "{count} ativos",
+      "queue": "Fila de resgate",
+      "processing": "Processando",
+      "idle": "Nada na fila"
+    },
+    "register": {
+      "title": "Cadastro de resgate automático",
+      "playerId": "ID de jogador",
+      "playerIdPlaceholder": "Digite um ou mais IDs de jogador separados por vírgula (ex.: 12345678, 23456789)",
+      "kingdom": "Número do reino",
+      "kingdomPlaceholder": "Ex.: 120 (vale para todos os IDs de jogador acima)",
+      "submit": "Cadastrar resgate automático",
+      "submitting": "Cadastrando...",
+      "errors": {
+        "noPlayerId": "Digite pelo menos um ID de jogador.",
+        "noValidPlayerId": "Digite pelo menos um ID de jogador válido.",
+        "invalidPlayerId": "ID de jogador inválido: {fid}. O ID de jogador deve conter apenas números.",
+        "invalidKingdom": "Digite o número do reino usando apenas números."
+      },
+      "inProgress": "Cadastrando {count} IDs de jogador... (pode levar alguns minutos)",
+      "result": {
+        "registered": "Cadastrado",
+        "reactivated": "Reativado",
+        "reactivatedKingdomUpdated": "Reativado (número do reino atualizado)",
+        "kingdomUpdated": "Número do reino atualizado",
+        "alreadyRegistered": "Já cadastrado",
+        "queued": ", {count} códigos adicionados à fila de resgate",
+        "failed": "Falhou",
+        "error": "Erro"
+      },
+      "verify": {
+        "WRONG_KINGDOM": "O número do reino não corresponde ao ID de jogador. Verifique o número do reino.",
+        "NO_SUCH_PLAYER": "Este ID de jogador não existe.",
+        "UNVERIFIED": "Não foi possível verificar as informações do jogador. Tente novamente mais tarde."
+      },
+      "successSummary": "✅ {count} cadastrados com sucesso",
+      "failSummary": "Falha no cadastro",
+      "failGeneric": "Não foi possível concluir o cadastro.",
+      "processError": "Erro ao processar o cadastro: {message}"
+    },
+    "codes": {
+      "title": "Códigos de presente",
+      "active": "Disponível",
+      "expired": "Expirado",
+      "empty": "Nenhum código cadastrado."
+    },
+    "redemptions": {
+      "title": "Resgates recentes",
+      "empty": "Ainda não há resgates."
+    },
+    "about": {
+      "title": "Sobre",
+      "featureTerm": "Função",
+      "featureDesc": "Detecta automaticamente os códigos de presente do Kingshot e os resgata na hora para os IDs de jogador cadastrados.",
+      "howTerm": "Como cadastrar",
+      "howDesc": "Digite seu ID de jogador e toque no botão de cadastro. Os resgates continuam automáticos mesmo depois que você fechar o site.",
+      "findIdTerm": "Onde ver o ID de jogador",
+      "findIdDesc": "Abra o jogo → Perfil → aba Informações; ele aparece abaixo do seu nome.",
+      "kingdomTerm": "Número do reino",
+      "kingdomDesc": "O número do reino informado vale para todos os IDs de jogador digitados acima. Cadastre separadamente jogadores de reinos diferentes.",
+      "noticeProfileLabel": "Aviso:",
+      "noticeProfile": "O apelido e o avatar são exibidos com base em informações públicas externas, por isso podem demorar para atualizar ou não aparecer.",
+      "noticeTransferLabel": "Se você migrou:",
+      "noticeTransfer": "Se você mudou de reino, cadastre-se novamente com o mesmo ID de jogador e o novo número do reino; as informações do reino serão atualizadas automaticamente.",
+      "noticeInactiveLabel": "Inatividade prolongada:",
+      "noticeInactive": "Jogadores que não entram no jogo há muito tempo (90 dias ou mais) são detectados automaticamente e têm os resgates pausados (desativados). Basta cadastrar de novo para reativar na hora.",
+      "disclaimerTitle": "Aviso legal",
+      "disclaimerText": "Para respeitar os limites de requisições dos servidores do Kingshot, todos os cadastros e resgates são processados em fila.",
+      "disclaimerItem1": "O cadastro inicial e o primeiro resgate podem levar alguns minutos.",
+      "disclaimerItem2": "Com muitos usuários cadastrados, o resgate de novos códigos pode atrasar.",
+      "disclaimerItem3": "Se os atrasos ficarem excessivos, serão aplicadas melhorias."
+    },
+    "support": {
+      "title": "Apoie",
+      "text": "Este site é mantido por doações.",
+      "toss": "Toss Bank",
+      "tossQrAlt": "QR code para doação via Toss Bank",
+      "bmcQrAlt": "QR code para doação via Buy Me a Coffee"
+    },
+    "contact": {
+      "title": "Contato",
+      "text": "Para feedback ou pedidos de exclusão de ID de jogador, entre em contato pelo e-mail {email}."
+    },
+    "policies": "Políticas"
+  },
+  "legal": {
+    "privacyTitle": "Política de Privacidade",
+    "termsTitle": "Termos de Uso",
+    "effectiveDate": "Vigente a partir de: {date}",
+    "updatedDate": "Última atualização: {date}",
+    "machineTranslation": "Este documento é uma tradução automática do original em coreano e pode conter imprecisões. Se a tradução divergir do original, prevalecerá o original em coreano.",
+    "viewOriginal": "Ver o original em coreano",
+    "back": "← Voltar para a página inicial"
+  }
+}

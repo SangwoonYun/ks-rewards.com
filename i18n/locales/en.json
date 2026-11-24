@@ -1,0 +1,113 @@
+{
+  "common": {
+    "language": "Language"
+  },
+  "home": {
+    "meta": {
+      "title": "Kingshot Rewards — Automatic Gift Code Redemption",
+      "description": "Kingshot Rewards automatically detects new Kingshot gift codes and redeems them right away for your registered player IDs. Register your player ID once and never enter codes by hand again.",
+      "keywords": "kingshot gift codes, kingshot codes, kingshot rewards, auto redeem, gift code redemption, kingshot redeem codes",
+      "shareTitle": "Kingshot Rewards — Automatic Gift Code Redemption",
+      "shareDescription": "Automatically detects Kingshot gift codes and redeems them right away for your registered player IDs."
+    },
+    "hero": {
+      "subtitle": "Automatic Gift Code Redemption",
+      "lead": "Register your player ID once, and every new gift code will be redeemed for you automatically."
+    },
+    "stats": {
+      "users": "Registered Users",
+      "active": "{count} active",
+      "queue": "Redemption Queue",
+      "processing": "Processing",
+      "idle": "Idle"
+    },
+    "register": {
+      "title": "Register for Auto-Redeem",
+      "playerId": "Player ID",
+      "playerIdPlaceholder": "Enter one or more player IDs, separated by commas (e.g. 12345678, 23456789)",
+      "kingdom": "Kingdom Number",
+      "kingdomPlaceholder": "e.g. 120 (applies to all player IDs above)",
+      "submit": "Register for Auto-Redeem",
+      "submitting": "Registering...",
+      "errors": {
+        "noPlayerId": "Please enter at least one player ID.",
+        "noValidPlayerId": "Please enter at least one valid player ID.",
+        "invalidPlayerId": "Invalid player ID: {fid}. Player IDs must contain only digits.",
+        "invalidKingdom": "Please enter the kingdom number as a number."
+      },
+      "inProgress": "Registering {count} player ID(s)... (this may take a few minutes)",
+      "result": {
+        "registered": "Registered",
+        "reactivated": "Reactivated",
+        "reactivatedKingdomUpdated": "Reactivated (kingdom updated)",
+        "kingdomUpdated": "Kingdom updated",
+        "alreadyRegistered": "Already registered",
+        "queued": ", {count} code(s) added to the redemption queue",
+        "failed": "Failed",
+        "error": "Error"
+      },
+      "verify": {
+        "WRONG_KINGDOM": "The kingdom number doesn't match this player ID. Please check your kingdom number.",
+        "NO_SUCH_PLAYER": "This player ID doesn't exist.",
+        "UNVERIFIED": "Couldn't verify the player info. Please try again in a moment."
+      },
+      "successSummary": "✅ {count} registered successfully",
+      "failSummary": "Registration failed",
+      "failGeneric": "Registration failed.",
+      "processError": "Error during registration: {message}"
+    },
+    "codes": {
+      "title": "Gift Codes",
+      "active": "Active",
+      "expired": "Expired",
+      "empty": "No codes yet."
+    },
+    "redemptions": {
+      "title": "Recent Redemptions",
+      "empty": "No redemptions yet."
+    },
+    "about": {
+      "title": "About",
+      "featureTerm": "What it does",
+      "featureDesc": "Automatically detects Kingshot gift codes and redeems them right away for your registered player IDs.",
+      "howTerm": "How to register",
+      "howDesc": "Enter your player ID and press Register. Codes will keep being redeemed automatically even after you close the site.",
+      "findIdTerm": "Finding your player ID",
+      "findIdDesc": "Launch the game → Profile → Info tab. It's shown below your name.",
+      "kingdomTerm": "Kingdom number",
+      "kingdomDesc": "The kingdom number you enter applies to every player ID entered above. Register players from different kingdoms separately.",
+      "noticeProfileLabel": "Note:",
+      "noticeProfile": "Nicknames and avatars come from publicly available external data, so updates may be delayed or not shown at all.",
+      "noticeTransferLabel": "If you transferred:",
+      "noticeTransfer": "If you've transferred to another kingdom, register again with the same player ID and your new kingdom number, and your kingdom info will be updated automatically.",
+      "noticeInactiveLabel": "Long-term inactivity:",
+      "noticeInactive": "Players who haven't logged into the game for a long time (90+ days) are detected automatically and auto-redeem is paused (deactivated). Register again to reactivate right away.",
+      "disclaimerTitle": "Disclaimer",
+      "disclaimerText": "To respect Kingshot server rate limits, all registrations and redemptions are processed through a queue.",
+      "disclaimerItem1": "Initial registration and instant redemption may take a few minutes.",
+      "disclaimerItem2": "When many users are registered, redeeming new codes may be delayed.",
+      "disclaimerItem3": "If delays become excessive, improvements will be rolled out."
+    },
+    "support": {
+      "title": "Support",
+      "text": "This site is kept running by donations.",
+      "toss": "Toss Bank",
+      "tossQrAlt": "Toss Bank donation QR code",
+      "bmcQrAlt": "Buy Me a Coffee donation QR code"
+    },
+    "contact": {
+      "title": "Contact",
+      "text": "For feedback or player ID removal requests, contact {email}."
+    },
+    "policies": "Policies"
+  },
+  "legal": {
+    "privacyTitle": "Privacy Policy",
+    "termsTitle": "Terms of Service",
+    "effectiveDate": "Effective date: {date}",
+    "updatedDate": "Last updated: {date}",
+    "machineTranslation": "This document is a machine translation of the Korean original and may contain inaccuracies. If the translation differs from the original, the Korean original prevails.",
+    "viewOriginal": "View the Korean original",
+    "back": "← Back to Home"
+  }
+}

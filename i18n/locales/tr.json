@@ -1,0 +1,113 @@
+{
+  "common": {
+    "language": "Dil"
+  },
+  "home": {
+    "meta": {
+      "title": "Kingshot Rewards — Otomatik Hediye Kodu Kullanma Servisi",
+      "description": "Kingshot Rewards, Kingshot hediye kodlarını otomatik olarak algılar ve kayıtlı oyuncu kimliklerine anında kullanır. Oyuncu kimliğinizi kaydedin, artık kodları elle girmenize gerek kalmasın.",
+      "keywords": "kingshot gift codes, kingshot codes, kingshot rewards, otomatik kod kullanma, hediye kodu, kingshot hediye kodları",
+      "shareTitle": "Kingshot Rewards — Otomatik Hediye Kodu Kullanma",
+      "shareDescription": "Kingshot hediye kodlarını otomatik olarak algılar ve kayıtlı oyuncu kimliklerine anında kullanır."
+    },
+    "hero": {
+      "subtitle": "Otomatik Hediye Kodu Kullanma",
+      "lead": "Oyuncu kimliğinizi bir kez kaydedin, her yeni hediye kodu çıktığında otomatik olarak kullanılsın."
+    },
+    "stats": {
+      "users": "Kayıtlı Oyuncu",
+      "active": "Aktif: {count}",
+      "queue": "Kullanım Kuyruğu",
+      "processing": "İşleniyor",
+      "idle": "Bekleyen yok"
+    },
+    "register": {
+      "title": "Otomatik Kullanıma Kaydol",
+      "playerId": "Oyuncu Kimliği",
+      "playerIdPlaceholder": "Birden fazla oyuncu kimliğini virgülle ayırarak girin (örn. 12345678, 23456789)",
+      "kingdom": "Krallık Numarası",
+      "kingdomPlaceholder": "örn. 120 (yukarıdaki tüm oyuncu kimliklerine uygulanır)",
+      "submit": "Otomatik Kullanıma Kaydol",
+      "submitting": "Kaydediliyor...",
+      "errors": {
+        "noPlayerId": "Lütfen en az bir oyuncu kimliği girin.",
+        "noValidPlayerId": "Lütfen en az bir geçerli oyuncu kimliği girin.",
+        "invalidPlayerId": "Geçersiz oyuncu kimliği: {fid}. Oyuncu kimliği yalnızca rakamlardan oluşmalıdır.",
+        "invalidKingdom": "Lütfen krallık numarasını rakamla girin."
+      },
+      "inProgress": "{count} oyuncu kimliği kaydediliyor... (birkaç dakika sürebilir)",
+      "result": {
+        "registered": "Kaydedildi",
+        "reactivated": "Yeniden etkinleştirildi",
+        "reactivatedKingdomUpdated": "Yeniden etkinleştirildi (krallık numarası güncellendi)",
+        "kingdomUpdated": "Krallık numarası güncellendi",
+        "alreadyRegistered": "Zaten kayıtlı",
+        "queued": ", {count} kod kullanım kuyruğuna eklendi",
+        "failed": "Başarısız",
+        "error": "Hata"
+      },
+      "verify": {
+        "WRONG_KINGDOM": "Krallık numarası oyuncu kimliğiyle eşleşmiyor. Lütfen krallık numarasını kontrol edin.",
+        "NO_SUCH_PLAYER": "Böyle bir oyuncu kimliği bulunamadı.",
+        "UNVERIFIED": "Oyuncu bilgileri doğrulanamadı. Lütfen biraz sonra tekrar deneyin."
+      },
+      "successSummary": "✅ {count} kayıt tamamlandı",
+      "failSummary": "Kayıt başarısız",
+      "failGeneric": "Kayıt başarısız oldu.",
+      "processError": "Kayıt sırasında hata: {message}"
+    },
+    "codes": {
+      "title": "Hediye Kodları",
+      "active": "Kullanılabilir",
+      "expired": "Süresi doldu",
+      "empty": "Henüz kayıtlı kod yok."
+    },
+    "redemptions": {
+      "title": "Son Kullanımlar",
+      "empty": "Henüz kullanım kaydı yok."
+    },
+    "about": {
+      "title": "Hakkında",
+      "featureTerm": "Özellik",
+      "featureDesc": "Kingshot hediye kodlarını otomatik olarak algılar ve kayıtlı oyuncu kimliklerine anında kullanır.",
+      "howTerm": "Nasıl kaydolunur",
+      "howDesc": "Oyuncu kimliğinizi girip kayıt düğmesine basın. Siteyi kapatsanız bile kodlar otomatik olarak kullanılmaya devam eder.",
+      "findIdTerm": "Oyuncu kimliğini bulma",
+      "findIdDesc": "Oyunu açın → Profil → Bilgi sekmesinde adınızın altında görünür.",
+      "kingdomTerm": "Krallık numarası",
+      "kingdomDesc": "Girdiğiniz krallık numarası, aynı anda girilen tüm oyuncu kimliklerine uygulanır. Farklı krallıklardaki oyuncuları ayrı ayrı kaydedin.",
+      "noticeProfileLabel": "Not:",
+      "noticeProfile": "Takma ad ve avatarlar herkese açık harici bilgilere dayanarak gösterilir; bu yüzden geç güncellenebilir veya hiç görünmeyebilir.",
+      "noticeTransferLabel": "Göç ettiyseniz:",
+      "noticeTransfer": "Göç ettiyseniz (krallık değiştirdiyseniz), aynı oyuncu kimliği ve yeni krallık numarasıyla tekrar kaydolun; krallık bilgisi otomatik olarak güncellenir.",
+      "noticeInactiveLabel": "Uzun süre giriş yapılmazsa:",
+      "noticeInactive": "Uzun süredir (90 gün veya daha fazla) oyuna giriş yapmayan oyuncular otomatik olarak algılanır ve kod kullanımı durdurulur (devre dışı bırakılır). Tekrar kaydolduğunuzda hemen yeniden etkinleştirilir.",
+      "disclaimerTitle": "Sorumluluk Reddi",
+      "disclaimerText": "Kingshot sunucularının istek sınırlarına uymak için tüm kayıt ve kullanım işlemleri sıraya alınarak işlenir.",
+      "disclaimerItem1": "İlk kayıt ve anında kullanım birkaç dakika sürebilir.",
+      "disclaimerItem2": "Kayıtlı oyuncu sayısı fazla olduğunda yeni kodların kullanımı gecikebilir.",
+      "disclaimerItem3": "Gecikmeler aşırı artarsa iyileştirmeler yapılacaktır."
+    },
+    "support": {
+      "title": "Destek",
+      "text": "Bu site bağışlarla ayakta kalıyor.",
+      "toss": "Toss Bank",
+      "tossQrAlt": "Toss Bank bağış QR kodu",
+      "bmcQrAlt": "Buy Me a Coffee bağış QR kodu"
+    },
+    "contact": {
+      "title": "İletişim",
+      "text": "Geri bildirim veya oyuncu kimliği silme talepleri için {email} adresine yazın."
+    },
+    "policies": "Politikalar"
+  },
+  "legal": {
+    "privacyTitle": "Gizlilik Politikası",
+    "termsTitle": "Kullanım Koşulları",
+    "effectiveDate": "Yürürlük tarihi: {date}",
+    "updatedDate": "Son güncelleme: {date}",
+    "machineTranslation": "Bu belge Korece aslının makine çevirisidir ve hatalar içerebilir. Çeviri ile asıl metin arasında fark olması durumunda Korece asıl metin geçerlidir.",
+    "viewOriginal": "Korece aslını görüntüle",
+    "back": "← Ana sayfaya dön"
+  }
+}

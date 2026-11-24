@@ -198,6 +198,7 @@ import type { FailureCategory, FailureUser } from '~~/server/api/admin/users/red
 
 definePageMeta({
   layout: 'admin',
+  i18n: false,
 });
 
 interface SearchState {

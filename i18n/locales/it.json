@@ -1,0 +1,113 @@
+{
+  "common": {
+    "language": "Lingua"
+  },
+  "home": {
+    "meta": {
+      "title": "Kingshot Rewards — Riscatto automatico dei codici regalo",
+      "description": "Kingshot Rewards rileva automaticamente i nuovi codici regalo di Kingshot e li riscatta subito per gli ID giocatore registrati. Registra il tuo ID giocatore e non dovrai più inserire i codici a mano.",
+      "keywords": "kingshot gift codes, kingshot codes, kingshot rewards, codici regalo kingshot, codici kingshot, riscatto automatico codici",
+      "shareTitle": "Kingshot Rewards — Riscatto automatico dei codici regalo",
+      "shareDescription": "Rileva automaticamente i codici regalo di Kingshot e li riscatta subito per gli ID giocatore registrati."
+    },
+    "hero": {
+      "subtitle": "Riscatto automatico dei codici regalo",
+      "lead": "Registra il tuo ID giocatore una sola volta: ogni nuovo codice regalo verrà riscattato automaticamente."
+    },
+    "stats": {
+      "users": "Utenti registrati",
+      "active": "Attivi: {count}",
+      "queue": "Coda di riscatto",
+      "processing": "In elaborazione",
+      "idle": "Nessuna attesa"
+    },
+    "register": {
+      "title": "Registrati al riscatto automatico",
+      "playerId": "ID giocatore",
+      "playerIdPlaceholder": "Inserisci uno o più ID giocatore separati da virgole (es. 12345678, 23456789)",
+      "kingdom": "Numero del regno",
+      "kingdomPlaceholder": "Es. 120 (vale per tutti gli ID giocatore inseriti sopra)",
+      "submit": "Registrati al riscatto automatico",
+      "submitting": "Registrazione in corso...",
+      "errors": {
+        "noPlayerId": "Inserisci almeno un ID giocatore.",
+        "noValidPlayerId": "Inserisci almeno un ID giocatore valido.",
+        "invalidPlayerId": "ID giocatore non valido: {fid}. L'ID giocatore può contenere solo cifre.",
+        "invalidKingdom": "Inserisci il numero del regno in cifre."
+      },
+      "inProgress": "Registrazione di {count} ID giocatore in corso... (potrebbe richiedere qualche minuto)",
+      "result": {
+        "registered": "Registrato",
+        "reactivated": "Riattivato",
+        "reactivatedKingdomUpdated": "Riattivato (numero del regno aggiornato)",
+        "kingdomUpdated": "Numero del regno aggiornato",
+        "alreadyRegistered": "Già registrato",
+        "queued": ", {count} codici aggiunti alla coda di riscatto",
+        "failed": "Non riuscito",
+        "error": "Errore"
+      },
+      "verify": {
+        "WRONG_KINGDOM": "Il numero del regno non corrisponde all'ID giocatore. Controlla il numero del regno.",
+        "NO_SUCH_PLAYER": "Questo ID giocatore non esiste.",
+        "UNVERIFIED": "Impossibile verificare i dati del giocatore. Riprova tra poco."
+      },
+      "successSummary": "✅ {count} registrazioni completate",
+      "failSummary": "Registrazione non riuscita",
+      "failGeneric": "Registrazione non riuscita.",
+      "processError": "Errore durante la registrazione: {message}"
+    },
+    "codes": {
+      "title": "Codici regalo",
+      "active": "Disponibile",
+      "expired": "Scaduto",
+      "empty": "Nessun codice registrato."
+    },
+    "redemptions": {
+      "title": "Riscatti recenti",
+      "empty": "Ancora nessun riscatto."
+    },
+    "about": {
+      "title": "Informazioni",
+      "featureTerm": "Funzione",
+      "featureDesc": "Rileva automaticamente i codici regalo di Kingshot e li riscatta subito per gli ID giocatore registrati.",
+      "howTerm": "Come registrarsi",
+      "howDesc": "Inserisci il tuo ID giocatore e premi il pulsante di registrazione. Il riscatto automatico continua anche dopo aver chiuso il sito.",
+      "findIdTerm": "Trovare l'ID giocatore",
+      "findIdDesc": "Avvia il gioco → Profilo → scheda Info: l'ID è mostrato sotto il nome.",
+      "kingdomTerm": "Numero del regno",
+      "kingdomDesc": "Il numero del regno inserito vale per tutti gli ID giocatore inseriti insieme. Se i giocatori sono in regni diversi, registrali separatamente.",
+      "noticeProfileLabel": "Nota:",
+      "noticeProfile": "Nickname e avatar provengono da informazioni pubbliche esterne, quindi potrebbero aggiornarsi in ritardo o non comparire.",
+      "noticeTransferLabel": "Se hai cambiato regno:",
+      "noticeTransfer": "Se hai migrato in un altro regno, registra di nuovo lo stesso ID giocatore con il nuovo numero del regno: i dati del regno verranno aggiornati automaticamente.",
+      "noticeInactiveLabel": "Inattività prolungata:",
+      "noticeInactive": "I giocatori che non accedono al gioco da molto tempo (90 giorni o più) vengono rilevati automaticamente e il riscatto viene sospeso (disattivato). Registrandoti di nuovo verrai riattivato subito.",
+      "disclaimerTitle": "Avvertenze",
+      "disclaimerText": "Per rispettare i limiti di richieste dei server di Kingshot, tutte le registrazioni e i riscatti vengono gestiti tramite una coda.",
+      "disclaimerItem1": "La prima registrazione e il riscatto immediato possono richiedere alcuni minuti.",
+      "disclaimerItem2": "Con molti utenti registrati, il riscatto dei nuovi codici potrebbe subire ritardi.",
+      "disclaimerItem3": "Se i ritardi diventeranno eccessivi, verranno introdotti dei miglioramenti."
+    },
+    "support": {
+      "title": "Sostienici",
+      "text": "Questo sito è mantenuto grazie alle donazioni.",
+      "toss": "Toss Bank",
+      "tossQrAlt": "Codice QR per donare con Toss Bank",
+      "bmcQrAlt": "Codice QR per donare con Buy Me a Coffee"
+    },
+    "contact": {
+      "title": "Contatti",
+      "text": "Per feedback o richieste di cancellazione dell'ID giocatore, scrivi a {email}."
+    },
+    "policies": "Informative"
+  },
+  "legal": {
+    "privacyTitle": "Informativa sulla privacy",
+    "termsTitle": "Termini di servizio",
+    "effectiveDate": "In vigore dal: {date}",
+    "updatedDate": "Ultimo aggiornamento: {date}",
+    "machineTranslation": "Questo documento è una traduzione automatica dell'originale in coreano e potrebbe contenere imprecisioni. In caso di differenze tra la traduzione e l'originale, prevale l'originale in coreano.",
+    "viewOriginal": "Visualizza l'originale in coreano",
+    "back": "← Torna alla pagina principale"
+  }
+}

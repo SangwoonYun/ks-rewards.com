@@ -111,6 +111,7 @@ import type { GiftCode } from '~~/server/db';
 
 definePageMeta({
   layout: 'admin',
+  i18n: false,
 });
 
 const search = ref('');

@@ -2,62 +2,65 @@
   <div class="page">
     <header class="topbar">
       <div class="topbar-inner">
-        <a href="/" class="brand">
+        <NuxtLinkLocale to="/" class="brand">
           <BrandMark />
           <span class="brand-name">Kingshot Rewards</span>
-        </a>
-        <a href="https://ks-giftcode.centurygame.com" class="topbar-link" target="_blank" rel="noopener noreferrer">
-          Gift Codes
-          <svg class="topbar-link-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>
-        </a>
+        </NuxtLinkLocale>
+        <div class="topbar-actions">
+          <a href="https://ks-giftcode.centurygame.com" class="topbar-link" target="_blank" rel="noopener noreferrer">
+            Gift Codes
+            <svg class="topbar-link-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>
+          </a>
+          <LanguageSwitcher />
+        </div>
       </div>
     </header>
 
     <main class="main">
       <section class="hero">
         <div class="hero-text">
-          <h1 class="hero-title">Kingshot Rewards <span class="hero-sub">자동 기프트 코드 수령</span></h1>
-          <p class="hero-lead">플레이어 ID를 한 번만 등록하면, 새 기프트 코드가 나올 때마다 자동으로 수령합니다.</p>
+          <h1 class="hero-title">Kingshot Rewards <span class="hero-sub">{{ t('home.hero.subtitle') }}</span></h1>
+          <p class="hero-lead">{{ t('home.hero.lead') }}</p>
         </div>
         <div v-if="siteStats" class="hero-stats">
           <div class="stat-tile">
-            <div class="stat-label">등록 유저</div>
+            <div class="stat-label">{{ t('home.stats.users') }}</div>
             <div class="stat-value">{{ siteStats.totalUsers.toLocaleString() }}</div>
-            <div class="stat-detail"><span class="stat-dot is-active" />활성 {{ siteStats.activeUsers.toLocaleString() }}</div>
+            <div class="stat-detail"><span class="stat-dot is-active" />{{ t('home.stats.active', { count: siteStats.activeUsers.toLocaleString() }) }}</div>
           </div>
           <div class="stat-tile">
-            <div class="stat-label">수령 대기열</div>
+            <div class="stat-label">{{ t('home.stats.queue') }}</div>
             <div class="stat-value">{{ siteStats.pendingQueueItems.toLocaleString() }}</div>
             <div class="stat-detail">
               <span :class="['stat-dot', siteStats.pendingQueueItems > 0 ? 'is-busy' : 'is-active']" />
-              {{ siteStats.pendingQueueItems > 0 ? '처리 중' : '대기 없음' }}
+              {{ siteStats.pendingQueueItems > 0 ? t('home.stats.processing') : t('home.stats.idle') }}
             </div>
           </div>
         </div>
       </section>
 
       <section class="card register" aria-labelledby="register-title">
-        <h2 id="register-title" class="card-title">자동 수령 등록</h2>
+        <h2 id="register-title" class="card-title">{{ t('home.register.title') }}</h2>
         <div class="register-fields">
           <div class="field field-player">
-            <label for="playerId">플레이어 ID</label>
+            <label for="playerId">{{ t('home.register.playerId') }}</label>
             <input
               id="playerId"
               v-model="playerInput"
               type="text"
-              placeholder="쉼표로 구분하여 여러 플레이어 ID 입력 (예: 12345678, 23456789)"
+              :placeholder="t('home.register.playerIdPlaceholder')"
               @keyup.enter="registerPlayer"
             />
           </div>
 
           <div class="field field-server">
-            <label for="serverId">왕국 번호</label>
+            <label for="serverId">{{ t('home.register.kingdom') }}</label>
             <input
               id="serverId"
               v-model="serverInput"
               type="text"
               inputmode="numeric"
-              placeholder="예: 120 (위 플레이어 ID 전체에 동일하게 적용됩니다)"
+              :placeholder="t('home.register.kingdomPlaceholder')"
               @keyup.enter="registerPlayer"
             />
           </div>
@@ -69,7 +72,7 @@
             @click="registerPlayer"
           >
             <span v-if="isRegistering" class="spinner" aria-hidden="true"></span>
-            {{ isRegistering ? '등록 중...' : '자동 수령 등록' }}
+            {{ isRegistering ? t('home.register.submitting') : t('home.register.submit') }}
           </button>
         </div>
 
@@ -79,7 +82,7 @@
       <section class="live">
         <div id="codes-panel" class="card panel">
           <div class="panel-head">
-            <h2 class="card-title">Gift Codes</h2>
+            <h2 class="card-title">{{ t('home.codes.title') }}</h2>
             <span class="count-pill">{{ displayedCodes.length }}</span>
           </div>
           <div id="codes" :class="['codes-grid', { 'is-empty': displayedCodes.length === 0 }]">
@@ -87,19 +90,19 @@
               <div v-for="code in displayedCodes" :key="code.code" :class="['code-tile', { expired: code.validation_status === 'expired' }]">
                 <span class="code-tile-code">{{ code.code }}</span>
                 <span :class="['code-tile-status', code.validation_status === 'expired' ? 'expired' : 'active']">
-                  {{ code.validation_status === 'expired' ? '만료됨' : '사용 가능' }}
+                  {{ code.validation_status === 'expired' ? t('home.codes.expired') : t('home.codes.active') }}
                 </span>
               </div>
             </template>
             <template v-else>
-              <div class="empty-message">등록된 코드가 없습니다.</div>
+              <div class="empty-message">{{ t('home.codes.empty') }}</div>
             </template>
           </div>
         </div>
 
         <div class="card panel">
           <div class="panel-head">
-            <h2 class="card-title">최근 수령 내역</h2>
+            <h2 class="card-title">{{ t('home.redemptions.title') }}</h2>
             <span class="live-badge"><span class="live-dot" aria-hidden="true"></span>LIVE</span>
           </div>
           <div id="redemptions" :class="['redemptions-list', { 'is-empty': redemptions.length === 0 }]">
@@ -120,43 +123,43 @@
                     <span class="redemption-nickname">{{ redemption.nickname || 'Player' }}</span>
                     <span v-if="redemption.kingdom" class="redemption-kingdom">(#{{ redemption.kingdom }})</span>
                   </div>
-                  <span class="redemption-time">{{ formatKST(redemption.redeemed_at) }} KST</span>
+                  <span class="redemption-time">{{ formatKST(redemption.redeemed_at, localeProperties.language) }} KST</span>
                 </div>
                 <span class="redemption-code">{{ redemption.code }}</span>
               </div>
             </template>
             <template v-else>
-              <div class="empty-message">아직 수령 기록이 없습니다.</div>
+              <div class="empty-message">{{ t('home.redemptions.empty') }}</div>
             </template>
           </div>
         </div>
       </section>
 
       <section class="card info">
-        <h2 class="card-title">About</h2>
+        <h2 class="card-title">{{ t('home.about.title') }}</h2>
         <dl class="info-list">
           <div class="info-item">
-            <dt>기능</dt>
-            <dd>Kingshot 기프트 코드를 자동으로 감지하여 등록된 플레이어 ID로 즉시 수령합니다.</dd>
+            <dt>{{ t('home.about.featureTerm') }}</dt>
+            <dd>{{ t('home.about.featureDesc') }}</dd>
           </div>
           <div class="info-item">
-            <dt>등록 방법</dt>
-            <dd>플레이어 ID를 입력 후 등록 버튼을 누르세요. 이후 사이트를 닫아도 계속 자동 수령됩니다.</dd>
+            <dt>{{ t('home.about.howTerm') }}</dt>
+            <dd>{{ t('home.about.howDesc') }}</dd>
           </div>
           <div class="info-item">
-            <dt>플레이어 ID 확인</dt>
-            <dd>게임 실행 → 프로필 → 정보 탭에서 이름 아래 표시됩니다.</dd>
+            <dt>{{ t('home.about.findIdTerm') }}</dt>
+            <dd>{{ t('home.about.findIdDesc') }}</dd>
           </div>
           <div class="info-item">
-            <dt>왕국 번호</dt>
-            <dd>한 번에 입력한 왕국 번호는 위에 입력한 모든 플레이어 ID에 동일하게 적용됩니다. 왕국이 다른 플레이어는 나눠서 등록해 주세요.</dd>
+            <dt>{{ t('home.about.kingdomTerm') }}</dt>
+            <dd>{{ t('home.about.kingdomDesc') }}</dd>
           </div>
         </dl>
 
         <div class="notices">
-          <p class="notice-text"><strong>안내:</strong> 닉네임/아바타는 외부 공개 정보를 바탕으로 표시되어, 반영이 늦거나 표시되지 않을 수 있습니다.</p>
-          <p class="notice-text"><strong>이민하신 경우:</strong> 이민(왕국 이동)을 하신 경우, 같은 플레이어 ID와 새 왕국 번호로 다시 등록하시면 왕국 정보가 자동으로 갱신됩니다.</p>
-          <p class="notice-text"><strong>장기 미접속 시:</strong> 오랫동안(90일 이상) 게임에 접속하지 않은 플레이어는 자동으로 감지되어 수령이 중단(비활성화)됩니다. 다시 등록하시면 바로 재활성화됩니다.</p>
+          <p class="notice-text"><strong>{{ t('home.about.noticeProfileLabel') }}</strong> {{ t('home.about.noticeProfile') }}</p>
+          <p class="notice-text"><strong>{{ t('home.about.noticeTransferLabel') }}</strong> {{ t('home.about.noticeTransfer') }}</p>
+          <p class="notice-text"><strong>{{ t('home.about.noticeInactiveLabel') }}</strong> {{ t('home.about.noticeInactive') }}</p>
         </div>
 
         <div class="disclaimer" role="note" aria-label="Disclaimer">
@@ -165,12 +168,12 @@
             <path d="M12 16v-4M12 8h.01" />
           </svg>
           <div class="disclaimer-content">
-            <div class="disclaimer-title"><strong>Disclaimer</strong></div>
-            <p>Kingshot 서버의 요청 제한을 준수하기 위해 모든 등록 및 수령은 큐 기반으로 처리됩니다.</p>
+            <div class="disclaimer-title"><strong>{{ t('home.about.disclaimerTitle') }}</strong></div>
+            <p>{{ t('home.about.disclaimerText') }}</p>
             <ul>
-              <li>초기 등록 및 즉시 수령은 몇 분 정도 소요될 수 있습니다.</li>
-              <li>등록 인원이 많을 경우 새 코드 수령이 지연될 수 있습니다.</li>
-              <li>지연이 과도해질 경우 개선 로직이 적용될 예정입니다.</li>
+              <li>{{ t('home.about.disclaimerItem1') }}</li>
+              <li>{{ t('home.about.disclaimerItem2') }}</li>
+              <li>{{ t('home.about.disclaimerItem3') }}</li>
             </ul>
           </div>
         </div>
@@ -178,18 +181,18 @@
 
       <div class="bottom-row">
         <section class="card support" aria-labelledby="support-title">
-          <h2 id="support-title" class="card-title">Support</h2>
-          <p>본 사이트는 후원으로 유지됩니다.</p>
+          <h2 id="support-title" class="card-title">{{ t('home.support.title') }}</h2>
+          <p>{{ t('home.support.text') }}</p>
           <div class="support-qrs">
             <figure class="support-qr">
               <a href="supertoss://send?amount=0&bank=IBK%EA%B8%B0%EC%97%85%EC%9D%80%ED%96%89&accountNo=29810334201018&origin=qr">
-                <img src="/images/qr-toss.jpg" alt="토스뱅크 후원 QR 코드" width="128" height="128" loading="lazy">
+                <img src="/images/qr-toss.jpg" :alt="t('home.support.tossQrAlt')" width="128" height="128" loading="lazy">
               </a>
-              <figcaption>토스뱅크</figcaption>
+              <figcaption>{{ t('home.support.toss') }}</figcaption>
             </figure>
             <figure class="support-qr">
               <a href="https://www.buymeacoffee.com/swyun" target="_blank" rel="noopener noreferrer">
-                <img src="/images/qr-bmc.png" alt="Buy Me a Coffee 후원 QR 코드" width="128" height="128" loading="lazy">
+                <img src="/images/qr-bmc.png" :alt="t('home.support.bmcQrAlt')" width="128" height="128" loading="lazy">
               </a>
               <figcaption>Buy Me a Coffee</figcaption>
             </figure>
@@ -198,8 +201,10 @@
 
         <div class="bottom-side">
           <section class="card info contact">
-            <h2 class="card-title">Contact</h2>
-            <p>피드백 또는 플레이어 ID 삭제 요청은 <a href="mailto:dev.swyun@gmail.com">dev.swyun@gmail.com</a>으로 연락 주세요.</p>
+            <h2 class="card-title">{{ t('home.contact.title') }}</h2>
+            <i18n-t keypath="home.contact.text" tag="p" scope="global">
+              <template #email><a href="mailto:dev.swyun@gmail.com">dev.swyun@gmail.com</a></template>
+            </i18n-t>
             <p class="contact-credit">
               <a href="https://github.com/SangwoonYun/ks-rewards.com" class="github-link" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
                 <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z" /></svg>
@@ -208,9 +213,9 @@
             </p>
           </section>
 
-          <nav class="policy-links" aria-label="정책">
-            <a href="/privacy" class="card policy-tile">개인정보 처리방침</a>
-            <a href="/terms" class="card policy-tile">이용 약관</a>
+          <nav class="policy-links" :aria-label="t('home.policies')">
+            <NuxtLinkLocale to="/privacy" class="card policy-tile">{{ t('legal.privacyTitle') }}</NuxtLinkLocale>
+            <NuxtLinkLocale to="/terms" class="card policy-tile">{{ t('legal.termsTitle') }}</NuxtLinkLocale>
           </nav>
         </div>
       </div>
@@ -224,7 +229,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useHead } from '#imports'
+import { useHead, useI18n } from '#imports'
 
 // Type definitions
 interface GiftCode {
@@ -286,39 +291,40 @@ const codes = ref<GiftCode[]>([]);
 const redemptions = ref<Redemption[]>([]);
 const siteStats = ref<SiteStats | null>(null);
 
-// Add SEO meta tags and structured data for the homepage
-useHead({
-  title: 'Kingshot Rewards — 자동 기프트 코드 수령 서비스',
+const { t, te, localeProperties } = useI18n();
+const localePath = useLocalePath();
+const pageUrl = computed(() => `https://ks-rewards.com${localePath('/')}`);
+
+// Add SEO meta tags and structured data for the homepage (hreflang and canonical come from useLocaleSeo)
+useLocaleSeo();
+useHead(() => ({
+  title: t('home.meta.title'),
   meta: [
     {
       name: 'description',
-      content: 'Kingshot Rewards는 Kingshot 기프트 코드를 자동으로 감지하고 등록된 플레이어 ID로 즉시 수령해주는 서비스입니다. 플레이어 ID를 등록하면 더 이상 수동으로 코드를 입력할 필요가 없습니다.'
+      content: t('home.meta.description')
     },
     {
       name: 'keywords',
-      content: 'kingshot gift codes, kingshot codes, kingshot rewards, 자동 수령, 기프트코드, 킹샷 코드'
+      content: t('home.meta.keywords')
     },
     { name: 'robots', content: 'index,follow' },
 
-    { property: 'og:title', content: 'Kingshot Rewards — 자동 기프트 코드 수령' },
+    { property: 'og:title', content: t('home.meta.shareTitle') },
     {
       property: 'og:description',
-      content: 'Kingshot 기프트 코드를 자동으로 감지하여 등록된 플레이어 ID로 즉시 수령합니다.'
+      content: t('home.meta.shareDescription')
     },
     { property: 'og:type', content: 'website' },
-    { property: 'og:url', content: 'https://ks-rewards.com/' },
+    { property: 'og:url', content: pageUrl.value },
     { property: 'og:image', content: 'https://ks-rewards.com/favicon.ico' },
 
     { name: 'twitter:card', content: 'summary' },
-    { name: 'twitter:title', content: 'Kingshot Rewards — 자동 기프트 코드 수령' },
+    { name: 'twitter:title', content: t('home.meta.shareTitle') },
     {
       name: 'twitter:description',
-      content: 'Kingshot 기프트 코드를 자동으로 감지하고 등록된 플레이어 ID로 즉시 수령합니다.'
+      content: t('home.meta.shareDescription')
     }
-  ],
-
-  link: [
-    { rel: 'canonical', href: 'https://ks-rewards.com/' }
   ],
 
   script: [
@@ -328,8 +334,8 @@ useHead({
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "Kingshot Rewards",
-        "url": "https://ks-rewards.com/",
-        "description": "Kingshot 기프트 코드를 자동으로 감지하여 등록된 플레이어 ID로 즉시 수령해주는 서비스입니다.",
+        "url": pageUrl.value,
+        "description": t('home.meta.shareDescription'),
         "potentialAction": {
           "@type": "SearchAction",
           "target": "https://ks-rewards.com/?q={search_term_string}",
@@ -353,7 +359,7 @@ useHead({
       })
     } as any)
   ]
-})
+}))
 
 // Filter and sort codes to show validated (active) codes first, then expired codes
 const displayedCodes = computed(() => {
@@ -419,7 +425,7 @@ async function fetchStats() {
 async function registerPlayer() {
   const input = playerInput.value.trim();
   if (!input) {
-    statusMessage.value = '플레이어 ID를 최소 1개 이상 입력해 주세요.';
+    statusMessage.value = t('home.register.errors.noPlayerId');
     statusType.value = 'error';
     return;
   }
@@ -428,7 +434,7 @@ async function registerPlayer() {
   const fids = input.split(',').map(f => f.trim()).filter(f => f);
 
   if (fids.length === 0) {
-    statusMessage.value = '유효한 플레이어 ID를 최소 1개 이상 입력해 주세요.';
+    statusMessage.value = t('home.register.errors.noValidPlayerId');
     statusType.value = 'error';
     return;
   }
@@ -436,7 +442,7 @@ async function registerPlayer() {
   // Validate all are numeric
   for (const fid of fids) {
     if (!/^\d+$/.test(fid)) {
-      statusMessage.value = `잘못된 플레이어 ID: ${fid}. 플레이어 ID는 숫자만 가능합니다.`;
+      statusMessage.value = t('home.register.errors.invalidPlayerId', { fid });
       statusType.value = 'error';
       return;
     }
@@ -444,13 +450,13 @@ async function registerPlayer() {
 
   const kid = serverInput.value.trim();
   if (!kid || !/^\d+$/.test(kid)) {
-    statusMessage.value = '왕국 번호를 숫자로 입력해 주세요.';
+    statusMessage.value = t('home.register.errors.invalidKingdom');
     statusType.value = 'error';
     return;
   }
 
   isRegistering.value = true;
-  statusMessage.value = `${fids.length}개 플레이어 ID 등록 중... (최대 몇 분 소요될 수 있습니다)`;
+  statusMessage.value = t('home.register.inProgress', { count: fids.length });
   statusType.value = '';
 
   let successCount = 0;
@@ -466,22 +472,26 @@ async function registerPlayer() {
         });
 
         // Queued codes are redeemed in the background, so they show up in the recent redemptions shortly
-        const queued = response.queuedCount ? `, 코드 ${response.queuedCount}개 수령 대기열에 추가됨` : '';
-        let head = '등록 완료';
+        const queued = response.queuedCount ? t('home.register.result.queued', { count: response.queuedCount }) : '';
+        let head = t('home.register.result.registered');
         if (response.alreadyRegistered) {
           if (response.reactivated) {
-            head = response.kidUpdated ? '재활성화됨(왕국 번호 갱신)' : '재활성화됨';
+            head = t(response.kidUpdated ? 'home.register.result.reactivatedKingdomUpdated' : 'home.register.result.reactivated');
           } else {
-            head = response.kidUpdated ? '왕국 번호 갱신됨' : '이미 등록됨';
+            head = t(response.kidUpdated ? 'home.register.result.kingdomUpdated' : 'home.register.result.alreadyRegistered');
           }
         }
         results.push(`${fid}: ${head}${queued}`);
         successCount++;
       } catch (error: any) {
         // 400 (invalid input) and 422 (verification failed) carry a message for the user; anything else is an error
-        const message = error.data?.message ?? error.data?.statusMessage ?? error.message ?? String(error);
+        // Verification failures carry a reason code, translated here (the server message is Korean)
+        const reason: string | undefined = error.data?.data?.reason;
+        const message = reason && te(`home.register.verify.${reason}`)
+          ? t(`home.register.verify.${reason}`)
+          : error.data?.message ?? error.data?.statusMessage ?? error.message ?? String(error);
         const rejected = error.statusCode === 400 || error.statusCode === 422;
-        results.push(`${fid}: ${rejected ? '실패' : '오류'} - ${message}`);
+        results.push(`${fid}: ${t(rejected ? 'home.register.result.failed' : 'home.register.result.error')} - ${message}`);
         failCount++;
       }
     }
@@ -495,14 +505,14 @@ async function registerPlayer() {
       fetchRedemptions();
 
       // Show a concise summary plus the per-fid results so users see what happened
-      const summary = `✅ ${successCount}명(건) 등록 완료`;
+      const summary = t('home.register.successSummary', { count: successCount });
       statusMessage.value = results.length > 0 ? `${summary}: [${results.join(', ')}]` : summary;
     } else {
       statusType.value = 'error';
-      statusMessage.value = results.length > 0 ? `등록 실패: [${results.join(', ')}]` : '등록에 실패했습니다.';
+      statusMessage.value = results.length > 0 ? `${t('home.register.failSummary')}: [${results.join(', ')}]` : t('home.register.failGeneric');
     }
   } catch (error: any) {
-    statusMessage.value = `등록 처리 중 오류: ${error.message || String(error)}`;
+    statusMessage.value = t('home.register.processError', { message: error.message || String(error) });
     statusType.value = 'error';
   } finally {
     isRegistering.value = false;
@@ -567,6 +577,12 @@ onUnmounted(() => {
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: -0.01em;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .topbar-link {

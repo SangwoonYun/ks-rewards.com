@@ -43,6 +43,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'default',
+  i18n: false,
 });
 
 const { login, checkAuth } = useAdmin();

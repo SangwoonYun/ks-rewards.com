@@ -1,0 +1,113 @@
+{
+  "common": {
+    "language": "Bahasa"
+  },
+  "home": {
+    "meta": {
+      "title": "Kingshot Rewards — Layanan Klaim Kode Hadiah Otomatis",
+      "description": "Kingshot Rewards mendeteksi kode hadiah Kingshot secara otomatis dan langsung mengklaimnya ke ID pemain yang terdaftar. Daftarkan ID pemain Anda dan tidak perlu lagi memasukkan kode secara manual.",
+      "keywords": "kingshot gift codes, kingshot codes, kingshot rewards, klaim otomatis, kode hadiah, kode redeem kingshot",
+      "shareTitle": "Kingshot Rewards — Klaim Kode Hadiah Otomatis",
+      "shareDescription": "Mendeteksi kode hadiah Kingshot secara otomatis dan langsung mengklaimnya ke ID pemain yang terdaftar."
+    },
+    "hero": {
+      "subtitle": "Klaim Kode Hadiah Otomatis",
+      "lead": "Cukup daftarkan ID pemain sekali, dan setiap kode hadiah baru akan diklaim secara otomatis."
+    },
+    "stats": {
+      "users": "Pemain Terdaftar",
+      "active": "Aktif {count}",
+      "queue": "Antrean Klaim",
+      "processing": "Sedang diproses",
+      "idle": "Tidak ada antrean"
+    },
+    "register": {
+      "title": "Daftar Klaim Otomatis",
+      "playerId": "ID Pemain",
+      "playerIdPlaceholder": "Masukkan beberapa ID pemain dipisahkan koma (contoh: 12345678, 23456789)",
+      "kingdom": "Nomor Kerajaan",
+      "kingdomPlaceholder": "Contoh: 120 (berlaku untuk semua ID pemain di atas)",
+      "submit": "Daftar Klaim Otomatis",
+      "submitting": "Mendaftarkan...",
+      "errors": {
+        "noPlayerId": "Masukkan minimal satu ID pemain.",
+        "noValidPlayerId": "Masukkan minimal satu ID pemain yang valid.",
+        "invalidPlayerId": "ID pemain tidak valid: {fid}. ID pemain hanya boleh berisi angka.",
+        "invalidKingdom": "Masukkan nomor kerajaan dalam bentuk angka."
+      },
+      "inProgress": "Mendaftarkan {count} ID pemain... (bisa memakan waktu beberapa menit)",
+      "result": {
+        "registered": "Terdaftar",
+        "reactivated": "Diaktifkan kembali",
+        "reactivatedKingdomUpdated": "Diaktifkan kembali (nomor kerajaan diperbarui)",
+        "kingdomUpdated": "Nomor kerajaan diperbarui",
+        "alreadyRegistered": "Sudah terdaftar",
+        "queued": ", {count} kode ditambahkan ke antrean klaim",
+        "failed": "Gagal",
+        "error": "Kesalahan"
+      },
+      "verify": {
+        "WRONG_KINGDOM": "Nomor kerajaan tidak cocok dengan ID pemain. Periksa kembali nomor kerajaan Anda.",
+        "NO_SUCH_PLAYER": "ID pemain tidak ditemukan.",
+        "UNVERIFIED": "Gagal memverifikasi info pemain. Silakan coba lagi nanti."
+      },
+      "successSummary": "✅ {count} berhasil didaftarkan",
+      "failSummary": "Pendaftaran gagal",
+      "failGeneric": "Pendaftaran gagal.",
+      "processError": "Terjadi kesalahan saat mendaftar: {message}"
+    },
+    "codes": {
+      "title": "Kode Hadiah",
+      "active": "Tersedia",
+      "expired": "Kedaluwarsa",
+      "empty": "Belum ada kode terdaftar."
+    },
+    "redemptions": {
+      "title": "Riwayat Klaim Terbaru",
+      "empty": "Belum ada riwayat klaim."
+    },
+    "about": {
+      "title": "Tentang",
+      "featureTerm": "Fitur",
+      "featureDesc": "Mendeteksi kode hadiah Kingshot secara otomatis dan langsung mengklaimnya ke ID pemain yang terdaftar.",
+      "howTerm": "Cara mendaftar",
+      "howDesc": "Masukkan ID pemain lalu tekan tombol daftar. Klaim otomatis tetap berjalan meskipun Anda menutup situs ini.",
+      "findIdTerm": "Cara melihat ID pemain",
+      "findIdDesc": "Buka game → Profil → tab Info, ID tertera di bawah nama Anda.",
+      "kingdomTerm": "Nomor kerajaan",
+      "kingdomDesc": "Nomor kerajaan yang dimasukkan berlaku untuk semua ID pemain yang dimasukkan bersamaan. Daftarkan pemain dari kerajaan berbeda secara terpisah.",
+      "noticeProfileLabel": "Catatan:",
+      "noticeProfile": "Nama panggilan dan avatar ditampilkan berdasarkan info publik dari luar, sehingga bisa terlambat diperbarui atau tidak muncul.",
+      "noticeTransferLabel": "Jika Anda pindah kerajaan:",
+      "noticeTransfer": "Jika Anda bermigrasi (pindah kerajaan), daftar ulang dengan ID pemain yang sama dan nomor kerajaan baru, maka info kerajaan akan diperbarui otomatis.",
+      "noticeInactiveLabel": "Jika lama tidak login:",
+      "noticeInactive": "Pemain yang tidak login ke game dalam waktu lama (90 hari atau lebih) akan terdeteksi otomatis dan klaimnya dihentikan (dinonaktifkan). Daftar ulang untuk langsung mengaktifkannya kembali.",
+      "disclaimerTitle": "Penafian",
+      "disclaimerText": "Untuk mematuhi batas permintaan server Kingshot, semua pendaftaran dan klaim diproses melalui antrean.",
+      "disclaimerItem1": "Pendaftaran awal dan klaim langsung bisa memakan waktu beberapa menit.",
+      "disclaimerItem2": "Jika jumlah pemain terdaftar banyak, klaim kode baru bisa tertunda.",
+      "disclaimerItem3": "Jika penundaan menjadi berlebihan, perbaikan akan diterapkan."
+    },
+    "support": {
+      "title": "Dukungan",
+      "text": "Situs ini berjalan berkat donasi.",
+      "toss": "Toss Bank",
+      "tossQrAlt": "Kode QR donasi Toss Bank",
+      "bmcQrAlt": "Kode QR donasi Buy Me a Coffee"
+    },
+    "contact": {
+      "title": "Kontak",
+      "text": "Untuk masukan atau permintaan penghapusan ID pemain, hubungi {email}."
+    },
+    "policies": "Kebijakan"
+  },
+  "legal": {
+    "privacyTitle": "Kebijakan Privasi",
+    "termsTitle": "Ketentuan Layanan",
+    "effectiveDate": "Tanggal berlaku: {date}",
+    "updatedDate": "Terakhir diperbarui: {date}",
+    "machineTranslation": "Dokumen ini adalah terjemahan mesin dari naskah asli berbahasa Korea dan mungkin mengandung ketidakakuratan. Jika terdapat perbedaan antara terjemahan dan naskah asli, naskah asli berbahasa Korea yang berlaku.",
+    "viewOriginal": "Lihat naskah asli berbahasa Korea",
+    "back": "← Kembali ke beranda"
+  }
+}
