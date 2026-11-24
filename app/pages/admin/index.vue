@@ -84,6 +84,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
+  i18n: false,
 });
 
 const loading = ref(true);

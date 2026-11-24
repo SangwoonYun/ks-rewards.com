@@ -1,0 +1,113 @@
+{
+  "common": {
+    "language": "Sprache"
+  },
+  "home": {
+    "meta": {
+      "title": "Kingshot Rewards — Automatische Einlösung von Geschenkcodes",
+      "description": "Kingshot Rewards erkennt neue Kingshot-Geschenkcodes automatisch und löst sie sofort für deine registrierten Spieler-IDs ein. Einmal registrieren – nie wieder Codes von Hand eingeben.",
+      "keywords": "kingshot gift codes, kingshot codes, kingshot rewards, automatisch einlösen, Geschenkcodes, Kingshot Codes einlösen",
+      "shareTitle": "Kingshot Rewards — Geschenkcodes automatisch einlösen",
+      "shareDescription": "Erkennt Kingshot-Geschenkcodes automatisch und löst sie sofort für deine registrierten Spieler-IDs ein."
+    },
+    "hero": {
+      "subtitle": "Geschenkcodes automatisch einlösen",
+      "lead": "Registriere deine Spieler-ID einmal – jeder neue Geschenkcode wird ab dann automatisch eingelöst."
+    },
+    "stats": {
+      "users": "Registrierte Spieler",
+      "active": "{count} aktiv",
+      "queue": "Einlöse-Warteschlange",
+      "processing": "Wird verarbeitet",
+      "idle": "Leer"
+    },
+    "register": {
+      "title": "Für automatische Einlösung registrieren",
+      "playerId": "Spieler-ID",
+      "playerIdPlaceholder": "Mehrere Spieler-IDs durch Kommas trennen (z. B. 12345678, 23456789)",
+      "kingdom": "Königreichsnummer",
+      "kingdomPlaceholder": "z. B. 120 (gilt für alle oben eingegebenen Spieler-IDs)",
+      "submit": "Registrieren",
+      "submitting": "Wird registriert...",
+      "errors": {
+        "noPlayerId": "Bitte gib mindestens eine Spieler-ID ein.",
+        "noValidPlayerId": "Bitte gib mindestens eine gültige Spieler-ID ein.",
+        "invalidPlayerId": "Ungültige Spieler-ID: {fid}. Spieler-IDs dürfen nur Ziffern enthalten.",
+        "invalidKingdom": "Bitte gib die Königreichsnummer als Zahl ein."
+      },
+      "inProgress": "{count} Spieler-ID(s) werden registriert... (kann einige Minuten dauern)",
+      "result": {
+        "registered": "Registriert",
+        "reactivated": "Reaktiviert",
+        "reactivatedKingdomUpdated": "Reaktiviert (Königreich aktualisiert)",
+        "kingdomUpdated": "Königreich aktualisiert",
+        "alreadyRegistered": "Bereits registriert",
+        "queued": ", {count} Code(s) zur Einlöse-Warteschlange hinzugefügt",
+        "failed": "Fehlgeschlagen",
+        "error": "Fehler"
+      },
+      "verify": {
+        "WRONG_KINGDOM": "Die Königreichsnummer passt nicht zur Spieler-ID. Bitte überprüfe die Königreichsnummer.",
+        "NO_SUCH_PLAYER": "Diese Spieler-ID existiert nicht.",
+        "UNVERIFIED": "Die Spielerdaten konnten nicht überprüft werden. Bitte versuche es später erneut."
+      },
+      "successSummary": "✅ {count} erfolgreich registriert",
+      "failSummary": "Registrierung fehlgeschlagen",
+      "failGeneric": "Die Registrierung ist fehlgeschlagen.",
+      "processError": "Fehler bei der Registrierung: {message}"
+    },
+    "codes": {
+      "title": "Geschenkcodes",
+      "active": "Gültig",
+      "expired": "Abgelaufen",
+      "empty": "Noch keine Codes vorhanden."
+    },
+    "redemptions": {
+      "title": "Zuletzt eingelöst",
+      "empty": "Noch keine Einlösungen."
+    },
+    "about": {
+      "title": "Über",
+      "featureTerm": "Funktion",
+      "featureDesc": "Erkennt Kingshot-Geschenkcodes automatisch und löst sie sofort für deine registrierten Spieler-IDs ein.",
+      "howTerm": "Registrierung",
+      "howDesc": "Spieler-ID eingeben und auf Registrieren klicken. Die Einlösung läuft auch weiter, wenn du die Seite schließt.",
+      "findIdTerm": "Spieler-ID finden",
+      "findIdDesc": "Spiel starten → Profil → Info-Tab: Die ID steht unter deinem Namen.",
+      "kingdomTerm": "Königreichsnummer",
+      "kingdomDesc": "Die eingegebene Königreichsnummer gilt für alle oben eingegebenen Spieler-IDs. Spieler aus verschiedenen Königreichen bitte getrennt registrieren.",
+      "noticeProfileLabel": "Hinweis:",
+      "noticeProfile": "Nickname und Avatar stammen aus öffentlich verfügbaren Quellen und können daher verzögert oder gar nicht angezeigt werden.",
+      "noticeTransferLabel": "Nach einem Umzug:",
+      "noticeTransfer": "Wenn du in ein anderes Königreich umgezogen bist, registriere dieselbe Spieler-ID einfach erneut mit der neuen Königreichsnummer – die Daten werden automatisch aktualisiert.",
+      "noticeInactiveLabel": "Bei langer Inaktivität:",
+      "noticeInactive": "Spieler, die sich längere Zeit (90 Tage oder mehr) nicht im Spiel angemeldet haben, werden automatisch erkannt und von der Einlösung ausgenommen (deaktiviert). Durch erneute Registrierung wirst du sofort reaktiviert.",
+      "disclaimerTitle": "Haftungsausschluss",
+      "disclaimerText": "Um die Anfragelimits der Kingshot-Server einzuhalten, werden alle Registrierungen und Einlösungen über eine Warteschlange abgearbeitet.",
+      "disclaimerItem1": "Die erste Registrierung und Sofort-Einlösung kann einige Minuten dauern.",
+      "disclaimerItem2": "Bei vielen registrierten Spielern kann sich die Einlösung neuer Codes verzögern.",
+      "disclaimerItem3": "Sollten die Verzögerungen zu groß werden, wird die Verarbeitung entsprechend verbessert."
+    },
+    "support": {
+      "title": "Unterstützen",
+      "text": "Diese Seite wird durch Spenden finanziert.",
+      "toss": "Toss Bank",
+      "tossQrAlt": "QR-Code für Spenden über Toss Bank",
+      "bmcQrAlt": "QR-Code für Spenden über Buy Me a Coffee"
+    },
+    "contact": {
+      "title": "Kontakt",
+      "text": "Für Feedback oder die Löschung einer Spieler-ID schreib uns an {email}."
+    },
+    "policies": "Richtlinien"
+  },
+  "legal": {
+    "privacyTitle": "Datenschutzerklärung",
+    "termsTitle": "Nutzungsbedingungen",
+    "effectiveDate": "Gültig ab: {date}",
+    "updatedDate": "Zuletzt geändert: {date}",
+    "machineTranslation": "Dieses Dokument ist eine maschinelle Übersetzung des koreanischen Originals und kann Ungenauigkeiten enthalten. Weicht die Übersetzung vom Original ab, ist das koreanische Original maßgeblich.",
+    "viewOriginal": "Koreanisches Original ansehen",
+    "back": "← Zurück zur Startseite"
+  }
+}

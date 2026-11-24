@@ -186,6 +186,7 @@ import type { QueueItem, Redemption } from '~~/server/db';
 
 definePageMeta({
   layout: 'admin',
+  i18n: false,
 });
 
 // Pause between users in a bulk profile refresh (same pace as the redemption failures page)

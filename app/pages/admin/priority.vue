@@ -176,6 +176,7 @@ import type { QueueItem, User, PriorityUser } from '~~/server/db';
 
 definePageMeta({
   layout: 'admin',
+  i18n: false,
 });
 
 const MAX_PRIORITY = 100;

@@ -1,0 +1,113 @@
+{
+  "common": {
+    "language": "Język"
+  },
+  "home": {
+    "meta": {
+      "title": "Kingshot Rewards — automatyczne odbieranie kodów podarunkowych",
+      "description": "Kingshot Rewards automatycznie wykrywa kody podarunkowe Kingshot i od razu realizuje je dla zarejestrowanych ID graczy. Zarejestruj swoje ID gracza i zapomnij o ręcznym wpisywaniu kodów.",
+      "keywords": "kingshot gift codes, kingshot codes, kingshot rewards, kody podarunkowe kingshot, kody kingshot, automatyczne odbieranie kodów, darmowe kody kingshot",
+      "shareTitle": "Kingshot Rewards — automatyczne odbieranie kodów podarunkowych",
+      "shareDescription": "Automatycznie wykrywa kody podarunkowe Kingshot i od razu realizuje je dla zarejestrowanych ID graczy."
+    },
+    "hero": {
+      "subtitle": "Automatyczne odbieranie kodów podarunkowych",
+      "lead": "Zarejestruj ID gracza raz, a każdy nowy kod podarunkowy zostanie odebrany automatycznie."
+    },
+    "stats": {
+      "users": "Zarejestrowani",
+      "active": "Aktywni: {count}",
+      "queue": "Kolejka odbioru",
+      "processing": "Przetwarzanie",
+      "idle": "Brak oczekujących"
+    },
+    "register": {
+      "title": "Rejestracja automatycznego odbioru",
+      "playerId": "ID gracza",
+      "playerIdPlaceholder": "Wiele ID graczy oddzielonych przecinkami (np. 12345678, 23456789)",
+      "kingdom": "Numer królestwa",
+      "kingdomPlaceholder": "Np. 120 (dotyczy wszystkich powyższych ID graczy)",
+      "submit": "Zarejestruj",
+      "submitting": "Rejestrowanie...",
+      "errors": {
+        "noPlayerId": "Wpisz co najmniej jedno ID gracza.",
+        "noValidPlayerId": "Wpisz co najmniej jedno prawidłowe ID gracza.",
+        "invalidPlayerId": "Nieprawidłowe ID gracza: {fid}. ID gracza może zawierać tylko cyfry.",
+        "invalidKingdom": "Wpisz numer królestwa cyframi."
+      },
+      "inProgress": "Rejestrowanie ID graczy (liczba: {count})... Może to potrwać kilka minut.",
+      "result": {
+        "registered": "zarejestrowano",
+        "reactivated": "ponownie aktywowano",
+        "reactivatedKingdomUpdated": "ponownie aktywowano (zaktualizowano numer królestwa)",
+        "kingdomUpdated": "zaktualizowano numer królestwa",
+        "alreadyRegistered": "już zarejestrowano",
+        "queued": ", dodano do kolejki kodów: {count}",
+        "failed": "niepowodzenie",
+        "error": "błąd"
+      },
+      "verify": {
+        "WRONG_KINGDOM": "Numer królestwa nie zgadza się z ID gracza. Sprawdź numer królestwa.",
+        "NO_SUCH_PLAYER": "Takie ID gracza nie istnieje.",
+        "UNVERIFIED": "Nie udało się zweryfikować danych gracza. Spróbuj ponownie za chwilę."
+      },
+      "successSummary": "✅ Zarejestrowano: {count}",
+      "failSummary": "Rejestracja nieudana",
+      "failGeneric": "Rejestracja nie powiodła się.",
+      "processError": "Błąd podczas rejestracji: {message}"
+    },
+    "codes": {
+      "title": "Kody podarunkowe",
+      "active": "Aktywny",
+      "expired": "Wygasł",
+      "empty": "Brak kodów."
+    },
+    "redemptions": {
+      "title": "Ostatnio odebrane",
+      "empty": "Brak historii odbiorów."
+    },
+    "about": {
+      "title": "O serwisie",
+      "featureTerm": "Funkcje",
+      "featureDesc": "Automatycznie wykrywa kody podarunkowe Kingshot i od razu realizuje je dla zarejestrowanych ID graczy.",
+      "howTerm": "Jak się zarejestrować",
+      "howDesc": "Wpisz ID gracza i kliknij przycisk rejestracji. Kody będą odbierane automatycznie, nawet gdy zamkniesz stronę.",
+      "findIdTerm": "Gdzie znaleźć ID gracza",
+      "findIdDesc": "Uruchom grę → Profil → zakładka Informacje. ID jest wyświetlane pod nazwą gracza.",
+      "kingdomTerm": "Numer królestwa",
+      "kingdomDesc": "Wpisany numer królestwa dotyczy wszystkich podanych ID graczy. Graczy z różnych królestw rejestruj osobno.",
+      "noticeProfileLabel": "Uwaga:",
+      "noticeProfile": "Nick i awatar pochodzą z publicznie dostępnych źródeł zewnętrznych, więc mogą aktualizować się z opóźnieniem lub nie być wyświetlane.",
+      "noticeTransferLabel": "Po migracji:",
+      "noticeTransfer": "Jeśli przeniosłeś się do innego królestwa, zarejestruj się ponownie z tym samym ID gracza i nowym numerem królestwa — dane zaktualizują się automatycznie.",
+      "noticeInactiveLabel": "Długa nieaktywność:",
+      "noticeInactive": "Gracze, którzy długo (90 dni lub dłużej) nie logowali się do gry, są wykrywani automatycznie, a odbiór kodów zostaje wstrzymany (dezaktywowany). Ponowna rejestracja od razu go przywraca.",
+      "disclaimerTitle": "Zastrzeżenia",
+      "disclaimerText": "Aby przestrzegać limitów zapytań serwerów Kingshot, wszystkie rejestracje i odbiory są przetwarzane w kolejce.",
+      "disclaimerItem1": "Pierwsza rejestracja i natychmiastowy odbiór mogą potrwać kilka minut.",
+      "disclaimerItem2": "Przy dużej liczbie zarejestrowanych graczy odbiór nowych kodów może się opóźniać.",
+      "disclaimerItem3": "Jeśli opóźnienia staną się zbyt duże, wprowadzimy usprawnienia."
+    },
+    "support": {
+      "title": "Wsparcie",
+      "text": "Ta strona utrzymuje się z darowizn.",
+      "toss": "Toss Bank",
+      "tossQrAlt": "Kod QR do wsparcia przez Toss Bank",
+      "bmcQrAlt": "Kod QR do wsparcia przez Buy Me a Coffee"
+    },
+    "contact": {
+      "title": "Kontakt",
+      "text": "Opinie i prośby o usunięcie ID gracza wysyłaj na adres {email}."
+    },
+    "policies": "Zasady"
+  },
+  "legal": {
+    "privacyTitle": "Polityka prywatności",
+    "termsTitle": "Regulamin",
+    "effectiveDate": "Obowiązuje od: {date}",
+    "updatedDate": "Ostatnia zmiana: {date}",
+    "machineTranslation": "Ten dokument jest tłumaczeniem maszynowym koreańskiego oryginału i może zawierać nieścisłości. W przypadku rozbieżności między tłumaczeniem a oryginałem rozstrzygająca jest koreańska wersja oryginalna.",
+    "viewOriginal": "Zobacz koreański oryginał",
+    "back": "← Powrót na stronę główną"
+  }
+}

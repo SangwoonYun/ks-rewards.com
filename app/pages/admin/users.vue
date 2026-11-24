@@ -176,6 +176,7 @@ import type { User } from '~~/server/db';
 
 definePageMeta({
   layout: 'admin',
+  i18n: false,
 });
 
 const filters = reactive({ fid: '', nickname: '', kingdom: '', status: '', from: '', to: '' });

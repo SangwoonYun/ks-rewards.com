@@ -2,26 +2,68 @@
   <div class="legal-page">
     <header class="legal-topbar">
       <div class="legal-topbar-inner">
-        <a href="/" class="legal-brand">
+        <NuxtLinkLocale to="/" class="legal-brand">
           <BrandMark />
           <span>Kingshot Rewards</span>
-        </a>
+        </NuxtLinkLocale>
+        <LanguageSwitcher />
       </div>
     </header>
 
     <main class="legal">
       <h1 class="legal-title">{{ title }}</h1>
-      <p class="legal-meta">시행일: {{ effectiveDate }} · 최종 개정일: {{ updatedDate }}</p>
+      <p class="legal-meta">
+        {{ t('legal.effectiveDate', { date: formatLegalDate(effectiveDate) }) }} ·
+        {{ t('legal.updatedDate', { date: formatLegalDate(updatedDate) }) }}
+      </p>
+      <!-- The Korean text is the original; every other language is a machine translation of it -->
+      <div v-if="locale !== 'ko'" class="legal-mt-notice" role="note">
+        <svg class="legal-mt-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01" />
+        </svg>
+        <p>
+          {{ t('legal.machineTranslation') }}
+          <NuxtLink :to="switchLocalePath('ko')" lang="ko">{{ t('legal.viewOriginal') }}</NuxtLink>
+        </p>
+      </div>
       <article class="legal-body">
-        <slot />
+        <component :is="content" />
       </article>
-      <a href="/" class="legal-back">← 메인으로 돌아가기</a>
+      <NuxtLinkLocale to="/" class="legal-back">{{ t('legal.back') }}</NuxtLinkLocale>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{ title: string; effectiveDate: string; updatedDate: string }>()
+import { computed, defineAsyncComponent, type Component } from 'vue'
+import { useHead, useI18n, useSwitchLocalePath } from '#imports'
+
+type LegalDoc = 'privacy' | 'terms'
+
+// Dates as YYYY-MM-DD
+const props = defineProps<{ doc: LegalDoc; effectiveDate: string; updatedDate: string }>()
+
+const { t, locale, localeProperties } = useI18n()
+const switchLocalePath = useSwitchLocalePath()
+
+// One body per document and language: ~/legal/<doc>/<locale>.vue (ko is the original)
+const bodies = import.meta.glob<Component>('../legal/*/*.vue', { import: 'default' })
+
+const content = computed(() => {
+  const load = bodies[`../legal/${props.doc}/${locale.value}.vue`] ?? bodies[`../legal/${props.doc}/ko.vue`]!
+  return defineAsyncComponent(load)
+})
+
+const title = computed(() => t(props.doc === 'privacy' ? 'legal.privacyTitle' : 'legal.termsTitle'))
+
+function formatLegalDate(date: string) {
+  // Noon UTC so the date is the same in every time zone
+  return new Intl.DateTimeFormat(localeProperties.value.language, { dateStyle: 'long', timeZone: 'UTC' })
+    .format(new Date(`${date}T12:00:00Z`))
+}
+
+useLocaleSeo()
+useHead(() => ({ title: `${title.value} — Kingshot Rewards` }))
 </script>
 
 <style>
@@ -40,6 +82,8 @@ defineProps<{ title: string; effectiveDate: string; updatedDate: string }>()
 .legal-topbar-inner {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   max-width: 800px;
   height: 60px;
   margin: 0 auto;
@@ -72,6 +116,42 @@ defineProps<{ title: string; effectiveDate: string; updatedDate: string }>()
   margin: 8px 0 32px;
   font-size: 0.875rem;
   color: var(--text-3);
+}
+
+.legal-mt-notice {
+  display: flex;
+  gap: 10px;
+  margin: -16px 0 32px;
+  padding: 12px 14px;
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+  background: var(--warning-soft);
+  color: var(--warning-text);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.legal-mt-notice p {
+  margin: 0;
+}
+
+.legal-mt-notice a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.legal-mt-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .legal-body {

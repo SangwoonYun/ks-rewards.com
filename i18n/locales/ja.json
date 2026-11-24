@@ -1,0 +1,113 @@
+{
+  "common": {
+    "language": "言語"
+  },
+  "home": {
+    "meta": {
+      "title": "Kingshot Rewards — ギフトコード自動受け取りサービス",
+      "description": "Kingshot Rewardsは、Kingshotのギフトコードを自動で検出し、登録したプレイヤーIDですぐに受け取るサービスです。プレイヤーIDを登録すれば、もう手動でコードを入力する必要はありません。",
+      "keywords": "kingshot gift codes, kingshot codes, kingshot rewards, 自動受け取り, ギフトコード, キングショット コード",
+      "shareTitle": "Kingshot Rewards — ギフトコード自動受け取り",
+      "shareDescription": "Kingshotのギフトコードを自動で検出し、登録したプレイヤーIDですぐに受け取ります。"
+    },
+    "hero": {
+      "subtitle": "ギフトコード自動受け取り",
+      "lead": "プレイヤーIDを一度登録するだけで、新しいギフトコードが出るたびに自動で受け取ります。"
+    },
+    "stats": {
+      "users": "登録ユーザー",
+      "active": "アクティブ {count}",
+      "queue": "受け取り待ち",
+      "processing": "処理中",
+      "idle": "待機なし"
+    },
+    "register": {
+      "title": "自動受け取り登録",
+      "playerId": "プレイヤーID",
+      "playerIdPlaceholder": "カンマ区切りで複数のプレイヤーIDを入力 (例: 12345678, 23456789)",
+      "kingdom": "王国番号",
+      "kingdomPlaceholder": "例: 120 (上記のすべてのプレイヤーIDに適用されます)",
+      "submit": "自動受け取りを登録",
+      "submitting": "登録中...",
+      "errors": {
+        "noPlayerId": "プレイヤーIDを1つ以上入力してください。",
+        "noValidPlayerId": "有効なプレイヤーIDを1つ以上入力してください。",
+        "invalidPlayerId": "無効なプレイヤーID: {fid}。プレイヤーIDは数字のみ使用できます。",
+        "invalidKingdom": "王国番号は数字で入力してください。"
+      },
+      "inProgress": "{count}件のプレイヤーIDを登録中... (数分かかる場合があります)",
+      "result": {
+        "registered": "登録完了",
+        "reactivated": "再有効化",
+        "reactivatedKingdomUpdated": "再有効化 (王国番号を更新)",
+        "kingdomUpdated": "王国番号を更新",
+        "alreadyRegistered": "登録済み",
+        "queued": "、コード{count}件を受け取り待ちに追加",
+        "failed": "失敗",
+        "error": "エラー"
+      },
+      "verify": {
+        "WRONG_KINGDOM": "王国番号がプレイヤーIDと一致しません。王国番号を確認してください。",
+        "NO_SUCH_PLAYER": "存在しないプレイヤーIDです。",
+        "UNVERIFIED": "プレイヤー情報を確認できませんでした。しばらくしてからもう一度お試しください。"
+      },
+      "successSummary": "✅ {count}件 登録完了",
+      "failSummary": "登録失敗",
+      "failGeneric": "登録に失敗しました。",
+      "processError": "登録処理中にエラーが発生しました: {message}"
+    },
+    "codes": {
+      "title": "ギフトコード",
+      "active": "使用可能",
+      "expired": "期限切れ",
+      "empty": "登録されたコードはありません。"
+    },
+    "redemptions": {
+      "title": "最近の受け取り履歴",
+      "empty": "まだ受け取り履歴はありません。"
+    },
+    "about": {
+      "title": "このサイトについて",
+      "featureTerm": "機能",
+      "featureDesc": "Kingshotのギフトコードを自動で検出し、登録したプレイヤーIDですぐに受け取ります。",
+      "howTerm": "登録方法",
+      "howDesc": "プレイヤーIDを入力して登録ボタンを押してください。その後はサイトを閉じても自動で受け取りが続きます。",
+      "findIdTerm": "プレイヤーIDの確認",
+      "findIdDesc": "ゲームを起動 → プロフィール → 情報タブで、名前の下に表示されます。",
+      "kingdomTerm": "王国番号",
+      "kingdomDesc": "一度に入力した王国番号は、上で入力したすべてのプレイヤーIDに適用されます。王国が異なるプレイヤーは分けて登録してください。",
+      "noticeProfileLabel": "ご案内:",
+      "noticeProfile": "ニックネームとアバターは外部の公開情報をもとに表示されるため、反映が遅れたり表示されない場合があります。",
+      "noticeTransferLabel": "移民した場合:",
+      "noticeTransfer": "移民 (王国移動) した場合は、同じプレイヤーIDと新しい王国番号で再登録すると、王国情報が自動で更新されます。",
+      "noticeInactiveLabel": "長期間ログインしていない場合:",
+      "noticeInactive": "長期間 (90日以上) ゲームにログインしていないプレイヤーは自動で検出され、受け取りが停止 (無効化) されます。再登録するとすぐに再有効化されます。",
+      "disclaimerTitle": "免責事項",
+      "disclaimerText": "Kingshotサーバーのリクエスト制限を守るため、すべての登録と受け取りはキューで順番に処理されます。",
+      "disclaimerItem1": "初回登録と即時受け取りには数分かかる場合があります。",
+      "disclaimerItem2": "登録者が多い場合、新しいコードの受け取りが遅れることがあります。",
+      "disclaimerItem3": "遅延がひどくなった場合は、改善策を導入する予定です。"
+    },
+    "support": {
+      "title": "支援",
+      "text": "このサイトは皆さまからの支援で運営されています。",
+      "toss": "トスバンク",
+      "tossQrAlt": "トスバンク支援用QRコード",
+      "bmcQrAlt": "Buy Me a Coffee支援用QRコード"
+    },
+    "contact": {
+      "title": "お問い合わせ",
+      "text": "フィードバックやプレイヤーIDの削除依頼は {email} までご連絡ください。"
+    },
+    "policies": "ポリシー"
+  },
+  "legal": {
+    "privacyTitle": "プライバシーポリシー",
+    "termsTitle": "利用規約",
+    "effectiveDate": "施行日: {date}",
+    "updatedDate": "最終改定日: {date}",
+    "machineTranslation": "この文書は韓国語の原文を機械翻訳したもので、不正確な内容が含まれている可能性があります。原文と翻訳の内容が異なる場合は、韓国語の原文が優先されます。",
+    "viewOriginal": "韓国語の原文を見る",
+    "back": "← トップへ戻る"
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "common": {
+    "language": "語言"
+  },
+  "home": {
+    "meta": {
+      "title": "Kingshot Rewards — 禮包碼自動領取服務",
+      "description": "Kingshot Rewards 會自動偵測 Kingshot 禮包碼，並立即以已登錄的玩家 ID 領取。只要登錄玩家 ID，就不必再手動輸入兌換碼。",
+      "keywords": "kingshot gift codes, kingshot codes, kingshot rewards, 自動領取, 禮包碼, Kingshot 兌換碼",
+      "shareTitle": "Kingshot Rewards — 禮包碼自動領取",
+      "shareDescription": "自動偵測 Kingshot 禮包碼，並立即以已登錄的玩家 ID 領取。"
+    },
+    "hero": {
+      "subtitle": "禮包碼自動領取",
+      "lead": "只要登錄一次玩家 ID，每當有新禮包碼推出就會自動幫你領取。"
+    },
+    "stats": {
+      "users": "登錄玩家",
+      "active": "啟用中 {count}",
+      "queue": "領取佇列",
+      "processing": "處理中",
+      "idle": "無等待"
+    },
+    "register": {
+      "title": "登錄自動領取",
+      "playerId": "玩家 ID",
+      "playerIdPlaceholder": "可用逗號分隔輸入多個玩家 ID（例：12345678, 23456789）",
+      "kingdom": "王國編號",
+      "kingdomPlaceholder": "例：120（將套用至上方所有玩家 ID）",
+      "submit": "登錄自動領取",
+      "submitting": "登錄中...",
+      "errors": {
+        "noPlayerId": "請至少輸入 1 個玩家 ID。",
+        "noValidPlayerId": "請至少輸入 1 個有效的玩家 ID。",
+        "invalidPlayerId": "玩家 ID 無效：{fid}。玩家 ID 只能包含數字。",
+        "invalidKingdom": "請以數字輸入王國編號。"
+      },
+      "inProgress": "正在登錄 {count} 個玩家 ID...（可能需要幾分鐘）",
+      "result": {
+        "registered": "登錄完成",
+        "reactivated": "已重新啟用",
+        "reactivatedKingdomUpdated": "已重新啟用（王國編號已更新）",
+        "kingdomUpdated": "王國編號已更新",
+        "alreadyRegistered": "已登錄",
+        "queued": "，已將 {count} 個兌換碼加入領取佇列",
+        "failed": "失敗",
+        "error": "錯誤"
+      },
+      "verify": {
+        "WRONG_KINGDOM": "王國編號與玩家 ID 不符，請確認王國編號。",
+        "NO_SUCH_PLAYER": "此玩家 ID 不存在。",
+        "UNVERIFIED": "無法確認玩家資訊，請稍後再試。"
+      },
+      "successSummary": "✅ 已成功登錄 {count} 筆",
+      "failSummary": "登錄失敗",
+      "failGeneric": "登錄失敗。",
+      "processError": "登錄處理時發生錯誤：{message}"
+    },
+    "codes": {
+      "title": "禮包碼",
+      "active": "可使用",
+      "expired": "已過期",
+      "empty": "目前沒有禮包碼。"
+    },
+    "redemptions": {
+      "title": "最近領取紀錄",
+      "empty": "尚無領取紀錄。"
+    },
+    "about": {
+      "title": "關於",
+      "featureTerm": "功能",
+      "featureDesc": "自動偵測 Kingshot 禮包碼，並立即以已登錄的玩家 ID 領取。",
+      "howTerm": "登錄方式",
+      "howDesc": "輸入玩家 ID 後按下登錄按鈕即可。之後就算關閉網站，也會持續自動領取。",
+      "findIdTerm": "查看玩家 ID",
+      "findIdDesc": "開啟遊戲 → 個人資料 → 資訊分頁，ID 顯示在名稱下方。",
+      "kingdomTerm": "王國編號",
+      "kingdomDesc": "一次輸入的王國編號會套用至上方輸入的所有玩家 ID。不同王國的玩家請分開登錄。",
+      "noticeProfileLabel": "說明：",
+      "noticeProfile": "暱稱與頭像依據外部公開資訊顯示，可能會延遲更新或無法顯示。",
+      "noticeTransferLabel": "已移民的玩家：",
+      "noticeTransfer": "若你已移民（轉移王國），請以相同玩家 ID 和新的王國編號重新登錄，王國資訊就會自動更新。",
+      "noticeInactiveLabel": "長期未登入：",
+      "noticeInactive": "長時間（90 天以上）未登入遊戲的玩家會被自動偵測並停止領取（停用）。重新登錄後即可立即重新啟用。",
+      "disclaimerTitle": "免責聲明",
+      "disclaimerText": "為遵守 Kingshot 伺服器的請求限制，所有登錄與領取都會透過佇列依序處理。",
+      "disclaimerItem1": "首次登錄及立即領取可能需要幾分鐘。",
+      "disclaimerItem2": "登錄人數較多時，新兌換碼的領取可能會延遲。",
+      "disclaimerItem3": "若延遲過久，我們將導入改善機制。"
+    },
+    "support": {
+      "title": "贊助支持",
+      "text": "本網站依靠贊助維持營運。",
+      "toss": "Toss Bank",
+      "tossQrAlt": "Toss Bank 贊助 QR 碼",
+      "bmcQrAlt": "Buy Me a Coffee 贊助 QR 碼"
+    },
+    "contact": {
+      "title": "聯絡我們",
+      "text": "如有意見回饋或需刪除玩家 ID，請來信至 {email}。"
+    },
+    "policies": "政策"
+  },
+  "legal": {
+    "privacyTitle": "隱私權政策",
+    "termsTitle": "服務條款",
+    "effectiveDate": "施行日期：{date}",
+    "updatedDate": "最後修訂日期：{date}",
+    "machineTranslation": "本文件為韓文原文的機器翻譯，內容可能有不準確之處。若譯文與原文內容不一致，以韓文原文為準。",
+    "viewOriginal": "查看韓文原文",
+    "back": "← 返回首頁"
+  }
+}

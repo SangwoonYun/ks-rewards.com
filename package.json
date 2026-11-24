@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@nuxtjs/i18n": "10.6.0",
     "@vuepic/vue-datepicker": "14.0.0",
     "axios": "^1.21.1",
     "better-sqlite3": "^13.2.0",
