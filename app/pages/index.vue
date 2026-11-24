@@ -176,10 +176,44 @@
         </div>
       </section>
 
-      <section class="card info contact">
-        <h2 class="card-title">Contact</h2>
-        <p>피드백 또는 플레이어 ID 삭제 요청은 <a href="mailto:dev.swyun@gmail.com">dev.swyun@gmail.com</a>으로 연락 주세요.</p>
-      </section>
+      <div class="bottom-row">
+        <section class="card support" aria-labelledby="support-title">
+          <h2 id="support-title" class="card-title">Support</h2>
+          <p>본 사이트는 후원으로 유지됩니다.</p>
+          <div class="support-qrs">
+            <figure class="support-qr">
+              <a href="supertoss://send?amount=0&bank=IBK%EA%B8%B0%EC%97%85%EC%9D%80%ED%96%89&accountNo=29810334201018&origin=qr">
+                <img src="/images/qr-toss.jpg" alt="토스뱅크 후원 QR 코드" width="128" height="128" loading="lazy">
+              </a>
+              <figcaption>토스뱅크</figcaption>
+            </figure>
+            <figure class="support-qr">
+              <a href="https://www.buymeacoffee.com/swyun" target="_blank" rel="noopener noreferrer">
+                <img src="/images/qr-bmc.png" alt="Buy Me a Coffee 후원 QR 코드" width="128" height="128" loading="lazy">
+              </a>
+              <figcaption>Buy Me a Coffee</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <div class="bottom-side">
+          <section class="card info contact">
+            <h2 class="card-title">Contact</h2>
+            <p>피드백 또는 플레이어 ID 삭제 요청은 <a href="mailto:dev.swyun@gmail.com">dev.swyun@gmail.com</a>으로 연락 주세요.</p>
+            <p class="contact-credit">
+              <a href="https://github.com/SangwoonYun/ks-rewards.com" class="github-link" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z" /></svg>
+              </a>
+              Created by #347 [KIW] 방구석개발자
+            </p>
+          </section>
+
+          <nav class="policy-links" aria-label="정책">
+            <a href="/privacy" class="card policy-tile">개인정보 처리방침</a>
+            <a href="/terms" class="card policy-tile">이용 약관</a>
+          </nav>
+        </div>
+      </div>
     </main>
 
     <footer class="footer">
@@ -1154,6 +1188,100 @@ onUnmounted(() => {
   text-decoration-color: currentColor;
 }
 
+.bottom-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 20px;
+}
+
+.bottom-side {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.bottom-side .contact {
+  flex: 1;
+}
+
+.policy-links {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+}
+
+.policy-tile {
+  padding: 16px 20px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-2);
+  text-decoration: none;
+}
+
+.policy-tile:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.contact .contact-credit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 0.875rem;
+  color: var(--text-3);
+}
+
+.contact .github-link {
+  display: inline-flex;
+  color: var(--text-2);
+}
+
+.contact .github-link:hover {
+  color: var(--text);
+}
+
+.github-link svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+/* Support */
+.support p {
+  margin: 12px 0 16px;
+  font-size: 0.9375rem;
+  color: var(--text-2);
+  word-break: keep-all;
+}
+
+.support-qrs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.support-qr {
+  margin: 0;
+  text-align: center;
+}
+
+.support-qr img {
+  display: block;
+  width: 128px;
+  height: 128px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.support-qr figcaption {
+  margin-top: 6px;
+  font-size: 0.8125rem;
+  color: var(--text-3);
+}
+
 /* Footer */
 .footer {
   width: 100%;
@@ -1177,6 +1305,10 @@ onUnmounted(() => {
   }
 
   .live {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bottom-row {
     grid-template-columns: minmax(0, 1fr);
   }
 
